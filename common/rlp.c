@@ -30,12 +30,12 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id: rlp.c 11 2007-09-07 09:02:15Z philip $
+	$Id$
 
 */
 /*--------------------------------------------------------------------*/
 static const char *rcsid __attribute__ ((unused)) =
-   "$Id: rlp.c 11 2007-09-07 09:02:15Z philip $";
+   "$Id$";
 //syslog facility LOG_LOCAL0 is used for ACN:RLP
 
 #define MAX_RLP_SOCKETS 50

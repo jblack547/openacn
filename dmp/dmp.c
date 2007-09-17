@@ -30,12 +30,12 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id: dmp.c 11 2007-09-07 09:02:15Z philip $
+	$Id$
 
 */
 /*--------------------------------------------------------------------*/
 static const char *rcsid __attribute__ ((unused)) =
-   "$Id: dmp.c 11 2007-09-07 09:02:15Z philip $";
+   "$Id$";
 // DMP uses LOG_LOCAL4
 #include "dmp.h"
 #include "sdt.h"

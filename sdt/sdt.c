@@ -30,12 +30,12 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id: sdt.c 11 2007-09-07 09:02:15Z philip $
+	$Id$
 
 */
 /*--------------------------------------------------------------------*/
 static const char *rcsid __attribute__ ((unused)) =
-   "$Id: sdt.c 11 2007-09-07 09:02:15Z philip $";
+   "$Id$";
 //;//syslog facility LOG_LOCAL1 is used for ACN:SDT
 
 #include "sdt.h"
