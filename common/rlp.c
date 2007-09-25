@@ -56,7 +56,7 @@ typedef struct
 	udp_Socket s;
 	
 	uint16 useCount;
-	uint16 localPort;
+	port_t localPort;
 } rlp_socket_t;
 
 #define BUFFER_ROLLOVER_MASK  (NUM_PACKET_BUFFERS - 1)
@@ -79,14 +79,12 @@ static const char epi17preamble[PREAMBLE_LENGTH]=
 	0x00,			//
 };
 
-static rlp_socket_t rlpSockets[MAX_RLP_SOCKETS];
-
 typedef struct
 {
 	int cookie;
 	rlp_socket_t *sock;
 	int dstIP;
-	uint16_t port;
+	port_t port;
 	uint8 packet[MAX_PACKET_SIZE];
 }rlp_buf_t;
 
@@ -98,19 +96,68 @@ static int bufferLength;
 
 static int rlpRxHandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *hdr);
 
+/***********************************************************************************************/
+/*
+Socket memory currently static array, but accessed only via
+rlpInitSockets, rlpFindSocket, rlpNewSocket, rlpFreeSocket
+so could change to list or other implementation
+
+This currently also suffers from the Shlemeil the Painter problem
+*/
+
+static rlp_socket_t rlpSockets[MAX_RLP_SOCKETS];
+
+void rlpInitSockets(void)
+{
+	rlp_socket_t sockp;
+
+	for (sockp rlpSockets; sockp < (rlpSockets + MAX_RLP_SOCKETS); ++sockp)
+		sockp->useCount = 0;
+}
+
+//find the socket (if any) with matching local port 
+rlp_socket_t *rlpFindSocket(port_t localPort)
+{
+	rlp_socket_t sockp;
+	
+	for (sockp rlpSockets; sockp < (rlpSockets + MAX_RLP_SOCKETS); ++sockp)
+	{
+		if(sockp->useCount && localPort == sockp->localPort)
+			return sockp;
+	}
+	return NULL;
+}
+
+rlp_socket_t *rlpNewSocket(void)
+{
+	rlp_socket_t sockp;
+	
+	for (sockp rlpSockets; sockp < (rlpSockets + MAX_RLP_SOCKETS); ++sockp)
+	{
+		if (sockp->useCount == 0)
+			return sockp;
+	}
+	return NULL;
+}
+
+void rlpFreeSocket(rlp_socket_t *sockp)
+{
+}
+
+/***********************************************************************************************/
+
 void initRlp(void)
 {
 	int i;
 	
-	for(i = 0; i < MAX_RLP_SOCKETS; i++)
-		rlpSockets[i].useCount = 0;
-		
+	rlpInitSockets();
+
 	for (i = 0; i < NUM_PACKET_BUFFERS; i++)
 	{
 		memcpy(buffers[i], epi17preamble, PREAMBLE_LENGTH);
 		bufferLengths[i] = PREAMBLE_LENGTH;
 	}
-	rlpOpenSocket(LOCAL_ADHOC_PORT);
+	rlpOpenSocket(LOCAL_ADHOC_PORT);	// PN-FIXME LOCAL_ADHOC_PORT is part of SDT - only open a socket when SDT registers with RLP
 	currentBufNum = 0;
 	packetBuffer = buffers[currentBufNum];
 
@@ -147,7 +194,7 @@ void rlpResendTo(void *sock, uint32 dstIP, uint16 dstPort, int numBack)
 	int bufToSend;
 	
 	bufToSend = (NUM_PACKET_BUFFERS - numBack + currentBufNum) & BUFFER_ROLLOVER_MASK;
-	sock_sendto((void*)&((rlp_socket_t *)sock)->s, buffers[bufToSend], bufferLengths[bufToSend], dstIP, dstPort);
+	sock_sendto((void*)&((rlp_socket_t *)sock)->s, buffers[bufToSend], bufferLengths[bufToSend], dstIP, dstPort);	// PN-FIXME Waterloo stack call - abstract into netiface
 }
 
 int rlpSendTo(void *sock, uint32 dstIP, uint16 dstPort, int keep)
@@ -155,7 +202,7 @@ int rlpSendTo(void *sock, uint32 dstIP, uint16 dstPort, int keep)
 	int retVal = currentBufNum;
 	
 	marshalU16(packetBuffer + PREAMBLE_LENGTH, (bufferLength - PREAMBLE_LENGTH) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-	sock_sendto((void*)&((rlp_socket_t *)sock)->s, packetBuffer, bufferLength, dstIP, dstPort);
+	sock_sendto((void*)&((rlp_socket_t *)sock)->s, packetBuffer, bufferLength, dstIP, dstPort);    // PN-FIXME Waterloo stack call - abstract into netiface
 	
 	bufferLengths[currentBufNum] = bufferLength;
 	
@@ -173,30 +220,19 @@ void *rlpOpenSocket(uint16 localPort)
 	rlp_socket_t *socket;
 	int i;
 	
-	if(!localPort)
+	if (!localPort)
 		localPort = ACN_RESERVED_PORT;
 
 	//check if this socket already exists
-	socket = rlpGetSocket(localPort);
+	socket = rlpFindSocket(localPort);
 	if(!socket) //no socket found
 	{
-		//allocate and open a new socket
-		//FIXME - Shlmeil the Painter Algo
-		for(i = 0; i < MAX_RLP_SOCKETS; i++)
-		{
-			if(!rlpSockets[i].useCount) //available
-			{
-				udp_open(&rlpSockets[i].s, localPort, -1, 0, rlpRxHandler);
-				rlpSockets[i].localPort = localPort;
-				socket = &rlpSockets[i];
-				break;
-			}
-		}
+		socket = rlpNewSocket();
+		if (!socket) return NULL;
+		udp_open(&socket->s, localPort, -1, 0, rlpRxHandler);	// PN-FIXME Waterloo stack call - abstract into netiface
+		socket->localPort = localPort;
 	}
-	if(socket)
-	{
-		(socket->useCount)++;
-	}
+	(socket->useCount)++;
 	return socket;
 }
 
@@ -207,27 +243,9 @@ void rlpCloseSocket(void *s)
 	if(!socket->useCount) //no further users of this socket
 	{
 		//close the socket
-		sock_close((void*)&(socket->s));
+		sock_close((void*)&(socket->s));    // PN-FIXME Waterloo stack call - abstract into netiface
+		rlpFreeSocket(socket);
 	}
-}
-
-void *rlpGetSocket(uint16 localPort)
-{
-	int i;
-	
-	//find the local port 
-	//FIXME - Shlmeil the Painter Algo	
-	for(i = 0; i < MAX_RLP_SOCKETS; i++)
-	{
-		if(rlpSockets[i].useCount && localPort == rlpSockets[i].localPort)
-		{
-			break;
-		}
-	}
-	if(i == MAX_RLP_SOCKETS)
-		return 0;
-	else
-		return &rlpSockets[i];
 }
 
 /**
