@@ -36,34 +36,34 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*--------------------------------------------------------------------*/
 static const char *rcsid __attribute__ ((unused)) =
    "$Id$";
+
 //syslog facility LOG_LOCAL0 is used for ACN:RLP
 
 #define MAX_PACKET_SIZE 1450
 #define PREAMBLE_LENGTH 16
 
-//#define __WATTCP_KERNEL__ // for access to the tcpHeader
-//#include <wattcp.h>
 #include <string.h>
 #include "configure.h"
 #include "arch/types.h"
 #include "acn_arch.h"
+#include "acn_rlp.h"
 #include "netiface.h"
 #include "rlp.h"
-#include "uuid.h"
-#include "pdu.h"
-#include "sdt.h"
 #include "marshal.h"
 #include <syslog.h>
 
+#define NUM_PACKET_BUFFERS	16
 #define BUFFER_ROLLOVER_MASK  (NUM_PACKET_BUFFERS - 1)
 
 #ifdef CONFIG_EPI17
-static const struct PACKED rlpPreamble_s rlpPreamble =
+
+static const uint8_t rlpPreamble[RLP_PREAMBLE_LENGTH] =
 {
-	htons(RLP_PREAMBLE_LENGTH),
-	htons(RLP_POSTAMBLE_LENGTH),
-	RLP_SIGNATURE_STRING
+	0, RLP_PREAMBLE_LENGTH,		/* Network byte order */
+	0, RLP_POSTAMBLE_LENGTH,	/* Network byte order */
+	'A', 'S', 'C', '-', 'E', '1', '.', '1', '7', '\0', '\0', '\0'
 };
+
 #endif
 
 /*
@@ -79,22 +79,13 @@ in subsequent PDUs any field except flags/length may be inherited
 #define RLP_FIRSTPDU_MINLENGTH (2 + 4 + sizeof(cid_t))
 #define RLP_PDU_MINLENGTH 2
 
-typedef struct
-{
-	int cookie;
-	netSocket_t *sock;
-	int dstIP;
-	port_t port;
-	uint8 packet[MAX_PACKET_SIZE];
-} rlp_buf_t;
-
-static uint8 buffers[NUM_PACKET_BUFFERS][MAX_PACKET_SIZE];
+static uint8_t buffers[NUM_PACKET_BUFFERS][MAX_PACKET_SIZE];
 static int bufferLengths[NUM_PACKET_BUFFERS];
 static int currentBufNum = 0;
-static uint8 *packetBuffer;
+static uint8_t *packetBuffer;
 static int bufferLength;
 
-//static int rlpRxHandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *hdr);
+//static int rlpRxHandler(void *s, uint8_t *data, int dataLen, tcp_PseudoHeader *pseudo, void *hdr);
 
 #ifdef CONFIG_RLP_STATICMEM
 
@@ -405,19 +396,19 @@ int rlpEnqueue(int length)
 	return length;
 }
 
-uint8 *rlpFormatPacket(const uint8 *srcCid, int vector)
+uint8_t *rlpFormatPacket(const uint8_t *srcCid, int vector)
 {
-	bufferLength = PREAMBLE_LENGTH + sizeof(uint16); //flags and length
+	bufferLength = PREAMBLE_LENGTH + sizeof(uint16_t); //flags and length
 	
 	marshalU32(packetBuffer + bufferLength, vector);
-	bufferLength += sizeof(uint32);
+	bufferLength += sizeof(uint32_t);
 	
-	marshalCID(packetBuffer + bufferLength, (uint8*)srcCid);
-	bufferLength += sizeof(uuid_type);
+	marshalCID(packetBuffer + bufferLength, (uint8_t*)srcCid);
+	bufferLength += sizeof(uuid_t);
 	return packetBuffer + bufferLength;
 }
 
-void rlpResendTo(void *sock, uint32 dstIP, uint16 dstPort, int numBack)
+void rlpResendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int numBack)
 {
 	int bufToSend;
 	
@@ -425,11 +416,11 @@ void rlpResendTo(void *sock, uint32 dstIP, uint16 dstPort, int numBack)
 	sock_sendto((void*)&((netSocket_t *)sock)->nativesock, buffers[bufToSend], bufferLengths[bufToSend], dstIP, dstPort);	// PN-FIXME Waterloo stack call - abstract into netiface
 }
 
-int rlpSendTo(void *sock, uint32 dstIP, uint16 dstPort, int keep)
+int rlpSendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int keep)
 {
 	int retVal = currentBufNum;
 	
-	marshalU16(packetBuffer + PREAMBLE_LENGTH, (bufferLength - PREAMBLE_LENGTH) | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	marshalU16(packetBuffer + PREAMBLE_LENGTH, (bufferLength - PREAMBLE_LENGTH) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	sock_sendto((void*)&((netSocket_t *)sock)->nativesock, packetBuffer, bufferLength, dstIP, dstPort);    // PN-FIXME Waterloo stack call - abstract into netiface
 	
 	bufferLengths[currentBufNum] = bufferLength;
@@ -661,11 +652,11 @@ void rlpProcessPacket(netSocket_t *netsock, const uint8_t *data, int dataLen, ne
 timing_t benchmark;
 static char logTimings[200];
 
-static int rlpRxHandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *hdr)
+static int rlpRxHandler(void *s, uint8_t *data, int dataLen, tcp_PseudoHeader *pseudo, void *hdr)
 {
 	pdu_header_type pduHeader;
-	uint32 processed = 0;
-	uint8 srcCID[16];
+	uint32_t processed = 0;
+	uint8_t srcCID[16];
 	udp_transport_t transportAddr;
 
 //	memset(&benchmark, 0, sizeof(timing_t));
@@ -697,7 +688,7 @@ static int rlpRxHandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pse
 	while(processed < dataLen)
 	{
 		//decode the pdu header
-		processed += decodePdu(data + processed, &pduHeader, sizeof(uint32), sizeof(uuid_type));
+		processed += decodePdu(data + processed, &pduHeader, sizeof(uint32_t), sizeof(uuid_type));
 		
 //		syslog(LOG_DEBUG|LOG_LOCAL0,"rlpRxHandler: pdu header decoded");
 		if((pduHeader.header == 0) || pduHeader.data == 0) //error

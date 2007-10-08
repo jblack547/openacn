@@ -1,6 +1,6 @@
 ##########################################################################
 # 
-# Copyright (c) 2007, Pathway Connectivity Inc.
+# Copyright (c) 2007, Engineering Arts (UK).
 # 
 # All rights reserved.
 # 
@@ -34,25 +34,27 @@
 ##########################################################################
 
 #
-# Makefile for top level ACN directory
+# Makefile common to all (or most) subdirectories
 #
 
-TOPDIR:=.
-SUBDIRS:=common rlp
+ARCH:=${shell uname -m}
 
-include ${TOPDIR}/common.makefile
+ifeq (,$ARCH)
+ifeq (Windows_NT,${OS})
+ARCH:=${PROCESSOR_ARCHITECTURE}
+endif
+endif
 
-.PHONY : all
+#
+# Deal with variants on i486 i586 etc.
+#
+ifneq (,${patsubst i%86,i386,${ARCH}})
+ifeq (,${wildcard ${TOPDIR}/include/arch-${ARCH}})
+ARCH:=${patsubst i%86,i386,${ARCH}}
+endif
+endif
 
-all :
-	for dir in ${SUBDIRS} ; do ${MAKE} -C $$dir all ; done
-
-.PHONY : clean
-
-clean :
-	for dir in ${SUBDIRS} ; do ${MAKE} -C $$dir clean ; done
-
-.PHONY : test
-
-test :
-	@echo ARCH: ${ARCH} 
+CFLAGS:=
+CFLAGS+=-O2
+CFLAGS+= -std=c99 -Wall
+CFLAGS+=-I ${TOPDIR}/include

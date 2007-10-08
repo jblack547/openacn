@@ -39,22 +39,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <arch/types.h>
 
+#define getpdulen(pp) (((pp)[0] << 8 | (pp)[1]) & LENGTH_FIELD)
 
-typedef struct
-{
-   uint32 data[4];
-} uuid_type;
-
-//flag field is 16 bits
-#define LENGTH_FLAG    0x8000
-#define VECTOR_FLAG    0x4000
-#define HEADER_FLAG    0x2000
-#define DATA_FLAG      0x1000
-#define LENGTH_FIELD   0x0FFF
-
-#define vectorPresent(x) (VECTOR_FLAG & ((uint16)(x)))
-#define headerPresent(x) (HEADER_FLAG & ((uint16)(x)))
-#define dataPresent(x) (DATA_FLAG & ((uint16)(x)))
+#define vectorPresent(x) (VECTOR_wFLAG & ((uint16)(x)))
+#define headerPresent(x) (HEADER_wFLAG & ((uint16)(x)))
+#define dataPresent(x) (DATA_wFLAG & ((uint16)(x)))
 
 typedef struct
 {
@@ -82,12 +71,6 @@ typedef struct
 } timing_t;
 extern timing_t benchmark;
 
-
-enum 
-{
-   PROTO_DMP = 2,
-   PROTO_SDT = 1, 
-};
 
 enum
 {

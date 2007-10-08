@@ -35,54 +35,82 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 
-void textToCid(const char *cidText, uint8 cid[16])
+#include "configure.h"
+#include "uuid.h"
+#include <ctype.h>
+
+int textToUuid(const char *uuidText, uuid_t uuidp)
 {
-	uint32 nibble = 0;
-	uint32 count;
-	
-	memset(cid, 0, 16);
-	
-	for(count = 0; count < 37; count++)
+	uint8_t *bytp;
+	uint16_t byt;
+
+	byt = 1;	//bit provides a shift marker
+
+	for (bytp = uuidp; bytp < uuidp + UUIDSIZE; ++uuidText)
 	{
-		if(isdigit(*cidText))
+		if (*uuidText == '-') continue;	//ignore dashes
+		if (isdigit(*uuidText))
 		{
-			cid[nibble / 2] |= ((*cidText - 48) << ((nibble % 2) ? 0 : 4));
-			cidText++;
-			nibble++;
+			byt = (byt << 4) | (*uuidText - '0');
 		}
-		else if(isalpha(*cidText))
+		else if (isxdigit(*uuidText))
 		{
-			cid[nibble / 2] |= ((toupper(*cidText) - 55) << ((nibble % 2) ? 0 : 4));
-			cidText++;
-			nibble++;
-		}
-		else if(*cidText == '-')
-		{
-			cidText++;
+			byt = (byt << 4) | (toupper(*uuidText) - 'A' + 10);
 		}
 		else
 		{
-			;//error
+			while (bytp < uuidp + UUIDSIZE) *bytp++ = 0;
+			return -1;	//error terminates
+		}
+		if (byt >= 0x100)
+		{
+			*bytp++ = (uint8_t)byt;
+			byt = 1;	//restore shift marker
 		}
 	}
+	//FIXME - check for terminated input string here (what termination is allowed?)
+	return 0;
 }
 
-char *cidToText(uint8 cid[16], const char *cidText)
+const char hexdig[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+#define tohex(nibble) hexdig[nibble]
+
+/*
+Make a string from a UUID
+return pointer to end of string
+*/
+char *uuidToText(const uuid_t uuidp, char *uuidText)
 {
-	uint32 octet;
+	int octet;
+
 	for(octet = 0; octet < 16; octet++)
 	{
+		*uuidText++ = tohex(*uuidp >> 4);
+		*uuidText++ = tohex(*uuidp & 0x0f);
+		++uuidp;
+
 		switch(octet)
 		{
 			case 3 :
 			case 5 :
 			case 7 :
 			case 9 :
-				cidText += sprintf((char*)cidText, "%02X-", cid[octet]);
-				break;
+				*uuidText++ = '-';
 			default :
-				cidText += sprintf((char*)cidText, "%02X", cid[octet]);
+				break;
 		}
 	}
-	return (char*)cidText;
+	*uuidText = '\0';	//terminate the string
+	return uuidText;
+}
+
+/*
+we cannot compare using U32s because there is no guarantee that the uuids are aligned
+*/
+int uuidEqual(uuid_t uuid1, uuid_t uuid2)
+{
+	int count = 16;
+
+	while (*uuid1++ == *uuid2++) if (--count == 0) return 1;
+	return 0;
 }

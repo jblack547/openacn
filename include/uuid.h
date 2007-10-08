@@ -41,18 +41,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <arch/types.h>
 
-typedef struct 
-{
-	uint32_t time_low;
-	uint16_t time_mid;
-	uint16_t time_hi_and_version;
-	uint8_t clk_seq_hi_res;
-	uint8_t clk_seq_low;
-	uint8_t node[6];
-} __attribute__((packed)) uuid; 
+/*
+For most purposes a UUID is simply an array of 16 octets
+*/
+#define UUIDSIZE 16
 
-void textToCid(const char *cidText, uint8 cid[16]);
-char *cidToText(uint8 cid[16], const char *cidText);
-uint16 uuidEqual(void *uuid1, void *uuid2);
+typedef uint8_t uuid_t[UUIDSIZE];
+
+/*
+If you need access to the internal structure use
+uuidStruct_t
+*/
+struct PACKED uuidStruct_s {
+		uint32_t time_low;
+		uint16_t time_mid;
+		uint16_t time_hi_and_version;
+		uint8_t clk_seq_hi_res;
+		uint8_t clk_seq_low;
+		uint8_t node[6];
+} uuidStruct_t;
+
+int textToUuid(const char *uuidText, uuid_t uuidp);
+char *uuidToText(const uuid_t uuidp, char *uuidText);
+int uuidEqual(uuid_t uuid1, uuid_t uuid2);
 
 #endif /* __uuid_h__ */

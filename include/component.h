@@ -30,16 +30,17 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+	$Id: acn_config.h 2 2007-09-17 09:31:30Z philipnye $
 
 */
 /*--------------------------------------------------------------------*/
 /*
-This header is the public face of SDT. It declares the API and definitions
-necessary for accessing SDT from higher layers
+Information structures and handling relating to components
 */
+#ifndef __component_h__
+#define __component_h__
 
-#ifndef __sdt_h__
-#define __sdt_h__
+#include <arch/types.h>
+#include "uuid.h"
 
 #endif

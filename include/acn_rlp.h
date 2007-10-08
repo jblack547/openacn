@@ -35,11 +35,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 /*
-This header is the public face of SDT. It declares the API and definitions
-necessary for accessing SDT from higher layers
+This header contains declarations for the values defined in the SDT standard
+
+Code which sits on top of SDT should not really have to use this header
 */
 
-#ifndef __sdt_h__
-#define __sdt_h__
+#ifndef __acn_rlp_h__
+#define __acn_rlp_h__
+
+#include <arch/types.h>
+
+#if defined(CONFIG_EPI17)
+
+#include "epi17.h"
+
+#endif
 
 #endif

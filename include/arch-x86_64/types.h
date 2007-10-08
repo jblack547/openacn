@@ -49,7 +49,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
-typedef unsigned long long uint64_t;
+/* long int is 64 bits in this arch */
+typedef unsigned long int uint64_t;
 
 #define uint8 uint8_t
 #define uint16 uint16_t

@@ -38,16 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __epi17_h__
 #define __epi17_h__ 1
 
-#define RLP_SIGNATURE_SIZE 12
-
-struct PACKED rlpPreamble_s {
-	uint16_t preambleSize;
-	uint16_t postambleSize;
-	char signature[RLP_SIGNATURE_SIZE];
-};
-
-#define RLP_PREAMBLE_LENGTH sizeof(struct rlpPreamble_s)
+#define RLP_PREAMBLE_LENGTH 16
 #define RLP_POSTAMBLE_LENGTH 0
-#define RLP_SIGNATURE_STRING "ASC-E1.17\0\0\0"
 
 #endif

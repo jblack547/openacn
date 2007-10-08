@@ -84,7 +84,7 @@ typedef struct
 typedef struct local_component_t
 {
 	struct local_component_t *next;
-	uint8 cid[16];
+	cid_t cid;
 	dcid_t *dcid;
 	int dyn_mcast;
 	int offset;

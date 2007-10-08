@@ -1,6 +1,6 @@
 ##########################################################################
 # 
-# Copyright (c) 2007, Pathway Connectivity Inc.
+# Copyright (c) 2007, Engineering Arts (UK).
 # 
 # All rights reserved.
 # 
@@ -34,25 +34,15 @@
 ##########################################################################
 
 #
-# Makefile for top level ACN directory
+# Makefile for Root Layer Subdirectory
 #
 
-TOPDIR:=.
-SUBDIRS:=common rlp
+TOPDIR:=..
+OBJS:=sdt.o
 
 include ${TOPDIR}/common.makefile
 
-.PHONY : all
-
-all :
-	for dir in ${SUBDIRS} ; do ${MAKE} -C $$dir all ; done
-
-.PHONY : clean
+all : ${OBJS}
 
 clean :
-	for dir in ${SUBDIRS} ; do ${MAKE} -C $$dir clean ; done
-
-.PHONY : test
-
-test :
-	@echo ARCH: ${ARCH} 
+	rm -f *.o

@@ -37,25 +37,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __rlp_h__
 #define __rlp_h__
 
-#include <arch/types.h>
+#include "arch/types.h"
+#include "acn_arch.h"
 
-#define ACN_RESERVED_PORT	5568
-#define NUM_PACKET_BUFFERS  16 //This must be a power of 2 or rollover breaks
-#define LOCAL_ADHOC_PORT	 ACN_RESERVED_PORT
-typedef struct
-{
-	uint32 srcIP;
-	uint32 dstIP;
-	uint16 srcPort;
-	uint16 dstPort;
-} udp_transport_t;
+typedef void rlpHandler_t(
+	const uint8_t *data,
+	int datasize,
+	void *ref,
+	const netiHost_t *remhost,
+	const cid_t *remcid
+	);
 
 int rlpSendTo(void *sock, uint32 dstIP, uint16 dstPort, int keep);
 void *rlpOpenSocket(uint16 localPort);
 void rlpCloseSocket(void *s);
-void *rlpGetSocket(uint16 localPort);
-void initRlp(void);
+void *rlpFindSocket(uint16 localPort);
+int initRlp(void);
 uint8 *rlpFormatPacket(const uint8 *srcCid, int vector);
+void rlpProcessPacket(netSocket_t *netsock, const uint8_t *data, int dataLen, netAddr_t destaddr, const netiHost_t *remhost);
 
 int rlpEnqueue(int length);
 void rlpResendTo(void *sock, uint32 dstIP, uint16 dstPort, int numBack);

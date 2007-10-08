@@ -39,9 +39,9 @@ static const char *rcsid __attribute__ ((unused)) =
 //;//syslog facility LOG_LOCAL1 is used for ACN:SDT
 
 #include "sdt.h"
+#include "acn_sdt.h"
 #include <string.h>
 #include <swap.h>
-#include <wattcp.h>
 #include "dmp.h"
 #include <acn_config.h>
 #include <crond.h>
@@ -53,6 +53,104 @@ static const char *rcsid __attribute__ ((unused)) =
 #include <marshal.h>
 #include <syslog.h>
 #include "mcast_util.h"
+
+
+typedef struct foreign_member_t
+{
+        struct foreign_member_t *next;
+        foreign_component_t *component;
+        uint16 mid;
+        
+        uint8 nak:1;
+        uint8 pending:1;
+        uint8 isLocal:1;
+        uint8        isConnected:1;
+        uint8 expiryTime;
+        
+        uint32 expiresAt;        
+
+} foreign_member_t;
+
+typedef struct local_member_t
+{
+        struct local_member_t *next;
+        local_component_t *component;
+        uint16 mid;
+        
+        uint8 nak:1;
+        uint8 pending:1;
+        uint8 isLocal:1;
+        uint8 isConnected:1;
+        
+        uint8 expiryTime;
+        
+        uint32 expiresAt;
+
+        uint16 nakHoldoff;
+        uint16 lastAcked;
+        
+        uint16 nakModulus;
+        uint16 nakMaxWait;
+        
+} local_member_t;
+
+typedef struct channel_t
+{
+        struct channel_t *next;
+
+        uint16 channelNumber;
+        uint16 availableMid;
+        
+        uint8  pending;
+        uint8  state;
+        uint16 downstreamPort;
+        
+        uint32 downstreamIP;
+        
+        uint16 isLocal;
+        
+        uint32 totalSeq;
+        uint32 reliableSeq;
+        uint32 oldestAvail;
+        local_member_t *memberList;
+        void         *sock;
+} channel_t;
+
+typedef struct leader_t
+{
+        struct leader_t *next;
+        void *component;
+        channel_t *channelList;
+} leader_t;
+
+typedef struct session_t
+{
+        struct session_t *next;
+        leader_t *localLeader;
+        leader_t *foreignLeader;
+        channel_t *localChannel;
+        channel_t *foreignChannel;
+        uint32 protocol;
+} session_t;
+
+uint16 initSdt(void);
+void shutdownSdt(void);
+
+int sdtRxHandler(udp_transport_t *transportAddr, uint8 srcCID[16], uint8 *data, uint16 dataLen);
+//uint16 sdtJoinRequest(pdu_header_type *header);
+uint32 sdtTxUpstream(local_component_t *srcComp, foreign_component_t *dstComp, channel_t *channel, uint8 *data, uint32 dataLength);
+void txQueuedBlocks(uint32 queuedProto, uint16 relatedChannelNumber, uint16 firstMid, uint16 lastMid);
+uint8 *sdtFormatWrapper(int isReliable, local_component_t *srcComp, uint16 firstMid, uint16 lastMid, uint16 makThreshold);
+uint8 *sdtFormatClientBlock(foreign_component_t *dstComp, uint32 protocol, channel_t *foreignChannel);
+uint8 *enqueueClientBlock(int dataLength);
+void sdtFlush(void);
+
+uint8 *getPduBuffer(void);
+uint8 *enqueuePdu(uint16 pduLength);
+uint16 remainingPacketBuffer();
+void delSdtMember(uint8 cid[16]);
+//component_t *registerSdtDevice(uint8 cid[16]);
+//component_t *unregisterSdtDevice(uint8 cid[16]);
 
 static leader_t leaderMemory[MAX_LEADERS];
 static channel_t channelMemory[MAX_CHANNELS];
@@ -107,6 +205,112 @@ static void sdtRxConnectAccept(foreign_member_t *member, uint8 *data, int dataLe
 static void sdtRxLeave(leader_t *remoteLeader, channel_t *remoteChannel, leader_t *localLeader, channel_t *localChannel, uint8 *data, int dataLength);
 static void sdtTxLeaving(leader_t *leader, channel_t *channel, local_member_t *member, uint8 reason);
 static int sdtRxLeaving(uint8 *srcCID, pdu_header_type *header);
+
+enum
+{
+	SDT_STATE_NON_MEMBER,
+	SDT_STATE_JOIN_SENT,
+	SDT_STATE_JOIN_ACCEPT_SENT,
+	SDT_STATE_JOIN_RECEIVED,
+	SDT_STATE_CHANNEL_OPEN,
+	SDT_STATE_LEAVING,	
+};
+
+
+
+/* SDT message fields */
+/* Join */
+#define mJOIN_CID			0
+#define mJOIN_MID			16
+#define mJOIN_CHANNEL		18
+#define mJOIN_RECIPROCAL	20
+#define mJOIN_TOTALSEQ		22
+#define mJOIN_RELSEQ		26
+#define mJOIN_DESTADDR		30
+#define mJOIN_CHANNELPARAM	30 + 
+#define mJOIN_
+#define mJOIN_
+#define mJOIN_
+#define mJOIN_
+
+typedef int sdtMsgDespatcher(
+	const uint8_t *data,
+	int datasize,
+	void *ref,
+	const netiHost_t *remhost,
+	const cid_t *remcid
+);
+
+struct msgDespatch_s {
+	uint8_t msgCode;
+	sdtMsgDespatcher *func;
+	void *funcref;
+};
+
+const struct msgDespatch_s adhocMsgTab[] = {
+	{SDT_JOIN, &sdtRxJoin, NULL},
+//	{SDT_GET_SESSIONS, },	currently unsupported
+//	{SDT_SESSIONS, },	only if we ever send SDT_GET_SESSIONS
+	{0, NULL, NULL}
+};
+
+void
+adhocRxHandler(
+	const uint8_t *data,
+	int datasize,
+	void *ref,
+	const netiHost_t *remhost,
+	const cid_t *remcid
+)
+{
+	const uint8_t *pdup, *pdudata;
+	int pdudatalen;
+	uint8_t flags;
+	const uint8_t *pp;
+	uint8_t msgtype;
+	struct msgDespatch_s *pdufunc;
+
+	pdup = data;
+	if (datasize < SDT_FIRSTPDU_MINLENGTH)
+	{
+		syslog(LOG_ERR|LOG_LOCAL0,"adhocRxHandler: PDU too short to be valid");
+		return;	
+	}
+
+	/* first PDU must have all fields */
+	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG))
+	{
+		syslog(LOG_ERR|LOG_LOCAL0,"adhocRxHandler: illegal first PDU flags");
+		return;
+	}
+
+	sdtMsg = NULL;
+	/* pdup points to start of PDU */
+	while (pdup < data + datasize)
+	{
+		flags = *pdup;
+		pp = pdup + 2;
+		pdup += getpdulen(pdup);	//pdup now points to end
+		if (pdup > data + datasize)	//sanity check
+		{
+			syslog(LOG_ERR|LOG_LOCAL0,"adhocRxHandler: packet length error");
+			return;
+		}
+		if (flags & VECTOR_bFLAG)
+		{
+			pdufunc = findMsgfunc(*pp++, (const struct msgDespatch_s *)ref);	//vector is 1 byte only for SDT base layer
+		}
+		/* No header for SDT base layer */
+		if (flags & DATA_bFLAG)
+		{
+			pdudata = pp;
+			pdudatalen = pdup - pp;
+		}
+		if (pdufunc && pdufunc->func)
+			(*pdufunc->func)(pdudata, pdudatalen, pdufunc->funcref, remhost, srcCidp);
+	}
+	
+}
 
 
 int sdtRxHandler(udp_transport_t *transportAddr, uint8 srcCID[16], uint8 *data, uint16 dataLen)
@@ -165,7 +369,7 @@ int sdtRxHandler(udp_transport_t *transportAddr, uint8 srcCID[16], uint8 *data, 
 		}
 
 	}
-	if(processed != dataLen)
+	if (processed != dataLen)
 	{
 		syslog(LOG_ERR|LOG_LOCAL1,"sdtRxHandler: processed an incorrect number of bytes");
 	}
@@ -197,18 +401,18 @@ uint8 *sdtFormatWrapper(int isReliable, local_component_t *srcComp, uint16 first
 //	foreign_member_t *member;
 //	uint16 dstMid;
 	//find the local leader and a channel to the remote component
-	if(srcComp != currentSrc)
+	if (srcComp != currentSrc)
 	{
 		//FIXME - force a tx of the previous queued blocks
 		currentSrc = srcComp;
 		currentLeader = findLeader(srcComp);
-		if(!currentLeader)
+		if (!currentLeader)
 		{
 				syslog(LOG_LOCAL1 | LOG_ERR, "sdtFormatWrapper : failed to find local leader");
 				return 0;
 		}
 		currentChannel = currentLeader->channelList;
-		if(!currentChannel)
+		if (!currentChannel)
 		{
 			syslog(LOG_LOCAL1 | LOG_ERR, "sdtFormatWrapper : failed to find local channel");
 			return 0;
@@ -220,7 +424,7 @@ uint8 *sdtFormatWrapper(int isReliable, local_component_t *srcComp, uint16 first
 	currentBuffer += sizeof(uint16);
 	currentIsReliable = isReliable;
 	
-	if(currentIsReliable)
+	if (currentIsReliable)
 	{
 		currentChannel->reliableSeq++;
 		currentChannel->oldestAvail = (currentChannel->reliableSeq - currentChannel->oldestAvail == NUM_PACKET_BUFFERS) ? 
@@ -250,7 +454,7 @@ uint8 *sdtFormatClientBlock(foreign_component_t *dstComp, uint32 protocol, chann
 {
 	foreign_member_t *member;
 	
-	if((currentDstComp == dstComp) && (currentProtocol == protocol) && (currentforeignChannel == foreignChannel))
+	if ((currentDstComp == dstComp) && (currentProtocol == protocol) && (currentforeignChannel == foreignChannel))
 		return currentBuffer;
 
 	currentClientBlock = currentBuffer;
@@ -260,10 +464,10 @@ uint8 *sdtFormatClientBlock(foreign_component_t *dstComp, uint32 protocol, chann
 
 	currentBuffer += 2; //flags and length
 	
-	if(dstComp) //allows for a broadcast to all members of the leaders channel
+	if (dstComp) //allows for a broadcast to all members of the leaders channel
 	{
 		member = findMemberByComponent(currentChannel, dstComp);
-		if(!member) //we obviously don't have a channel to this comp
+		if (!member) //we obviously don't have a channel to this comp
 		{
 			syslog(LOG_LOCAL1 | LOG_ERR, "sdtFormatClientBlock : failed to find specified member -- this will cause death");
 			return 0;
@@ -285,7 +489,7 @@ uint8 *enqueueClientBlock(int dataLength)
 	uint16 clientBlockLength;
 	currentBuffer += dataLength;
 	clientBlockLength = currentBuffer - currentClientBlock;
-	marshalU16(currentClientBlock, clientBlockLength | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+	marshalU16(currentClientBlock, clientBlockLength | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
 	return currentBuffer;
 }
 
@@ -295,15 +499,15 @@ void sdtTxCurrentWrapper(void)
 	uint16 wrapperLength;
 
 	
-	if(!currentClientBlock) //empty wrapper don't tx
+	if (!currentClientBlock) //empty wrapper don't tx
 	{
-		if(currentIsReliable)
+		if (currentIsReliable)
 			currentChannel->reliableSeq--;
 		currentChannel->totalSeq--;
 		return;
 	}
 	wrapperLength = currentBuffer - currentWrapper;
-	marshalU16(currentWrapper, wrapperLength /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+	marshalU16(currentWrapper, wrapperLength /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
 	
 
 	rlpEnqueue(wrapperLength);
@@ -325,7 +529,7 @@ static uint8 *sdtTxAck(foreign_component_t *dstComp, channel_t *foreignChannel)
 	uint8 *buf;
 	
 	buf = sdtFormatClientBlock(dstComp, PROTO_SDT, foreignChannel);
-	buf += marshalU16(buf, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+	buf += marshalU16(buf, 7 | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
 	buf += marshalU8(buf, SDT_ACK);
 	buf += marshalU32(buf, foreignChannel->reliableSeq);
 	
@@ -355,13 +559,13 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 	local_member_t *member;
 	
 	srcComp = findForeignComponent(srcCID);
-	if(!srcComp)
+	if (!srcComp)
 	{
 		;//syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxWrapper: Not tracking this component");
 		return wrapper->length;
 	}
 	remoteLeader = findLeader(srcComp);
-	if(!remoteLeader)
+	if (!remoteLeader)
 	{
 		;//syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxWrapper: Source component is not a leader");
 		return -1;
@@ -371,7 +575,7 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 	processed += sizeof(uint16);
 	remoteChannel = findChannel(remoteLeader, channelNumber);
 	
-	if(!remoteChannel)
+	if (!remoteChannel)
 	{
 		;//syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxWrapper: Channel not found");
 		return -1;
@@ -398,12 +602,12 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 
 	packetCount++;
 	
-	if(packetCount == 5)
+	if (packetCount == 5)
 	{
 		syslog(LOG_LOCAL1 | LOG_WARNING, "sdtRxWrapper: Generating bad total - was %d", totalSeq);
 		totalSeq++;
 	}
-	if(packetCount == 8)
+	if (packetCount == 8)
 	{
 		syslog(LOG_LOCAL1 | LOG_WARNING, "sdtRxWrapper: Generating bad reliable was %d", reliableSeq);
 		totalSeq++;
@@ -420,7 +624,7 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 			//initiate nak processing
 			syslog(LOG_LOCAL1 | LOG_WARNING, "sdtRxWrapper: Missing wrapper(s) detected - Sending NAK");
 			member = remoteChannel->memberList;
-			if(member)
+			if (member)
 				sdtTxNak(remoteLeader, remoteChannel, member, reliableSeq);
 			return wrapper->length;
 			break;
@@ -437,7 +641,7 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 			syslog(LOG_LOCAL1 | LOG_INFO, "sdtRxWrapper: Lost Reliable Wrappers not available - LOST SEQUENCE");
 			//Discard and send sequence lost message to leader
 			member = remoteChannel->memberList;
-			if(member)
+			if (member)
 				sdtTxLeaving(remoteLeader, remoteChannel, member, SDT_LEAVE_LOST_SEQUENCE);
 			return wrapper->length;
 			break;
@@ -447,7 +651,7 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 	rlpFormatPacket(member->component->cid, PROTO_SDT);
 
 	
-	if(member->pending || ((member->mid >= firstMid) && (member->mid <= lastMid))) //Currently doesn't care about the MAK Threshold
+	if (member->pending || ((member->mid >= firstMid) && (member->mid <= lastMid))) //Currently doesn't care about the MAK Threshold
 	{
 		sdtFormatWrapper(0, member->component, 0xFFFF, 0xFFFF, 0);
 		member->pending = 0;
@@ -465,22 +669,22 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 		processed += decodePdu(wrapper->data + processed, &clientPdu, sizeof(uint16), 6); //vectors are MIDs, Header contains 6 bytes
 		while(member)
 		{
-			if((clientPdu.vector == 0xFFF) || (member->mid == clientPdu.vector))
+			if ((clientPdu.vector == 0xFFF) || (member->mid == clientPdu.vector))
 			{
 				clientProtocol = unmarshalU32(clientPdu.header);
 				relatedChannel = unmarshalU16((clientPdu.header + 4));
 				
 				localLeader = findLeader(member->component);
-				if(!localLeader)
+				if (!localLeader)
 				{
 					syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxWrapper: local component is not a leader");
 					return -1;
 				}
-				if(relatedChannel)
+				if (relatedChannel)
 				{
 					localChannel = findChannel(localLeader, relatedChannel);
 
-					if(!localChannel)
+					if (!localChannel)
 					{
 						syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxWrapper: local Channel not found");
 						return -1;
@@ -526,7 +730,7 @@ static void sdtClientRxHandler(leader_t *remoteLeader, channel_t *remoteChannel,
 		{
 			case SDT_ACK :
 				remoteMember = findMemberByComponent(localChannel, remoteLeader->component);
-				if(!remoteMember)
+				if (!remoteMember)
 				{
 					syslog(LOG_LOCAL1 | LOG_ERR,"sdtRxWrapper: Can't find remoteMember");
 					return;
@@ -543,7 +747,7 @@ static void sdtClientRxHandler(leader_t *remoteLeader, channel_t *remoteChannel,
 				break;
 			case SDT_CONNECT_ACCEPT :
 				remoteMember = findMemberByComponent(localChannel, remoteLeader->component);
-				if(!remoteMember)
+				if (!remoteMember)
 				{
 					syslog(LOG_LOCAL1 | LOG_ERR,"sdtRxWrapper: Can't find remoteMember");
 					return;
@@ -586,14 +790,14 @@ static void sdtRxConnectAccept(foreign_member_t *member, uint8 *data, int dataLe
 {
 	uint32 protocol;
 	
-	if(dataLength != 4)
+	if (dataLength != 4)
 	{
 		syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxConnectAccept: invalid datalen");
 		return;
 	}
 	syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxConnectAccept");
 	protocol = unmarshalU32(data);
-	if(protocol == PROTO_DMP)
+	if (protocol == PROTO_DMP)
 	{
 		syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxConnectAccept: WooHoo pointless Session established");
 		member->isConnected = 1;
@@ -605,7 +809,7 @@ static void sdtTxConnectAccept(foreign_component_t *dstComp, uint32 protocol, ch
 	uint8 *buf;
 	
 	buf = sdtFormatClientBlock(dstComp, PROTO_SDT, foreignChannel);
-	buf += marshalU16(buf, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+	buf += marshalU16(buf, 7 | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
 	buf += marshalU8(buf, SDT_CONNECT_ACCEPT);
 	buf += marshalU32(buf, protocol);
 	enqueueClientBlock(7);
@@ -615,14 +819,14 @@ static void sdtRxConnect(leader_t *remoteLeader, channel_t *remoteChannel, leade
 {
 	uint32 protocol;
 	
-	if(dataLength != 4)
+	if (dataLength != 4)
 	{
 		syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxConnect: invalid datalen");
 		return;
 	}
 	syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxConnect");
 	protocol = unmarshalU32(data);
-	if(protocol == PROTO_DMP)
+	if (protocol == PROTO_DMP)
 	{
 		sdtTxConnectAccept(remoteLeader->component, protocol, remoteChannel);
 		sdtTxConnect(localLeader, localChannel, remoteLeader->component, remoteChannel, PROTO_DMP);
@@ -634,7 +838,7 @@ static void sdtTxConnect(leader_t *localLeader, channel_t *localChannel, foreign
 	uint8 *buf;
 	
 	buf = sdtFormatClientBlock(dstComp, PROTO_SDT, 0);
-	buf += marshalU16(buf, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+	buf += marshalU16(buf, 7 | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
 	buf += marshalU8(buf, SDT_CONNECT);
 	buf += marshalU32(buf, protocol);
 	enqueueClientBlock(7);
@@ -655,7 +859,7 @@ static void sdtTxLeaving(leader_t *leader, channel_t *channel, local_member_t *m
 {
 	uint8 *buffer = rlpFormatPacket(member->component->cid, PROTO_SDT);
 	
-	buffer += marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+	buffer += marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
 	buffer += marshalU8(buffer, SDT_LEAVING);
 	buffer += marshalCID(buffer, ((foreign_component_t*)leader->component)->cid);
 	buffer += marshalU16(buffer, channel->channelNumber);
@@ -674,12 +878,12 @@ static void sdtTxDisconnect(leader_t *leader, channel_t *channel, local_member_t
 	sdtFormatWrapper(1, leader->component, 0xFFFF, 0xFFFF, 0);
 	
 	buf = sdtFormatClientBlock((foreign_component_t*)((member) ? member->component : 0), PROTO_SDT, 0);
-	buf += marshalU16(buf, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+	buf += marshalU16(buf, 7 | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
 	buf += marshalU8(buf, SDT_DISCONNECT);
 	buf += marshalU32(buf, protocol);
 	enqueueClientBlock(7);
 	sdtFlush();
-	if(member)
+	if (member)
 	{
 		member->isConnected = 0;
 	}
@@ -704,7 +908,7 @@ static void sdtTxNak(leader_t *leader, channel_t *channel, local_member_t *membe
 	//FIXME -  add proper nak storm suppression
 	uint8 *buffer = rlpFormatPacket(member->component->cid, PROTO_SDT);
 	
-	buffer += marshalU16(buffer, 35 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+	buffer += marshalU16(buffer, 35 /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
 	buffer += marshalU8(buffer, SDT_NAK);
 	buffer += marshalCID(buffer, ((foreign_component_t*)leader->component)->cid);
 	buffer += marshalU16(buffer, channel->channelNumber);
@@ -724,7 +928,7 @@ static inline uint32 checkSequence(channel_t *s, uint8 isReliable, uint32 rxTota
 	diff = rxTotal - s->totalSeq;
 //	syslog(LOG_LOCAL1 | LOG_WARNING, "sdtCheckSequence: Rel?=%d, s->tot=%d, s->rel=%d, rxTot=%d, rxRel=%d, rxOldAvail=%d",
 //				isReliable, s->totalSeq, s->reliableSeq, rxTotal, rxReliable, oldestAvail);
-	if(diff == 1) //normal seq
+	if (diff == 1) //normal seq
 	{
 //		syslog(LOG_LOCAL1 | LOG_WARNING, "sdtCheckSequence: normalSeq"); 
 		//update channel object
@@ -732,20 +936,20 @@ static inline uint32 checkSequence(channel_t *s, uint8 isReliable, uint32 rxTota
 		s->reliableSeq = rxReliable;
 		return SEQ_VALID; //packet should be processed
 	}
-	else if(diff > 1) //missing packet(s) check reliable
+	else if (diff > 1) //missing packet(s) check reliable
    	{
 		diff = rxReliable - s->reliableSeq;
-		if((isReliable) && (diff == 1))
+		if ((isReliable) && (diff == 1))
 		{
 //			syslog(LOG_LOCAL1 | LOG_WARNING, "sdtCheckSequence: missing unreliable");
 			s->totalSeq = rxTotal;
 			s->reliableSeq = rxReliable;
 			return SEQ_VALID;
 		}
-		else if(diff)
+		else if (diff)
 		{
 			diff = oldestAvail - s->reliableSeq;
-			if(diff > 1)
+			if (diff > 1)
 				return SEQ_LOST; 
 			else
 				return SEQ_NAK;//activate nak system
@@ -757,7 +961,7 @@ static inline uint32 checkSequence(channel_t *s, uint8 isReliable, uint32 rxTota
 			return SEQ_VALID;
 		}
 	}
-	else if(diff == 0) //old packet or duplicate - discard
+	else if (diff == 0) //old packet or duplicate - discard
 		return SEQ_DUPLICATE;
 	//else diff < 0
    	return SEQ_OLD_PACKET;
@@ -774,7 +978,24 @@ enum
 	ALLOCATED_FOREIGN_MEMBER = 64,
 };
 
-static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_header_type *header)
+
+struct PACKED joinMsg_s {
+	cid_t cid;
+	uint16_t n_mid;
+	uint16_t n_channel;
+	uint16_t n_reciprocal;
+	uint32_t n_seq
+};
+
+//static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_header_type *header)
+
+static int sdtRxJoin(
+	const uint8_t *data,
+	int datasize,
+	void *ref,
+	const netiHost_t *remhost,
+	const cid_t *remcid
+)
 {
 //	char srcText[40];
 //	char dstText[40];
@@ -782,8 +1003,8 @@ static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_he
 	uint16 foreignChannelNumber;
 	uint16 localChannelNumber;
 	uint32 processed = 0;
-	local_component_t *dstComp;
-	foreign_component_t *srcComp;
+	local_component_t *localComp;
+	foreign_component_t *remComp;
 	leader_t *localLeader;
 	leader_t *foreignLeader;
 	channel_t *localChannel;
@@ -794,60 +1015,57 @@ static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_he
 	int allocations = 0;
 
 	syslog(LOG_USER |LOG_INFO, "sdtRxJoin");
-	if((header->data == 0) || (header->dataLength < 30))
+	if (datasize < 30)
 	{
 		syslog(LOG_USER |LOG_ERR, "sdtRxJoin - pdu data too short");
-		return 0;
+		return 1-;
 	}
-	memcpy(dstCID, header->data, sizeof(uuid_type));
-	processed += sizeof(uuid_type);
 	
-	dstComp = findLocalComponent(dstCID);
-	if(!dstComp)
+	//	memcpy(dstCID, header->data, sizeof(uuid_type)) //leave till we are sure we want it
+	//processed += sizeof(uuid_type);
+	
+	localComp = findLocalComponent((cid_t *)(data + mJOIN_CID));
+	if (!localComp)
 	{
 		syslog(LOG_USER |LOG_INFO, "sdtRxJoin -- Not addressed to me");
-		return 1; //not addressed to any local component
+		return 0; //not addressed to any local component
 	}
 	
-	mid = unmarshalU16(header->data + processed);
-	processed += sizeof(uint16);
-	foreignChannelNumber = unmarshalU16(header->data + processed);
-	processed += sizeof(uint16);
-	localChannelNumber = unmarshalU16(header->data + processed); //reciprocal Channel 
-	processed += sizeof(uint16);
-
+	mid = unmarshalU16(data + mJOIN_MID);
+	foreignChannelNumber = unmarshalU16(data + mJOIN_CHANNEL);
+	localChannelNumber = unmarshalU16(data + mJOIN_RECIPROCAL); //reciprocal Channel 
 	
 	//Am I tracking the src component
-	srcComp = findForeignComponent(srcCID);
-	if(!srcComp)
+	remComp = findForeignComponent(remcid);
+	if (!remComp)
 	{
-		srcComp = registerForeignComponent(srcCID);
-		if(!srcComp) //allocation failure
+		remComp = registerForeignComponent(remcid);
+		if (!remComp) //allocation failure
 		{
-			syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxJoin : failed to register srcComp");
-			return 1;
+			syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxJoin : failed to register remComp");
+			return -1;
 			//FIXME -- Handle error - txRefuse
 			//send a refuse resources
 		}
 		else
 		{
-
 			allocations |= ALLOCATED_FOREIGN_COMP;
 		}	
 	}
-	
-	srcComp->adhocIP = transportAddr->srcIP;
-	srcComp->adhocPort = transportAddr->srcPort;
+
+	memcpy(&remComp->adhocNetaddr, remhost, sizeof(*remhost));
+//	remComp->adhocIP = remhost->srcIP;
+//	remComp->adhocPort = transportAddr->srcPort;
 	
 	//Do I have information on this channelLeader
-	foreignLeader = findLeader(srcComp);
-	if(!foreignLeader)
+	foreignLeader = findLeader(remComp);
+	if (!foreignLeader)
 	{
-		foreignLeader = addLeader(srcComp);
-		if(!foreignLeader) //allocation failure
+		foreignLeader = addLeader(remComp);
+		if (!foreignLeader) //allocation failure
 		{
-		return 1;
-			;//syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxJoin : failed to register srcComp as leader");
+		return -1;
+			;//syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxJoin : failed to register remComp as leader");
 			//FIXME -- Handle error - txRefuse
 			//send a refuse resources
 		}
@@ -858,13 +1076,13 @@ static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_he
 	}
 
 	//Do I have information on this channelLeader
-	localLeader = findLeader(dstComp);
-	if(!localLeader)
+	localLeader = findLeader(localComp);
+	if (!localLeader)
 	{
-		localLeader = addLeader(dstComp);
-		if(!localLeader) //allocation failure
+		localLeader = addLeader(localComp);
+		if (!localLeader) //allocation failure
 		{
-			syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxJoin : failed to register dstComp as leader");
+			syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxJoin : failed to register localComp as leader");
 			return 1;
 			//FIXME -- Handle error - txRefuse
 			//send a refuse resources
@@ -877,10 +1095,10 @@ static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_he
 	
 	//Do I have information on this channel
 	foreignChannel = foreignLeader->channelList;    //findChannel(foreignLeader, foreignChannelNumber);
-	if(!foreignChannel)
+	if (!foreignChannel)
 	{
 		foreignChannel = addChannel(foreignLeader, foreignChannelNumber);
-		if(!foreignChannel) //allocation failure
+		if (!foreignChannel) //allocation failure
 		{
 			syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxJoin : failed to add channel to leader");
 			return 1;
@@ -894,11 +1112,11 @@ static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_he
 	}
 
 	//Check if I am already a member
-	localMember = findMemberByComponent(foreignChannel, dstComp);
-	if(!localMember)
+	localMember = findMemberByComponent(foreignChannel, localComp);
+	if (!localMember)
 	{
 		localMember = addLocalMember(foreignChannel);
-		if(!localMember) //allocation failure
+		if (!localMember) //allocation failure
 		{
 			syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxJoin : failed to allocate member object");
 			return 1;			//FIXME -- Handle error - txRefuse
@@ -915,13 +1133,13 @@ static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_he
 		return 1;
 	}
 		
-	if(localChannelNumber == 0) //this is a foreign comp initiated join
+	if (localChannelNumber == 0) //this is a foreign comp initiated join
 	{
 		localChannel = localLeader->channelList;
-		if(!localChannel)
+		if (!localChannel)
 		{
 			localChannel = addChannel(localLeader, ((ticks & 0xffff) | 0x0001));
-			if(!localChannel)
+			if (!localChannel)
 			{
 				syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxJoin : failed to allocate local channel");
 				//FIXME -- Handle error - Back out 
@@ -935,9 +1153,9 @@ static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_he
 				localChannel->reliableSeq = 1;
 				localChannel->oldestAvail = 1;
 				localChannel->downstreamPort = LOCAL_ADHOC_PORT; //only open 1 local port by choice
-				localChannel->downstreamIP = mcast_alloc_new(dstComp); //FIXME -- should use proper mcast alloc
+				localChannel->downstreamIP = mcast_alloc_new(localComp); //FIXME -- should use proper mcast alloc
 				localChannel->sock = rlpOpenSocket(localChannel->downstreamPort);
-				mcast_join(localChannel->downstreamIP);
+				mcast_join(localChannel->downstreamIP);	// DEPENDS WATERLOO
 				allocations |= ALLOCATED_LOCAL_CHANNEL;
 			}
 		}
@@ -954,7 +1172,7 @@ static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_he
 	processed += sizeof(uint32);
 	
 	processed += unmarshalTransportAddress(header->data + processed, 0, &(foreignChannel->downstreamPort), &(foreignChannel->downstreamIP), &addressType);
-	if(addressType == SDT_ADDR_IPV6)
+	if (addressType == SDT_ADDR_IPV6)
 	{
 			syslog(LOG_LOCAL1 | LOG_WARNING, "sdtRxJoin : Unsupported downstream Address Type");
 			return 1;
@@ -964,19 +1182,19 @@ static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_he
 
 
 	//fill in the member structure
-	localMember->component = dstComp;
+	localMember->component = localComp;
 	localMember->mid = mid;
 	processed += unmarshalChannelParamBlock(localMember, header->data + processed);
 	
-	if(allocations & ALLOCATED_FOREIGN_CHANNEL)
+	if (allocations & ALLOCATED_FOREIGN_CHANNEL)
 	{
 		foreignChannel->sock = rlpOpenSocket(foreignChannel->downstreamPort);
-		mcast_join(foreignChannel->downstreamIP);
+		mcast_join(foreignChannel->downstreamIP);	// DEPENDS WATERLOO
 	}
 	localMember->pending=1;
 	localMember->expiresAt = timer_set(localMember->expiryTime);
-	sdtTxJoinAccept(srcComp, foreignChannel, localMember, localChannel);
-	sdtTxJoin(dstComp, localChannel, srcComp, foreignChannel);
+	sdtTxJoinAccept(remComp, foreignChannel, localMember, localChannel);
+	sdtTxJoin(localComp, localChannel, remComp, foreignChannel);
 	;//syslog(LOG_LOCAL1 | LOG_INFO,;//syslogBuf);
 	return processed;
 }
@@ -989,14 +1207,14 @@ static void sdtTxJoin(local_component_t *lComp, channel_t *lChannel, foreign_com
 	uint8 *buffer = rlpFormatPacket(lComp->cid, PROTO_SDT);
 	
 	fMember = findMemberByComponent(lChannel, fComp);
-	if(fMember)
+	if (fMember)
 	{
 		syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtTxJoin : already a member -- suppressing join");
 		return; //Dont add them twice.
 	}	
 
 	fMember = addForeignMember(lChannel);
-	if(!fMember)
+	if (!fMember)
 	{
 		syslog(LOG_LOCAL1 | LOG_ERR, "sdtTxJoin : failed to allocate foreign member");
 		//FIXME -- Handle error - Back out 
@@ -1004,7 +1222,7 @@ static void sdtTxJoin(local_component_t *lComp, channel_t *lChannel, foreign_com
 	}
 	else
 	{
-		if(lChannel->availableMid == 0x7FFF)
+		if (lChannel->availableMid == 0x7FFF)
 			lChannel->availableMid = 1;
 		while(findMemberByMid(lChannel, lChannel->availableMid)) //handles the rollover causing an overlap with an existing member
 			lChannel->availableMid++;
@@ -1014,7 +1232,7 @@ static void sdtTxJoin(local_component_t *lComp, channel_t *lChannel, foreign_com
 		allocations |= ALLOCATED_FOREIGN_MEMBER;
 	}
 	
-	buffer += marshalU16(buffer, 49 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+	buffer += marshalU16(buffer, 49 /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
 	buffer += marshalU8(buffer, SDT_JOIN);
 	buffer += marshalCID(buffer, fComp->cid);
 
@@ -1037,7 +1255,7 @@ static void sdtTxJoinAccept(foreign_component_t *fComp, channel_t *fChannel, loc
 {
 	uint8 *buffer = rlpFormatPacket(lMember->component->cid, PROTO_SDT);
 	
-	buffer += marshalU16(buffer, 29 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+	buffer += marshalU16(buffer, 29 /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
 	buffer += marshalU8(buffer, SDT_JOIN_ACCEPT);
 	buffer += marshalCID(buffer, fComp->cid);
 	buffer += marshalU16(buffer, fChannel->channelNumber);
@@ -1053,7 +1271,7 @@ static void sdtTxJoinRefuse(udp_transport_t *transportAddr, uint8 cid[16], pdu_h
 {
 	uint8 *buffer = rlpFormatPacket(cid, PROTO_SDT);
 	
-	buffer += marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+	buffer += marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
 	buffer += marshalU8(buffer, SDT_JOIN_REFUSE);
 	buffer += marshalCID(buffer, cid);
 
@@ -1094,7 +1312,7 @@ static void sdtRxAck(foreign_member_t *remoteMember, uint8 *data, int dataLength
 	uint32 reliableSeq;
 	
 	syslog(LOG_LOCAL1 | LOG_INFO, "sdtRxAck");
-	if(dataLength != 4)
+	if (dataLength != 4)
 	{
 		syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxAck: Not enough bytes in the data");
 		return;
@@ -1119,7 +1337,7 @@ static void sdtRxNak(uint8 *srcCID, pdu_header_type *header)
 	int lastMissed;
 	int numBack;
 	
-	if(header->dataLength != 32)
+	if (header->dataLength != 32)
 	{
 		syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxNak: Not enough bytes in the data");
 		return;
@@ -1128,13 +1346,13 @@ static void sdtRxNak(uint8 *srcCID, pdu_header_type *header)
 	offset += unmarshalCID(header->data + offset, (uint8 *)dstCID);
 	
 	comp = findLocalComponent((void*)dstCID);
-	if(!comp)
+	if (!comp)
 	{
 		syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxNak: No such local Component");
 		return;
 	}
 	leader = findLeader(comp);
-	if(!leader)
+	if (!leader)
 	{
 		syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxNak: No such local leader");
 		return;
@@ -1143,7 +1361,7 @@ static void sdtRxNak(uint8 *srcCID, pdu_header_type *header)
 	channelNum = unmarshalU16(header->data + offset);
 	offset += sizeof(uint16);
 	channel = findChannel(leader, channelNum);
-	if(!channel)
+	if (!channel)
 	{
 		syslog(LOG_LOCAL1 | LOG_ERR, "sdtRxNak: No such Channel");
 		return;
@@ -1156,7 +1374,7 @@ static void sdtRxNak(uint8 *srcCID, pdu_header_type *header)
 	firstMissed = unmarshalU32(header->data + offset);
 	offset += sizeof(uint32);
 	numBack = channel->reliableSeq - firstMissed;
-	if(firstMissed < channel->oldestAvail)
+	if (firstMissed < channel->oldestAvail)
 	{
 		syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxNak: Requested Wrappers not avail");
 		return;
@@ -1184,7 +1402,7 @@ static int sdtRxLeaving(uint8 *srcCID, pdu_header_type *header)
 	syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxLeaving: begin");
 
 	fComp = findForeignComponent((void*)srcCID);
-	if(!fComp)
+	if (!fComp)
 		return 1;
 	unmarshalCID(header->data, (uint8 *)cid);
 	lComp = findLocalComponent((void*)cid);
@@ -1194,13 +1412,13 @@ static int sdtRxLeaving(uint8 *srcCID, pdu_header_type *header)
 	int channel_number = unmarshalU16(header->data + 16);
 	channel_t *channel = findChannel(lLeader, channel_number);
 
-	if(!channel)
+	if (!channel)
 	{
 		syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxLeaving: localChannel not found ");	
 		return 1;
 	}
 	member = findMemberByComponent(channel, fComp);
-	if(!member)
+	if (!member)
 	{
 		syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxLeaving: member not found");
 		return 2;
@@ -1210,7 +1428,7 @@ static int sdtRxLeaving(uint8 *srcCID, pdu_header_type *header)
 	dmpCompOfflineNotify(fComp);
 	
 //	removeForeignMember(channel, findMemberByComponent(channel, fComp));
-/*	if(!channel->memberList)
+/*	if (!channel->memberList)
 	{
 		syslog(LOG_LOCAL1 | LOG_DEBUG, "sdtRxLeaving: remove the local channel");			
 		removeChannel(lLeader, channel);
@@ -1228,7 +1446,7 @@ static inline leader_t *findLeader(void *component)
 	leader = leaders;
 	while(leader)
 	{
-		if(leader->component == component)
+		if (leader->component == component)
 			break;
 		leader = leader->next;
 	}
@@ -1240,7 +1458,7 @@ static inline leader_t *addLeader(void *component)
 	leader_t *leader;
 	
 	leader = ppMalloc(sizeof(leader_t));
-	if(!leader) //out of memory
+	if (!leader) //out of memory
 		return 0;
 
 	leader->component = component;
@@ -1256,7 +1474,7 @@ static inline channel_t *findChannel(leader_t *leader, uint16 channelNumber)
 	channel = leader->channelList;
 	while(channel)
 	{
-		if(channel->channelNumber == channelNumber)
+		if (channel->channelNumber == channelNumber)
 			break;
 		channel = channel->next;
 	}
@@ -1268,7 +1486,7 @@ static inline channel_t *addChannel(leader_t *leader, uint16 channelNumber)
 	channel_t *channel;
 	
 	channel = ppMalloc(sizeof(channel_t));
-	if(!channel) //out of memory
+	if (!channel) //out of memory
 		return 0;
 
 	channel->isLocal = 0;
@@ -1288,7 +1506,7 @@ static inline void removeChannel(leader_t *leader,  channel_t *channel)
 	cur = leader->channelList;
 	while(cur)
 	{
-		if(cur == channel)
+		if (cur == channel)
 		{
 			*prev = cur->next;
 			ppFree(channel, sizeof(channel_t));
@@ -1309,7 +1527,7 @@ static inline void removeLeader(leader_t *leader)
 	
 	while(cur)
 	{
-		if(cur == leader)
+		if (cur == leader)
 		{
 			*prev = cur->next;
 			ppFree(leader, sizeof(leader_t));
@@ -1328,7 +1546,7 @@ static inline void *findMemberByMid(channel_t *channel, uint16 mid)
 	
 	while(member)
 	{
-		if(member->mid == mid)
+		if (member->mid == mid)
 			break;
 		member = member->next;
 	}
@@ -1340,7 +1558,7 @@ static inline local_member_t *addLocalMember(channel_t *channel)
 	local_member_t *member;
 	
 	member = ppMalloc(sizeof(local_member_t));
-	if(!member) //out of memory
+	if (!member) //out of memory
 		return 0;
 		
 	member->next = channel->memberList;
@@ -1358,7 +1576,7 @@ static inline void removeLocalMember(channel_t *channel, local_member_t *member)
 	cur = (local_member_t*)channel->memberList;
 	while(cur)
 	{
-		if(cur == member)
+		if (cur == member)
 		{
 			*prev = cur->next;
 			ppFree(member, sizeof(local_member_t));
@@ -1378,7 +1596,7 @@ static inline void removeForeignMember(channel_t *channel, foreign_member_t *mem
 	cur = (foreign_member_t*)channel->memberList;
 	while(cur)
 	{
-		if(cur == member)
+		if (cur == member)
 		{
 			*prev = cur->next;
 			ppFree(member, sizeof(foreign_member_t));
@@ -1395,7 +1613,7 @@ static inline foreign_member_t *addForeignMember(channel_t *channel)
 	foreign_member_t *member;
 	
 	member = ppMalloc(sizeof(foreign_member_t));
-	if(!member) //out of memory
+	if (!member) //out of memory
 		return 0;
 		
 	member->next = (void *)channel->memberList;
@@ -1412,7 +1630,7 @@ static inline void *findMemberByComponent(channel_t *channel, void *component)
 	
 	while(member)
 	{
-		if(member->component == component)
+		if (member->component == component)
 			break;
 		member = member->next;
 	}
@@ -1486,11 +1704,13 @@ static inline int unmarshalTransportAddress(uint8 *data, udp_transport_t *transp
 			*ipAddress = unmarshalU32(data + processed);
 			processed += sizeof(uint32);
 			break;
+#if 0	//No longer in ACN spec
 		case SDT_ADDR_IPPORT :
 			processed += sizeof(uint8); //Address Type Byte
 			*port = unmarshalU16(data + processed);
 			*ipAddress = transportAddr->srcIP;
 			break;
+#endif
 		case SDT_ADDR_IPV6 :
 		default :
 			processed += sizeof(uint8); //Address Type Byte
@@ -1522,7 +1742,7 @@ static void sdtTick(void)
 		while(channel)
 		{
 			//if the leader is local
-			if(channel->isLocal)
+			if (channel->isLocal)
 			{
 				//send a MAK to all members in my downstream channel
 				sdtFormatWrapper(0, leader->component, 1, 0xFFFF, 0);
@@ -1533,9 +1753,9 @@ static void sdtTick(void)
 			member = (foreign_member_t*)channel->memberList;
 			while(member)
 			{
-				if(timer_expired(member->expiresAt))
+				if (timer_expired(member->expiresAt))
 				{
-					if(member->isLocal)
+					if (member->isLocal)
 					{
 						//send a leaving message
 						sdtTxLeaving(leader, channel, (local_member_t *)member, SDT_LEAVE_CHANNEL_EXPIRED);
@@ -1557,9 +1777,9 @@ static void sdtTick(void)
 					member = member->next;
 				}
 			}
-			if(!channel->memberList) //no members left in the channel
+			if (!channel->memberList) //no members left in the channel
 			{
-				if(currentChannel == channel)
+				if (currentChannel == channel)
 				{
 					currentSrc = 0;
 					currentChannel = 0;
@@ -1578,7 +1798,7 @@ static void sdtTick(void)
 				channel = channel->next;
 			}
 		}
-		if(!leader->channelList) //no channels left on this leader
+		if (!leader->channelList) //no channels left on this leader
 		{
 			remoteComp = leader->component;
 			//remove the leader
@@ -1596,17 +1816,48 @@ static void sdtTick(void)
 }
 
 // End Utility Functions
+rlpChannel_t *adhoc = NULL;
 
-uint16 initSdt(void)
+int initSdt(bool acceptAdHoc)
 {
+	static bool initializedState = 0;
+
+	if (initialized) return 0;
+	if (initRlp() < 0) return -1;
+
+	// PN-FIXME must register SDT with RLP
+	// PN-FIXME remove non-standard memory allocations
+	/* FIXME register with SLP here */
+
 	allocateToPool((void*)leaderMemory, sizeof(leader_t) * MAX_LEADERS, sizeof(leader_t));
 	allocateToPool((void*)channelMemory, sizeof(channel_t) * MAX_CHANNELS, sizeof(channel_t));
 	allocateToPool((void*)localMemberMemory, sizeof(local_member_t) * MAX_LOCAL_MEMBERS, sizeof(local_member_t));
 	allocateToPool((void*)foreignMemberMemory, sizeof(foreign_member_t) * MAX_FOREIGN_MEMBERS, sizeof(foreign_member_t));
 
 	leaders = 0;
-	addTask(5000, sdtTick, -1);
-   return 1;
+	addTask(5000, sdtTick, -1);	// PN-FIXME
+
+	if (acceptAdHoc)
+	{
+		/* Open ad hoc channel on ephemerql port */
+		adhoc = rlpOpenChannel(NETI_PORT_NONE, NETI_INADDR_ANY, PROTO_SDT, &adhocRxHandler, adhocMsgTab);
+		
+		/* now need to register with SLP passing port getLocalPort(adhoc) */
+	}
+
+	initialized = 1;
+	return 0;
+}
+
+struct localComponent_s {
+	cid_t cid;
+	acnProtocol_t protocols[MAXPROTOCOLS];
+	int (*connectfilter)(cid_t, struct session_s sessionInfo, acnProtocol_t protocol);
+};
+
+int sdtRegister(struct localComponent_s comp)
+{
+	addLocalComponent(comp);
 }
 
 void shutdownSdt(void)
@@ -1623,7 +1874,7 @@ void shutdownSdt(void)
 		channel = leader->channelList;
 		while(channel)
 		{
-			if(channel->isLocal)
+			if (channel->isLocal)
 			{
 				//disconnect the session
 				sdtTxDisconnect(leader, channel, 0, PROTO_DMP);

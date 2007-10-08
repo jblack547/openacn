@@ -132,27 +132,6 @@ int formatPdu(uint8 *buf, pdu_header_type *pdu)
 }
 
 
-uint16 uuidEqual(void *uuid1, void *uuid2)
-{
-   uint16 count;
-   uint8 *u1;
-   uint8 *u2;
-   
-   u1 = uuid1;
-   u2 = uuid2;
-   count = 16;
-   
-   while(count)
-   {
-      if(!((*u1) == (*u2)))
-         return 0;
-	   u1++;
-	   u2++;
-      count--;
-   }
-   return 1;
-}
-
 int calculatePduLength(pdu_header_type *header)
 {
 /*   header->length = sizeof(pdu_required_header_type);
@@ -192,67 +171,3 @@ int calculatePduLength(pdu_header_type *header)
   return 0; 
 }
 
-
-void textToCid(const char *cidText, uint8 cid[16])
-{
-	uint32 nibble = 0;
-	uint32 count;
-	
-	memset(cid, 0, 16);
-	
-	for(count = 0; count < 37; count++)
-	{
-		if(isdigit(*cidText))
-		{
-			cid[nibble / 2] |= ((*cidText - 48) << ((nibble % 2) ? 0 : 4));
-			cidText++;
-			nibble++;
-		}
-		else if(isalpha(*cidText))
-		{
-			cid[nibble / 2] |= ((toupper(*cidText) - 55) << ((nibble % 2) ? 0 : 4));
-			cidText++;
-			nibble++;
-		}
-		else if(*cidText == '-')
-		{
-			cidText++;
-		}
-		else
-		{
-			;//error
-		}
-	}
-}
-
-char *cidToText(uint8 cid[16], const char *cidText)
-{
-	uint32 octet;
-	for(octet = 0; octet < 16; octet++)
-	{
-		switch(octet)
-		{
-			case 3 :
-			case 5 :
-			case 7 :
-			case 9 :
-				cidText += sprintf((char*)cidText, "%02X-", cid[octet]);
-				break;
-			default :
-				cidText += sprintf((char*)cidText, "%02X", cid[octet]);
-		}
-	}
-	return (char*)cidText;
-}
-/*
-void mcast_alloc(uint8 *cid, uint32 *address, uint16 *port, int numberOfAlloc)
-{
-	uint32 temp;
-		
-	memcpy(&temp, cid + 10, sizeof(uint32));
-
-		*address = mcast_scope | 
-					  (((netInfo.ip & 0xFF) << (18)) |
-					  (((*(uint32*)cid ^ temp) + numberOfAlloc); << (32 - maskBits - 8)
-			
-}*/

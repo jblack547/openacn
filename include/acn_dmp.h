@@ -35,11 +35,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 /*
-This header is the public face of SDT. It declares the API and definitions
-necessary for accessing SDT from higher layers
+This header contains declarations for the values defined in the DMP standard
+
+Code which sits on top of DMP should not really have to use this header
 */
 
-#ifndef __sdt_h__
-#define __sdt_h__
+#ifndef __acn_dmp_h__
+#define __acn_dmp_h__
+
+#include <arch/types.h>
+
+/* ESTA registered protocol code */
+#define PROTO_DMP  2
+
 
 #endif
