@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 static const char *rcsid __attribute__ ((unused)) =
    "$Id$";
 
-//syslog facility LOG_LOCAL0 is used for ACN:RLP
+/* syslog facility LOG_LOCAL0 is used for ACN:RLP */
 
 #define MAX_PACKET_SIZE 1450
 #define PREAMBLE_LENGTH 16
@@ -49,6 +49,7 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "acn_rlp.h"
 #include "netiface.h"
 #include "rlp.h"
+#include "rlpmem.h"
 #include "marshal.h"
 #include <syslog.h>
 
@@ -85,286 +86,70 @@ static int currentBufNum = 0;
 static uint8_t *packetBuffer;
 static int bufferLength;
 
-//static int rlpRxHandler(void *s, uint8_t *data, int dataLen, tcp_PseudoHeader *pseudo, void *hdr);
-
-#ifdef CONFIG_RLP_STATICMEM
-
-/***********************************************************************************************/
 /*
-Socket memory as static array
-access using
-rlpInitSockets(), rlpFindSocket(), rlpNewSocket(), rlpFreeSocket()
 
-This currently also suffers from the Shlemeil the Painter problem
+API description
+
+Any higher protocol registers with RLP by calling rlpOpenChannel(). This
+establishes a channel consisting of a local port, a local (incoming)
+multicast group (or NETI_INADDR_ANY for unicast) and a protocol. The client
+protocol must open a separate channel for each port/group/protocol
+combination it uses.
+
+Incoming packets
+--
+When opening a channel the client protocol provides a callback function and
+reference pointer. On receipt of a PDU matching that channel parameters, RLP
+calls the callback function passing the reference pointer as a parameter.
+This  pointer can be used for any purpose by the higher layer - it is treated
+as opaque  data by RLP. The callback is also passed pointers to a structure
+(network layer dependent) representing the transport address of the sender,
+and to the CID of the remote component.
+
+In order to manage the relationship between channels at the client protocol
+side the network interface layer, RLP maintains three
+structures:
+
+	netSocket_t represents an interface to the netiface layer - there is one
+	netSocket_t for each incoming (local) port.
+
+	rlpChannelGroup_t represents a multicast group (and port). Any
+	netSocket_t may have multiple channel groups. Because of stack vagaries
+	with multicast handling, RLP examines and filters the multicast
+	destination address of every incoming packet early on and finds the
+	associated channelGroup If none is found, the packet is dropped. There is
+	one channel group lookup per packet.
+	
+	rlpChannel_t represents a single channel to the client protocol. For each
+	channel group there may be multiple channels. Channels are filtered for
+	protocol (e.g. SDT) on a PDU by PDU basis. It is permitted to open
+	multiple channels for the same port/group/protocol - the same PDU
+	contents are passed to each in turn.
+
+All parameters passed to the client protocol are passed by reference (e.g. a
+pointer to the sender CID is passed, not the CID itself).  They must be
+treated as constant data and not modified by the client. However, they do not
+persist across calls so the client must copy any items which it requires to
+keep.
+
 */
-
-#define MAX_RLP_SOCKETS 50
-#define MAX_RLP_CHANNELS 100
-#define CHANNELS_PERSOCKET 50
-
-static netSocket_t rlpSockets[MAX_RLP_SOCKETS];
-
-void rlpInitChannels(void);
-
-void rlpInitSockets(void)
-{
-	netSocket_t *sockp;
-
-	for (sockp = rlpSockets; sockp < rlpSockets + MAX_RLP_SOCKETS; ++sockp)
-		sockp->localPort = NETI_PORT_NONE;
-	rlpInitChannels();
-}
-
-//find the socket (if any) with matching local port 
-netSocket_t *rlpFindNetSock(port_t localPort)
-{
-	netSocket_t *sockp;
-	
-	for (sockp = rlpSockets; sockp < rlpSockets + MAX_RLP_SOCKETS; ++sockp)
-	{
-		if(localPort == sockp->localPort)
-			return sockp;
-	}
-	return NULL;
-}
-
-netSocket_t *rlpNewNetSock(void)
-{
-	netSocket_t *sockp;
-	
-	for (sockp = rlpSockets; sockp < rlpSockets + MAX_RLP_SOCKETS; ++sockp)
-	{
-		if (sockp->localPort == NETI_PORT_NONE)
-			return sockp;
-	}
-	return NULL;
-}
-
-void rlpFreeNetSock(netSocket_t *sockp)
-{
-	sockp->localPort = NETI_PORT_NONE;
-}
 
 /***********************************************************************************************/
 /*
 
-The socket/group/channel API is designed to allow dynamic allocation of channels within groups and/or
-a linked list or other more sophisticated implementation.
-However, this very simplistic (and inefficient for large numbers) implementation
-simply maintains an array of channels which are associated with sockets and groups
-only by their content
+Management of structures in memory
+--
+To allow flexibility in implementation, the netSocket_t, rlpChannelGroup_t
+and rlpChannel_t structures used are manipulated using the API of the rlpmem
+module - they should not be accessed directly. This allows dynamic or static
+allocation strategies, and organization by linked lists, by arrays, or more
+complex structures such as trees. In minimal implementations many of these
+calls may be overridden by macros for efficiency.
 
-API
-void rlpInitChannels(void);
-rlpChannelGroup_t *rlpNewChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
-void rlpFreeChannelGroup(netSocket_t *netsock, rlpChannelGroup_t *channelgroup)
-rlpChannelGroup_t *rlpFindChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
-int sockHasGroups(netSocket_t *netsock)
+The implementation of these calls is in rlpmem.c where alternative static and
+dynamic implementations are provided.
 
-rlpChannel_t *rlpNewChannel(rlpChannelGroup_t *channelgroup)
-void rlpFreeChannel(rlpChannelGroup_t *channelgroup, rlpChannel_t *channel)
-rlpChannel_t *rlpFirstChannel(rlpChannelGroup_t *channelgroup, acnProtocol_t pduProtocol)
-rlpChannel_t *rlpNextChannel(rlpChannelGroup_t *channelgroup, rlpChannel_t *channel, pduProtocol)
-int groupHasChannels(rlpChannelGroup_t *channelgroup)
-
-rlpChannelGroup_t *getChannelgroup(rlpChannel_t *channel)
-netSocket_t *getNetsock(rlpChannelGroup_t *channelgroup)
-
-There is really no independent rlpChannelGroup_t - channelGroup is simply the first
-channel in the array with the correct group and socket association
 */
-
-typedef struct {
-	int socketNum;			// negative for no association
-	netAddr_t groupAddr;
-	acnProtocol_t protocol;	// PROTO_NONE if this channel within the group is not used
-	rlpHandler_t *callback;
-	void *ref;
-} rlpChannel_t;
-
-static rlpChannel_t rlpChannels[MAX_RLP_CHANNELS];
-
-typedef rlpChannel_t rlpChannelGroup_t;
-
-/*
-Initialize channels and groups
-*/
-void rlpInitChannels(void)
-{
-	rlpChannel_t *channel;
-
-	for (channel = rlpChannels; channel < rlpChannels + MAX_RLP_CHANNELS; ++channel) channel->socketNum = -1;
-}
-
-/*
-"Create" a new empty channel group and associate it with a socket and groupAddr
-*/
-rlpChannelGroup_t *rlpNewChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
-{
-	rlpChannelGroup_t *channelgroup;
-
-	for (channelgroup = rlpChannels; channelgroup < rlpChannels + MAX_RLP_CHANNELS; ++channelgroup)
-	{
-		if (channelgroup->socketNum < 0)		// negative socket marks unused channel
-		{
-			channelgroup->socketNum = netsock - rlpSockets;
-			channelgroup->groupAddr = groupAddr;
-			channelgroup->protocol = PROTO_NONE;
-			return channelgroup;
-		}
-	}
-	return NULL;
-}
-
-/*
-Free a channel group
-Only call if group is empty (no channels exist)
-*/
-void rlpFreeChannelGroup(netSocket_t *netsock, rlpChannelGroup_t *channelgroup)
-{
-	channelgroup->socketNum = -1;
-}
-
-/*
-find a channelgroup associated with this socket which has the correct groupAddr
-*/
-rlpChannelGroup_t *rlpFindChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
-{
-	rlpChannelGroup_t *channelgroup;
-	int sockx;
-
-	sockx = netsock - rlpSockets;	// index of our socket
-	for (channelgroup = rlpChannels; channelgroup < rlpChannels + MAX_RLP_CHANNELS; ++channelgroup)
-	{
-		if (
-			channelgroup->socketNum == sockx
-			&& channelgroup->groupAddr == groupAddr
-			)
-			return channelgroup;	// return first matching channel
-	}
-	return NULL;
-}
-
-/*
-"Create" a new empty (no associated protocol) channel within a group
-*/
-rlpChannel_t *rlpNewChannel(rlpChannelGroup_t *channelgroup)
-{
-	rlpChannel_t *channel;
-
-	if (channelgroup->protocol == PROTO_NONE) return channelgroup;	// first is unused
-	
-	for (channel = channelgroup; channel < rlpChannels + MAX_RLP_CHANNELS; ++channel)
-	{
-		if (channel->socketNum < 0)		// negative socket marks unused channel
-		{
-			channel->socketNum = channelgroup->socketNum;
-			channel->groupAddr = channelgroup->groupAddr;
-			channel->protocol = PROTO_NONE;
-			return channel;
-		}
-	}
-	return NULL;
-}
-
-/*
-Free an unused channel
-*/
-void rlpFreeChannel(rlpChannelGroup_t *channelgroup, rlpChannel_t *channel)
-{
-	if (channel == channelgroup) channel->protocol = PROTO_NONE;
-	else channel->socketNum = -1;
-}
-
-/*
-Find the first channel in a group with a given protocol
-*/
-rlpChannel_t *rlpFirstChannel(rlpChannelGroup_t *channelgroup, acnProtocol_t pduProtocol)
-{
-	rlpChannel_t *channel;
-	int sockx = channelgroup->socketNum;
-	netAddr_t groupAddr = channelgroup->groupAddr;
-	
-	for (channel = channelgroup; channel < rlpChannels + MAX_RLP_CHANNELS; ++channel)
-	{
-		if (
-			channel->socketNum == sockx
-			&& channel->groupAddr == groupAddr
-			&& channel->protocol == pduProtocol
-			)
-			return channel;
-	}
-	return NULL;
-}
-
-/*
-Find the next channel in a group with a given protocol
-*/
-#define rlpNextChannel(channelgroup, channel, pduProtocol) rlpFirstChannel((channel) + 1, (pduProtocol))
-
-/*
-true if a socket has channelgroups
-*/
-int sockHasGroups(netSocket_t *netsock)
-{
-	rlpChannel_t *channel;
-	int sockx;
-
-	sockx = netsock - rlpSockets;	// index of our socket
-	for (channel = rlpChannels; channel < rlpChannels + MAX_RLP_CHANNELS; ++channel)
-		if (channel->socketNum == sockx) return 1;
-	return 0;
-}
-
-/*
-true if a channelgroup is not empty
-*/
-int groupHasChannels(rlpChannelGroup_t *channelgroup)
-{
-	rlpChannel_t *channel;
-	int sockx = channelgroup->socketNum;
-	netAddr_t groupAddr = channelgroup->groupAddr;
-
-	for (channel = channelgroup; channel < rlpChannels + MAX_RLP_CHANNELS; ++channel)
-		if (
-			channel->socketNum == sockx
-			&& channel->groupAddr == groupAddr
-			&& channel->protocol != PROTO_NONE
-			)
-			return 1;
-	return 0;
-}
-
-/*
-Get the group containing a given channel
-*/
-#define getChannelgroup(channel) rlpFindChannelGroup(rlpSockets + (channel)->socketNum, (channel)->groupAddr)
-
-/*
-Get the netSocket containing a given group
-*/
-#define getNetsock(channelgroup) (rlpSockets + (channelgroup)->socketNum)
-
-#endif
-
-/***********************************************************************************************/
-
-void rlpInitBuffers(void)
-{
-	int i;
-	for (i = 0; i < NUM_PACKET_BUFFERS; i++)
-	{
-		memcpy(buffers[i], rlpPreamble, PREAMBLE_LENGTH);
-		bufferLengths[i] = PREAMBLE_LENGTH;
-	}
-	currentBufNum = 0;
-}
-
-uint8_t *rlpNewPacketBuffer(void)
-{
-	return buffers[currentBufNum];
-}
-
 /***********************************************************************************************/
 
 int initRlp(void)
@@ -398,7 +183,7 @@ int rlpEnqueue(int length)
 
 uint8_t *rlpFormatPacket(const uint8_t *srcCid, int vector)
 {
-	bufferLength = PREAMBLE_LENGTH + sizeof(uint16_t); //flags and length
+	bufferLength = PREAMBLE_LENGTH + sizeof(uint16_t); /* flags and length */
 	
 	marshalU32(packetBuffer + bufferLength, vector);
 	bufferLength += sizeof(uint32_t);
@@ -413,7 +198,7 @@ void rlpResendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int numBack)
 	int bufToSend;
 	
 	bufToSend = (NUM_PACKET_BUFFERS - numBack + currentBufNum) & BUFFER_ROLLOVER_MASK;
-	sock_sendto((void*)&((netSocket_t *)sock)->nativesock, buffers[bufToSend], bufferLengths[bufToSend], dstIP, dstPort);	// PN-FIXME Waterloo stack call - abstract into netiface
+	sock_sendto((void*)&((netSocket_t *)sock)->nativesock, buffers[bufToSend], bufferLengths[bufToSend], dstIP, dstPort);	/* PN-FIXME Waterloo stack call - abstract into netiface */
 }
 
 int rlpSendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int keep)
@@ -421,7 +206,7 @@ int rlpSendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int keep)
 	int retVal = currentBufNum;
 	
 	marshalU16(packetBuffer + PREAMBLE_LENGTH, (bufferLength - PREAMBLE_LENGTH) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-	sock_sendto((void*)&((netSocket_t *)sock)->nativesock, packetBuffer, bufferLength, dstIP, dstPort);    // PN-FIXME Waterloo stack call - abstract into netiface
+	sock_sendto((void*)&((netSocket_t *)sock)->nativesock, packetBuffer, bufferLength, dstIP, dstPort);    /* PN-FIXME Waterloo stack call - abstract into netiface */
 	
 	bufferLengths[currentBufNum] = bufferLength;
 	
@@ -443,13 +228,13 @@ netSocket_t *rlpOpenNetSocket(port_t localPort)
 {
 	netSocket_t *netsock;
 
-	if ((netsock = rlpFindNetSock(localPort))) return netsock;	//found existing matching socket
+	if ((netsock = rlpFindNetSock(localPort))) return netsock;	/* found existing matching socket */
 
-	if ((netsock = rlpNewNetSock()) == NULL) return NULL;			//cannot allocate a new one
+	if ((netsock = rlpNewNetSock()) == NULL) return NULL;			/* cannot allocate a new one */
 
 	if (neti_udpOpen(netsock, localPort) != 0)
 	{
-		rlpFreeNetSock(netsock);	//UDP open fails
+		rlpFreeNetSock(netsock);	/* UDP open fails */
 		return NULL;
 	}
 	netsock->localPort = localPort;
@@ -472,9 +257,9 @@ rlpChannelGroup_t *rlpOpenChannelGroup(netSocket_t *netsock, netAddr_t groupAddr
 	rlpChannelGroup_t *channelgroup;
 	if (!isMulticast(groupAddr)) groupAddr = NETI_INADDR_ANY;
 
-	if ((channelgroup = rlpFindChannelGroup(netsock, groupAddr))) return channelgroup;	//found existing matching group
+	if ((channelgroup = rlpFindChannelGroup(netsock, groupAddr))) return channelgroup;	/* found existing matching group */
 
-	if ((channelgroup = rlpNewChannelGroup(netsock, groupAddr)) == NULL) return NULL;	//cannot allocate a new one
+	if ((channelgroup = rlpNewChannelGroup(netsock, groupAddr)) == NULL) return NULL;	/* cannot allocate a new one */
 
 	if (groupAddr != NETI_INADDR_ANY)
 	{
@@ -571,16 +356,16 @@ void rlpProcessPacket(netSocket_t *netsock, const uint8_t *data, int dataLen, ne
 		syslog(LOG_ERR|LOG_LOCAL0,"rlpProcessPacket: Packet too short to be valid");
 		return;	
 	}
-	//Check and strip off EPI 17 preamble 
+	/* Check and strip off EPI 17 preamble  */
 	if(memcmp(pdup, rlpPreamble, RLP_PREAMBLE_LENGTH))
 	{
 		syslog(LOG_ERR|LOG_LOCAL0,"rlpProcessPacket: Invalid Preamble");
 		return;
 	}
 	pdup += RLP_PREAMBLE_LENGTH;
-	//Find if we have a handler
+	/* Find if we have a handler */
 	
-	if ((channelgroup = rlpFindChannelGroup(netsock, destaddr)) == NULL) return;	//No handler for this dest address
+	if ((channelgroup = rlpFindChannelGroup(netsock, destaddr)) == NULL) return;	/* No handler for this dest address */
 
 	srcCidp = NULL;
 	pduProtocol = PROTO_NONE;
@@ -600,8 +385,8 @@ void rlpProcessPacket(netSocket_t *netsock, const uint8_t *data, int dataLen, ne
 
 		flags = *pdup;
 		pp = pdup + 2;
-		pdup += getpdulen(pdup);	//pdup now points to end
-		if (pdup > data + dataLen)	//sanity check
+		pdup += getpdulen(pdup);	/* pdup now points to end */
+		if (pdup > data + dataLen)	/* sanity check */
 		{
 			syslog(LOG_ERR|LOG_LOCAL0,"rlpProcessPacket: packet length error");
 			return;
@@ -659,9 +444,9 @@ static int rlpRxHandler(void *s, uint8_t *data, int dataLen, tcp_PseudoHeader *p
 	uint8_t srcCID[16];
 	udp_transport_t transportAddr;
 
-//	memset(&benchmark, 0, sizeof(timing_t));
-//	syslog(LOG_DEBUG|LOG_LOCAL0,"rlpRxHandler: begin");
-//	benchmark.packetStart = ticks;
+/* 	memset(&benchmark, 0, sizeof(timing_t)); */
+/* 	syslog(LOG_DEBUG|LOG_LOCAL0,"rlpRxHandler: begin"); */
+/* 	benchmark.packetStart = ticks; */
 		
 	if(dataLen < PREAMBLE_LENGTH + 2)
 	{
@@ -669,7 +454,7 @@ static int rlpRxHandler(void *s, uint8_t *data, int dataLen, tcp_PseudoHeader *p
 		return dataLen;	
 	}
 	
-	//Check and strip off EPI 17 preamble 
+	/* Check and strip off EPI 17 preamble  */
 	if(memcmp(data, rlpPreamble, PREAMBLE_LENGTH))
 	{
 		syslog(LOG_ERR|LOG_LOCAL0,"rlpRxHandler: Invalid Preamble");
@@ -678,7 +463,7 @@ static int rlpRxHandler(void *s, uint8_t *data, int dataLen, tcp_PseudoHeader *p
 	
 	processed += PREAMBLE_LENGTH;
 	
-	//determine the ip and port info from the transport protocol
+	/* determine the ip and port info from the transport protocol */
 	transportAddr.srcIP = ntohl(((in_Header *)hdr)->source);
 	transportAddr.dstIP = ntohl(((in_Header *)hdr)->destination);
 	transportAddr.srcPort = ntohs(((udp_Header*)(hdr + in_GetHdrlenBytes((in_Header*)hdr)))->srcPort);
@@ -687,23 +472,23 @@ static int rlpRxHandler(void *s, uint8_t *data, int dataLen, tcp_PseudoHeader *p
 	memset(&pduHeader, 0, sizeof(pdu_header_type));
 	while(processed < dataLen)
 	{
-		//decode the pdu header
+		/* decode the pdu header */
 		processed += decodePdu(data + processed, &pduHeader, sizeof(uint32_t), sizeof(uuid_type));
 		
-//		syslog(LOG_DEBUG|LOG_LOCAL0,"rlpRxHandler: pdu header decoded");
-		if((pduHeader.header == 0) || pduHeader.data == 0) //error
+/* 		syslog(LOG_DEBUG|LOG_LOCAL0,"rlpRxHandler: pdu header decoded"); */
+		if((pduHeader.header == 0) || pduHeader.data == 0) /* error */
 		{
 			syslog(LOG_ERR|LOG_LOCAL0,"rlpRxHandler: Packet does not contain header and data");
 			break;
 		}
 		memcpy(srcCID, pduHeader.header, sizeof(uuid_type));
 		
-		//dispatch to vector
-		//at the rlp layer vectors are protocolIDs
+		/* dispatch to vector */
+		/* at the rlp layer vectors are protocolIDs */
 		switch(pduHeader.vector)
 		{
 			case PROTO_SDT :
-//				syslog(LOG_DEBUG|LOG_LOCAL0,"rlpRxHandler: Dispatching to SDT");
+/* 				syslog(LOG_DEBUG|LOG_LOCAL0,"rlpRxHandler: Dispatching to SDT"); */
 				sdtRxHandler(&transportAddr, srcCID, pduHeader.data, pduHeader.dataLength);
 				break;
 			default:
