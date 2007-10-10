@@ -47,8 +47,6 @@ typedef uint16_t port_t;	/* net endpoint is a port */
 typedef uint32_t netAddr_t;	/* net group is a multicast address */
 
 #define NETI_PORT_NONE 0
-#define NETI_GROUP_NONE ((netAddr_t)0)
-#define NETI_ADDR_NONE ((netAddr_t)0)
 #define NETI_INADDR_ANY ((netAddr_t)0)
 
 #define isMulticast(addr) (((addr) & 0xf0000000) == 0xe0000000)
