@@ -34,7 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 /*--------------------------------------------------------------------*/
-
 #include "configure.h"
 #include "netiface.h"
 #if defined(CONFIG_EPI20)
@@ -152,8 +151,10 @@ netiGetPkt(void)
 	{
 		if (cmp->cmsg_level == IPPROTO_IP && cmp->cmsg_type == IP_PKTINFO)
 		{
-			destaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr;
-			if (!isMulticast(destaddr)) destaddr = NETI_INADDR_ANY;
+			netAddr_t pktaddr;
+
+			if ( isMulticast( pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr))
+				destaddr = pktaddr;
 		}
 	}
 	rlpProcessPacket(netsock, buf, rslt, destaddr, &remhost);
