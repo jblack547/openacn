@@ -39,19 +39,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <arch/types.h>
 
-inline uint32 marshalU8(uint8 *data, uint8 u8);
-inline uint8 unmarshalU8(const uint8 *data);
+inline uint32_t marshalU8(uint8_t *data, uint8_t u8);
+inline uint8_t unmarshalU8(const uint8_t *data);
 
-inline uint32 marshalU16(uint8 *data, uint16 u16);
-inline uint16 unmarshalU16(const uint8 *data);
+inline uint32_t marshalU16(uint8_t *data, uint16_t u16);
+inline uint16_t unmarshalU16(const uint8_t *data);
 
-inline uint32 marshalU32(uint8 *data, uint32 u32);
-inline uint32 unmarshalU32(const uint8 *data);
+inline uint32_t marshalU32(uint8_t *data, uint32_t u32);
+inline uint32_t unmarshalU32(const uint8_t *data);
 
-inline int marshalCID(uint8 *data, uint8 *cid);
-inline int unmarshalCID(const uint8 *data, uint8 *cid);
+inline int marshalCID(uint8_t *data, uint8_t *cid);
+inline int unmarshalCID(const uint8_t *data, uint8_t *cid);
 
-inline int unmarshal_p_string(uint8 *data, p_string_t *str);
-inline int marshal_p_string(const uint8 *data, p_string_t *str);
+inline int unmarshal_p_string(uint8_t *data, p_string_t *str);
+inline int marshal_p_string(const uint8_t *data, p_string_t *str);
 
 #endif
