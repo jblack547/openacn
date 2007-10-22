@@ -38,13 +38,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __byteorder_h__
 
 
-uint16 swap16(uint16 n);
-uint32 swap32(uint32 n);
+uint16_t swap16(uint16_t n);
+uint32_t swap32(uint32_t n);
 
-#define htons( n) swap16( n)
-#define ntohs( n) swap16( n)
-#define htonl( n) swap32( n)
-#define ntohl( n) swap32( n)
+#define htons(n) swap16(n)
+#define ntohs(n) swap16(n)
+#define htonl(n) swap32(n)
+#define ntohl(n) swap32(n)
 
 
 #endif /* __byteorder_h__ */
