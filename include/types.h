@@ -45,8 +45,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   definitions not automatically assigned
 */
 
-#define bool uint8_t
-#define PACKED __attribute__((__packed__))
 
 /*
 Work out what we can automatically
@@ -114,5 +112,13 @@ typedef long long int sint64_t;
 #endif /* #ifdef NEED_INT64 */
 
 #include "user_types.h"
+
+#define bool uint8_t
+#define PACKED __attribute__((__packed__))
+typedef struct
+{
+	uint16_t length;
+	uint8_t value[0];
+} p_string_t;
 
 #endif /* __types_h__ */
