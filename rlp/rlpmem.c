@@ -52,7 +52,7 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "marshal.h"
 #include <syslog.h>
 
-#ifdef CONFIG_RLP_STATICMEM
+#ifdef CONFIG_RLPMEM_STATIC
 
 /***********************************************************************************************/
 /*
@@ -71,6 +71,7 @@ static netSocket_t rlpSockets[MAX_RLP_SOCKETS];
 
 void rlpInitChannels(void);
 
+/***********************************************************************************************/
 void
 rlpInitSockets(void)
 {
@@ -81,6 +82,7 @@ rlpInitSockets(void)
 	rlpInitChannels();
 }
 
+/***********************************************************************************************/
 //find the socket (if any) with matching local port 
 netSocket_t *
 rlpFindNetSock(port_t localPort)
@@ -95,6 +97,7 @@ rlpFindNetSock(port_t localPort)
 	return NULL;
 }
 
+/***********************************************************************************************/
 netSocket_t *
 rlpNewNetSock(void)
 {
@@ -108,6 +111,7 @@ rlpNewNetSock(void)
 	return NULL;
 }
 
+/***********************************************************************************************/
 void 
 rlpFreeNetSock(netSocket_t *sockp)
 {
@@ -156,6 +160,7 @@ static rlpChannel_t rlpChannels[MAX_RLP_CHANNELS];
 
 typedef rlpChannel_t rlpChannelGroup_t;
 
+/***********************************************************************************************/
 /*
 Initialize channels and groups
 */
@@ -167,6 +172,7 @@ rlpInitChannels(void)
 	for (channel = rlpChannels; channel < rlpChannels + MAX_RLP_CHANNELS; ++channel) channel->socketNum = -1;
 }
 
+/***********************************************************************************************/
 /*
 "Create" a new empty channel group and associate it with a socket and groupAddr
 */
@@ -188,6 +194,7 @@ rlpNewChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
 	return NULL;
 }
 
+/***********************************************************************************************/
 /*
 Free a channel group
 Only call if group is empty (no channels exist)
@@ -198,6 +205,7 @@ rlpFreeChannelGroup(netSocket_t *netsock, rlpChannelGroup_t *channelgroup)
 	channelgroup->socketNum = -1;
 }
 
+/***********************************************************************************************/
 /*
 find a channelgroup associated with this socket which has the correct groupAddr
 */
@@ -219,6 +227,7 @@ rlpFindChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
 	return NULL;
 }
 
+/***********************************************************************************************/
 /*
 "Create" a new empty (no associated protocol) channel within a group
 */
@@ -242,6 +251,7 @@ rlpNewChannel(rlpChannelGroup_t *channelgroup)
 	return NULL;
 }
 
+/***********************************************************************************************/
 /*
 Free an unused channel
 */
@@ -252,6 +262,7 @@ rlpFreeChannel(rlpChannelGroup_t *channelgroup, rlpChannel_t *channel)
 	else channel->socketNum = -1;
 }
 
+/***********************************************************************************************/
 /*
 Find the first channel in a group with a given protocol
 */
@@ -274,11 +285,13 @@ rlpFirstChannel(rlpChannelGroup_t *channelgroup, acnProtocol_t pduProtocol)
 	return NULL;
 }
 
+/***********************************************************************************************/
 /*
 Find the next channel in a group with a given protocol
 */
 #define rlpNextChannel(channelgroup, channel, pduProtocol) rlpFirstChannel((channel) + 1, (pduProtocol))
 
+/***********************************************************************************************/
 /*
 true if a socket has channelgroups
 */
@@ -294,6 +307,7 @@ sockHasGroups(netSocket_t *netsock)
 	return 0;
 }
 
+/***********************************************************************************************/
 /*
 true if a channelgroup is not empty
 */
@@ -314,11 +328,13 @@ groupHasChannels(rlpChannelGroup_t *channelgroup)
 	return 0;
 }
 
+/***********************************************************************************************/
 /*
 Get the group containing a given channel
 */
 #define getChannelgroup(channel) rlpFindChannelGroup(rlpSockets + (channel)->socketNum, (channel)->groupAddr)
 
+/***********************************************************************************************/
 /*
 Get the netSocket containing a given group
 */
@@ -327,7 +343,6 @@ Get the netSocket containing a given group
 #endif
 
 /***********************************************************************************************/
-
 void 
 rlpInitBuffers(void)
 {
@@ -346,5 +361,77 @@ rlpNewPacketBuffer(void)
 	return buffers[currentBufNum];
 }
 
-#endif
+/***********************************************************************************************/
+/*
+Transmit network buffer API
+(note receive buffers may be the same thing internally but are not externally treated the same)
+Network buffers are struct rlpTxBuf {...};
+Client protocols obtain network buffers using rlpNewTxBuf() and rlpFreeTxBuf()
+The can obtain a pointer to the data area of the buffer using a macro:
+
+  rlpItsData(buf)
+
+When calling RLP to transmit data, they pass both the pointer to the buffer and a pointer to the 
+data to send which need not start at the beginning of the buffers data area.
+This allows for example, a higher protocol to re-transmit only a part of a former packet.
+However, in this case, the content of the data area before that passed may be overwritten by rlp.
+
+To track usage the protocol can use rlpIncUsage(buf) and rlpDecUsage(buf). Also rlpGetUsage(buf)
+which will be non zero if the buffer is used. These can generally be implemented as macros.
+
+rlpFreeTxBuf will only actually free the buffer if usage is zero.
+
+*/
+
+/***********************************************************************************************/
+struct rlpTxBuf *rlpNewTxBuf(int size)
+{
+	uint8_t *buf;
+	
+	buf = malloc(
+			sizeof(struct rlpTxbufhdr_s)
+			+ RLP_PREAMBLE_LENGTH
+			+ sizeof(acnProtocol_t)
+			+ sizeof(cid_t)
+			+ size
+			+ RLP_POSTAMBLE_LENGTH
+		);
+	rlpGetUsage(buf) = 0;
+	((struct rlpTxbufhdr_s *)buf)->datasize = RLP_PREAMBLE_LENGTH
+			+ sizeof(acnProtocol_t)
+			+ sizeof(cid_t)
+			+ size
+			+ RLP_POSTAMBLE_LENGTH;
+
+	return buf;
+}
+
+/***********************************************************************************************/
+void rlpFreeTxBuf(struct rlpTxBuf *buf)
+{
+	if (!rlpGetUsage(buf)) free(buf);
+}
+
+#define rlpItsData(buf) ((uint8_t *)(buf) \
+			+ sizeof(struct rlpTxbufhdr_s) \
+			+ RLP_PREAMBLE_LENGTH \
+			+ sizeof(acnProtocol_t) \
+			+ sizeof(cid_t))
+
+#define rlpGetUsage(buf) (((struct rlpTxbufhdr_s *)(buf))->usage)
+#define rlpIncUsage(buf) (++rlpGetUsage(buf))
+#define rlpDecUsage(buf) (--rlpGetUsage(buf))
+
+/***********************************************************************************************/
+/*
+
+*/
+
+
+
+
+
+#elif defined(CONFIG_RLPMEM_DYNAMIC)
+
+#endif	/* #elif defined(CONFIG_RLPMEM_DYNAMIC) */
 
