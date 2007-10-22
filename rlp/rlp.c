@@ -113,14 +113,14 @@ structures:
 	netSocket_t represents an interface to the netiface layer - there is one
 	netSocket_t for each incoming (local) port.
 
-	rlpChannelGroup_t represents a multicast group (and port). Any
+	struct rlpChannelGroup_s represents a multicast group (and port). Any
 	netSocket_t may have multiple channel groups. Because of stack vagaries
 	with multicast handling, RLP examines and filters the multicast
 	destination address of every incoming packet early on and finds the
 	associated channelGroup If none is found, the packet is dropped. There is
 	one channel group lookup per packet.
 	
-	rlpChannel_t represents a single channel to the client protocol. For each
+	struct rlpChannel_s represents a single channel to the client protocol. For each
 	channel group there may be multiple channels. Channels are filtered for
 	protocol (e.g. SDT) on a PDU by PDU basis. It is permitted to open
 	multiple channels for the same port/group/protocol - the same PDU
@@ -139,8 +139,8 @@ keep.
 
 Management of structures in memory
 --
-To allow flexibility in implementation, the netSocket_t, rlpChannelGroup_t
-and rlpChannel_t structures used are manipulated using the API of the rlpmem
+To allow flexibility in implementation, the netSocket_t, struct rlpChannelGroup_s
+and struct rlpChannel_s structures used are manipulated using the API of the rlpmem
 module - they should not be accessed directly. This allows dynamic or static
 allocation strategies, and organization by linked lists, by arrays, or more
 complex structures such as trees. In minimal implementations many of these
@@ -152,7 +152,12 @@ dynamic implementations are provided.
 */
 /***********************************************************************************************/
 
-int initRlp(void)
+/***********************************************************************************************/
+/*
+Initialize RLP (if not already done)
+*/
+int
+initRlp(void)
 {	
 	static bool initialized = 0;
 
@@ -161,18 +166,22 @@ int initRlp(void)
 		rlpInitSockets();
 		rlpInitBuffers();
 
-		packetBuffer = rlpNewPacketBuffer();
+		//packetBuffer = rlpNewPacketBuffer();
 		initialized = 1;
 	}
 	return 0;
 }
 
-void rlpFlush(void)
+/***********************************************************************************************/
+void
+rlpFlush(void)
 {
 	bufferLength = PREAMBLE_LENGTH;
 }
 
-int rlpEnqueue(int length)
+/***********************************************************************************************/
+int
+rlpEnqueue(int length)
 {
 	if(bufferLength + length > MAX_PACKET_SIZE)
 		return 0;
@@ -181,7 +190,9 @@ int rlpEnqueue(int length)
 	return length;
 }
 
-uint8_t *rlpFormatPacket(const uint8_t *srcCid, int vector)
+/***********************************************************************************************/
+uint8_t *
+rlpFormatPacket(const uint8_t *srcCid, int vector)
 {
 	bufferLength = PREAMBLE_LENGTH + sizeof(uint16_t); /* flags and length */
 	
@@ -193,7 +204,9 @@ uint8_t *rlpFormatPacket(const uint8_t *srcCid, int vector)
 	return packetBuffer + bufferLength;
 }
 
-void rlpResendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int numBack)
+/***********************************************************************************************/
+void
+rlpResendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int numBack)
 {
 	int bufToSend;
 	
@@ -201,7 +214,9 @@ void rlpResendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int numBack)
 	sock_sendto((void*)&((netSocket_t *)sock)->nativesock, buffers[bufToSend], bufferLengths[bufToSend], dstIP, dstPort);	/* PN-FIXME Waterloo stack call - abstract into netiface */
 }
 
-int rlpSendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int keep)
+/***********************************************************************************************/
+int 
+rlpSendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int keep)
 {
 	int retVal = currentBufNum;
 	
@@ -221,10 +236,99 @@ int rlpSendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int keep)
 
 /***********************************************************************************************/
 /*
+If multiple Root Layer PDUs are to be packed into the buffer, the client may call
+rlpInitBlock(startptr) then each time it has completed a PDU it calls rlpAddPDU(size,
+pduPtrPtr). The latter call returns a pointer to the location to place the next PDU. If
+pduPtrPtr is not null, the pointer it points to is filled in with the final position of the data
+portion of this PDU allowing it to be subsequently used again.
+
+for example.
+
+	mybuf = rlpNewTxBuf(200);
+	pduptr = rlpInitBlock(mybuf);
+	memcpy(pduptr, somePDUcontent, PDU1size);
+	pduptr = rlpAddPDU(mybuf, pduptr, PDU1size, NULL);
+	memcpy(pduptr, morePDUcontent, PDU2size);
+	pduptr = rlpAddPDU(mybuf, pduptr, PDU2size, &savedDataPtr);
+	rlpTxPDUblock(mybuf);
+
+struct rlpTxbufhdr_s {
+	struct rlpTxbuf_s *next;
+	usage_t usage;
+	uint16_t datasize;
+	uint8_t *blockstart;
+	uint8_t *blockend;
+	acnProtocol_t protocol;
+	uint8_t *vector;
+	uint8_t *header;
+	uint8_t *data;
+	int	datasize;
+};
+*/
+/*
+Start an RLP PDU block
+*/
+uint8_t *
+rlpInitBlock(struct rlpTxbuf *buf)
+{
+	
+	if (data >= rlpItsData(buf) + ((struct rlpTxbufhdr_s *)(buf))->datasize)
+		return -1;
+	bufhdrp(buf)->datastart = data;
+	return 0;
+}
+
+/***********************************************************************************************/
+/*
+*/
+
+uint8_t *
+rlpAddPDU(struct rlpTxbuf *buf, acnProtocol_t protocol, uint8_t *pdudata, int size)
+{
+	int dataoffset;
+	uint16_t flags, length;
+	uint8_t *pdup;
+
+	length = 2;	/* allow for length field */
+	flags = 0;
+	pdup = bufhdrp(buf)->blockend;
+
+	/* do we have a vector? */
+	if (protocol != bufhdrp(buf)->protocol)
+	{
+		bufhdrp(buf)->protocol = protocol;
+		flags |= VECTOR_FLAG;
+		length += sizeof(acnProtocol_t);
+	}
+	/* do we need a header? Only in first of block since CIDs cannot share buffers */
+	if (pdup == bufhdrp(buf)->blockstart)
+
+	/* does data match previous? Assume not */
+
+	/* is data in the right place already? */
+	if (pdudata != pdup + length)
+	{
+		/* move data into position */
+	}
+	length += size;
+	marshalU16(pdup, (uint16_t)(length | flags));
+	pdup += 2;
+	if ((flags & VECTOR_FLAG))
+	{
+		marshallU32(pdup, protocol);
+		pdup += sizeof(acnProtocol_t);
+	}
+	
+		
+}
+
+/***********************************************************************************************/
+/*
 Find a matching netsocket or create a new one if necessary
 */
 
-netSocket_t *rlpOpenNetSocket(port_t localPort)
+netSocket_t *
+rlpOpenNetSocket(port_t localPort)
 {
 	netSocket_t *netsock;
 
@@ -241,7 +345,9 @@ netSocket_t *rlpOpenNetSocket(port_t localPort)
 	return netsock;
 }
 
-void rlpCloseNetSocket(netSocket_t *netsock)
+/***********************************************************************************************/
+void 
+rlpCloseNetSocket(netSocket_t *netsock)
 {
 	neti_udpClose(netsock);
 	rlpFreeNetSock(netsock);
@@ -252,9 +358,10 @@ void rlpCloseNetSocket(netSocket_t *netsock)
 Find a matching channelgroup or create a new one if necessary
 */
 
-rlpChannelGroup_t *rlpOpenChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
+struct rlpChannelGroup_s *
+rlpOpenChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
 {
-	rlpChannelGroup_t *channelgroup;
+	struct rlpChannelGroup_s *channelgroup;
 	if (!isMulticast(groupAddr)) groupAddr = NETI_INADDR_ANY;
 
 	if ((channelgroup = rlpFindChannelGroup(netsock, groupAddr))) return channelgroup;	/* found existing matching group */
@@ -272,7 +379,9 @@ rlpChannelGroup_t *rlpOpenChannelGroup(netSocket_t *netsock, netAddr_t groupAddr
 	return channelgroup;
 }
 
-void rlpCloseChannelGroup(netSocket_t *netsock, rlpChannelGroup_t *channelgroup)
+/***********************************************************************************************/
+void 
+rlpCloseChannelGroup(netSocket_t *netsock, struct rlpChannelGroup_s *channelgroup)
 {
 	neti_leaveGroup(netsock, channelgroup->groupAddr);
 	rlpFreeChannelGroup(netsock, channelgroup);
@@ -287,11 +396,12 @@ void rlpCloseChannelGroup(netSocket_t *netsock, rlpChannelGroup_t *channelgroup)
 Create a new channel
 */
 
-rlpChannel_t *rlpOpenChannel(port_t localPort, netAddr_t groupAddr, acnProtocol_t protocol, rlpHandler_t *callback, void *ref)
+struct rlpChannel_s *
+rlpOpenChannel(port_t localPort, netAddr_t groupAddr, acnProtocol_t protocol, rlpHandler_t *callback, void *ref)
 {
 	netSocket_t *netsock;
-	rlpChannel_t *channel;
-	rlpChannelGroup_t *channelgroup;
+	struct rlpChannel_s *channel;
+	struct rlpChannelGroup_s *channelgroup;
 
 	if ((netsock = rlpOpenNetSocket(localPort)) == NULL) goto failsocket;
 
@@ -319,10 +429,12 @@ failsocket:
 	return NULL;
 }
 
-void rlpCloseChannel(rlpChannel_t *channel)
+/***********************************************************************************************/
+void 
+rlpCloseChannel(struct rlpChannel_s *channel)
 {
 	netSocket_t *netsock;
-	rlpChannelGroup_t *channelgroup;
+	struct rlpChannelGroup_s *channelgroup;
 
 	channelgroup = getChannelgroup(channel);
 	netsock = getNetsock(channelgroup);
@@ -341,10 +453,11 @@ void rlpCloseChannel(rlpChannel_t *channel)
 Process a packet - called by network interface layer on receipt of a packet
 */
 
-void rlpProcessPacket(netSocket_t *netsock, const uint8_t *data, int dataLen, netAddr_t destaddr, const netiHost_t *remhost)
+void
+rlpProcessPacket(netSocket_t *netsock, const uint8_t *data, int dataLen, netAddr_t destaddr, const netiHost_t *remhost)
 {
-	rlpChannelGroup_t *channelgroup;
-	rlpChannel_t *channel;
+	struct rlpChannelGroup_s *channelgroup;
+	struct rlpChannel_s *channel;
 	const cid_t *srcCidp;
 	acnProtocol_t pduProtocol;
 	const uint8_t *pdup, *datap;
@@ -423,92 +536,4 @@ void rlpProcessPacket(netSocket_t *netsock, const uint8_t *data, int dataLen, ne
 		}
 	}
 }
-
-#if 0
-/**
- * Handle a received UDP packet
- * @param s the socket
- * @param data the packet buffer
- * @param dataLen the length of the packet
- * @param pseudo the UDP pseudo-header
- * @param hdr the UDP header
- * @return the number of bytes processed
- */
-timing_t benchmark;
-static char logTimings[200];
-
-static int rlpRxHandler(void *s, uint8_t *data, int dataLen, tcp_PseudoHeader *pseudo, void *hdr)
-{
-	pdu_header_type pduHeader;
-	uint32_t processed = 0;
-	uint8_t srcCID[16];
-	udp_transport_t transportAddr;
-
-/* 	memset(&benchmark, 0, sizeof(timing_t)); */
-/* 	syslog(LOG_DEBUG|LOG_LOCAL0,"rlpRxHandler: begin"); */
-/* 	benchmark.packetStart = ticks; */
-		
-	if(dataLen < PREAMBLE_LENGTH + 2)
-	{
-		syslog(LOG_ERR|LOG_LOCAL0,"rlpRxHandler: Packet too short to contain preamble and pdu");
-		return dataLen;	
-	}
-	
-	/* Check and strip off EPI 17 preamble  */
-	if(memcmp(data, rlpPreamble, PREAMBLE_LENGTH))
-	{
-		syslog(LOG_ERR|LOG_LOCAL0,"rlpRxHandler: Invalid Preamble");
-		return dataLen;
-	}
-	
-	processed += PREAMBLE_LENGTH;
-	
-	/* determine the ip and port info from the transport protocol */
-	transportAddr.srcIP = ntohl(((in_Header *)hdr)->source);
-	transportAddr.dstIP = ntohl(((in_Header *)hdr)->destination);
-	transportAddr.srcPort = ntohs(((udp_Header*)(hdr + in_GetHdrlenBytes((in_Header*)hdr)))->srcPort);
-	transportAddr.dstPort = ntohs(((udp_Header*)(hdr + in_GetHdrlenBytes((in_Header*)hdr)))->dstPort);
-	
-	memset(&pduHeader, 0, sizeof(pdu_header_type));
-	while(processed < dataLen)
-	{
-		/* decode the pdu header */
-		processed += decodePdu(data + processed, &pduHeader, sizeof(uint32_t), sizeof(uuid_type));
-		
-/* 		syslog(LOG_DEBUG|LOG_LOCAL0,"rlpRxHandler: pdu header decoded"); */
-		if((pduHeader.header == 0) || pduHeader.data == 0) /* error */
-		{
-			syslog(LOG_ERR|LOG_LOCAL0,"rlpRxHandler: Packet does not contain header and data");
-			break;
-		}
-		memcpy(srcCID, pduHeader.header, sizeof(uuid_type));
-		
-		/* dispatch to vector */
-		/* at the rlp layer vectors are protocolIDs */
-		switch(pduHeader.vector)
-		{
-			case PROTO_SDT :
-/* 				syslog(LOG_DEBUG|LOG_LOCAL0,"rlpRxHandler: Dispatching to SDT"); */
-				sdtRxHandler(&transportAddr, srcCID, pduHeader.data, pduHeader.dataLength);
-				break;
-			default:
-				syslog(LOG_WARNING|LOG_LOCAL0,"rlpRxHandler: Unknown Vector (protocol) - skipping");
-		}
-	}
-	benchmark.packetEnd = ticks;
-	if(benchmark.dmpStart)
-	{
-		sprintf(logTimings, "PS:%d PE:%d SS:%d SE:%d DS:%d DE:%d NP:%d", 
-										benchmark.packetStart, 
-										benchmark.packetEnd,
-										benchmark.sdtStart,
-										benchmark.sdtEnd,
-										benchmark.dmpStart,
-										benchmark.dmpEnd,
-										benchmark.numberofdmpprops);
-		syslog (LOG_INFO|LOG_LOCAL0, logTimings);
-	}
-	return dataLen;
-}
-#endif
 
