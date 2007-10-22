@@ -45,7 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   put all your local configuration options into the header "user_opt.h" where
   the compiler will find it.
   
-  This header includes user_opt.h first and only provides default values if
+  This header (opt.h) includes your user_opt.h first and only provides default values if
   options have not been defined there.
   
   You can refer to this header to see which options are available and what 
@@ -53,6 +53,62 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "user_opt.h"
+/*
+  C Compiler
+  
+  Sort this out first since a lot else depends on it
+
+  we can autodetect this from predefined macros
+  but these vary from system to system so use our own macro 
+  names and allow user override in user_opt.h
+*/
+
+#ifndef CONFIG_GNUCC
+#ifdef __GNUC__
+#define CONFIG_GNUCC 1
+#else
+#define CONFIG_GNUCC 0
+#endif
+#endif
+
+/*
+  Basic Architecture
+
+  we can autodetect a lot of this from predefined macros
+  but these vary from system to system so use our own macro 
+  names and allow user override in user_opt.h
+*/
+#ifndef ARCH_AMD64
+#ifdef __amd64__
+#define ARCH_AMD64 1
+#else
+#define ARCH_AMD64 0
+#endif
+#endif
+
+#ifndef ARCH_i386
+#ifdef __i386__
+#define ARCH_X86 1
+#else
+#define ARCH_X86 0
+#endif
+#endif
+
+#ifndef ARCH_H8300
+#ifdef __H8300__
+#define ARCH_H8300 1
+#else
+#define ARCH_H8300 0
+#endif
+#endif
+
+#ifndef ARCH_H8300S
+#ifdef __H8300S__
+#define ARCH_H8300S 1
+#else
+#define ARCH_H8300S 0
+#endif
+#endif
 
 /*
   Underlying transport selection
@@ -166,15 +222,17 @@ Protocols to build
 #define CONFIG_SDT_SINGLE_CLIENT 0
 #endif
 
+/***************************************************************************************/
 /*
   The following are sanity checks on preceding options and some
-  derivative configuration values
+  derivative configuration values. They are not user options
 */
+/***************************************************************************************/
 
 /* check on transport selection */
 #if (CONFIG_NET_IPV4 + CONFIG_NET_IPV6) <= 0
 #error Need to select at least one transport
-#elif (CONFIG_NET_IPV4 + CONFIG_NET_IPV6) = 1
+#elif (CONFIG_NET_IPV4 + CONFIG_NET_IPV6) == 1
 #define CONFIG_MULTI_NET 0
 #else
 #define CONFIG_MULTI_NET 1
