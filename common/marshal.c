@@ -35,77 +35,85 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 
-#include <marshal.h>
+#include <stddef.h>
+#include <string.h>
+#include "marshal.h"
 
-inline uint32 marshalU8(uint8 *data, uint8 u8)
+inline size_t marshalU8(uint8_t *data, uint8_t u8)
 {
 	*data = u8;
-	return sizeof(uint8);
+	return sizeof(uint8_t);
 }
 
-inline uint8 unmarshalU8(uint8 *data)
+inline uint8_t unmarshalU8(const uint8_t *data)
 {
 	return *data;
 }
 
-inline uint32 marshalU16(uint8 *data, uint16 u16)
+inline size_t marshalU16(uint8_t *data, uint16_t u16)
 {
-	uint16 temp;
-	
-	temp = htons(u16);
-	memcpy(data, &temp, sizeof(uint16));
-	return sizeof(uint16);
+	data[0] = (uint8_t)(u16 >> 8);
+	data[1] = (uint8_t)u16;
+	return sizeof(uint16_t);
 }
 
-inline uint16 unmarshalU16(uint8 *data)
+inline uint16_t unmarshalU16(const uint8_t *data)
 {
-	uint16 temp;
-	
-	memcpy(&temp, data, sizeof(uint16));
-
-	return ntohs(temp);
+	return (uint16_t)((data[0] << 8) | data[1]);
 }
 
-inline uint32 marshalU32(uint8 *data, uint32 u32)
+inline size_t marshalU32(uint8_t *data, uint32_t u32)
 {
-	uint32 temp;
-	
-	temp = htonl(u32);
-	memcpy(data, &temp, sizeof(uint32));
-	return sizeof(uint32);
+	data[0] = (uint8_t)(u32 >> 24);
+	data[1] = (uint8_t)(u32 >> 16);
+	data[2] = (uint8_t)(u32 >> 8);
+	data[3] = (uint8_t)u32;
+	return sizeof(uint32_t);
 }
 
-inline uint32 unmarshalU32(uint8 *data)
+inline uint32_t unmarshalU32(const uint8_t *data)
 {
-	uint32 temp;
-	
-	memcpy(&temp, data, sizeof(uint32));
-
-	return ntohl(temp);
+	return (uint32_t)(
+			(uint32_t)(data[0] << 24)
+			| (uint32_t)(data[1] << 16)
+			| (uint32_t)(data[2] << 8)
+			| (uint32_t)data[3]
+		);
 }
 
-inline int marshalCID(uint8 *data, uint8 *cid)
+#if !defined(marshalCID)
+inline size_t marshalCID(uint8_t *data, const uint8_t *cid)
 {
-	memcpy(data, cid, sizeof(uuid_type));
-	return sizeof(uuid_type);
+	memcpy(data, cid, sizeof(uuid_t));
+	return sizeof(uuid_t);
 }
+#endif
 
-inline int unmarshalCID(uint8 *data, uint8 *cid)
+#if !defined(unmarshalCID)
+inline size_t unmarshalCID(const uint8_t *data, uint8_t *cid)
 {
-	memcpy(cid, data, sizeof(uuid_type));
-	return sizeof(uuid_type);
+	memcpy(cid, data, sizeof(uuid_t));
+	return sizeof(uuid_t);
 }
+#endif
 
-inline int marshal_p_string(uint8 *data, p_string_t *str)
+/*
+  A variable length DMP value specifies the total length
+  including the length field (min length is therefore 2)
+  
+  Internal p_strings have a min length of 0 and length specifies only
+  the number of characters, not the total length
+*/
+inline size_t marshal_p_string(uint8_t *data, const p_string_t *str)
 {
 	marshalU16(data, str->length + 2);
-	memcpy(data + sizeof(uint16), str->value, str->length);
-	return str->length + sizeof(uint16);
+	memcpy(data + sizeof(uint16_t), str->value, str->length);
+	return str->length + sizeof(uint16_t);
 }
 
-inline int unmarshal_p_string(uint8 *data, p_string_t *str)
+inline size_t unmarshal_p_string(const uint8_t *data, p_string_t *str)
 {
 	str->length = unmarshalU16(data) - 2;
-	memcpy(str->value, data + sizeof(uint16), str->length);
-	return str->length + sizeof(uint16);
+	memcpy(str->value, data + sizeof(uint16_t), str->length);
+	return str->length + sizeof(uint16_t);
 }

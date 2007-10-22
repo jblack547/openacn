@@ -37,21 +37,29 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __marshal_h__
 #define __marshal_h__
 
-#include <types.h>
+#include "types.h"
+#include "uuid.h"
 
-inline uint32_t marshalU8(uint8_t *data, uint8_t u8);
+inline size_t marshalU8(uint8_t *data, uint8_t u8);
 inline uint8_t unmarshalU8(const uint8_t *data);
 
-inline uint32_t marshalU16(uint8_t *data, uint16_t u16);
+inline size_t marshalU16(uint8_t *data, uint16_t u16);
 inline uint16_t unmarshalU16(const uint8_t *data);
 
-inline uint32_t marshalU32(uint8_t *data, uint32_t u32);
+inline size_t marshalU32(uint8_t *data, uint32_t u32);
 inline uint32_t unmarshalU32(const uint8_t *data);
 
-inline int marshalCID(uint8_t *data, uint8_t *cid);
-inline int unmarshalCID(const uint8_t *data, uint8_t *cid);
+#define marshalCID(data, cid) (memcpy((uint8_t *)(data), (uint8_t *)(cid), sizeof(uuid_t)), sizeof(uuid_t))
+#define unmarshalCID(data, cid) marshalCID(cid, data)
 
-inline int unmarshal_p_string(uint8_t *data, p_string_t *str);
-inline int marshal_p_string(const uint8_t *data, p_string_t *str);
+#if !defined(marshalCID)
+inline size_t marshalCID(uint8_t *data, const uint8_t *cid);
+#endif
+#if !defined(unmarshalCID)
+inline size_t unmarshalCID(const uint8_t *data, uint8_t *cid);
+#endif
+
+inline size_t marshal_p_string(uint8_t *data, const p_string_t *str);
+inline size_t unmarshal_p_string(const uint8_t *data, p_string_t *str);
 
 #endif
