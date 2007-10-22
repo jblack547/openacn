@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __marshal_h__
 #define __marshal_h__
 
-#include <arch/types.h>
+#include <types.h>
 
 inline uint32_t marshalU8(uint8_t *data, uint8_t u8);
 inline uint8_t unmarshalU8(const uint8_t *data);
