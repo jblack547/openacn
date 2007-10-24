@@ -40,7 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "configure.h"
 
-typedef uint32_t acnProtocol_t;
+typedef uint32_t protocolID_t;
 #define PROTO_NONE 0
 
 #include "uuid.h"
