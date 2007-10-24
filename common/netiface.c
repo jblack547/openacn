@@ -53,7 +53,7 @@ const int optionOff = 0;
 #if defined(CONFIG_STACK_BSD)
 
 int
-neti_udpOpen(netSocket_t *netsock, port_t localPort)
+neti_udp_open(netSocket_t *rlpsock, port_t localPort)
 {
 	int bsdsock;
 	int rslt;
@@ -73,7 +73,7 @@ neti_udpOpen(netSocket_t *netsock, port_t localPort)
 	rslt = bind(bsdsock, &localaddr.gen, sizeof(struct sockaddr_in));
 	if (rslt < 0) goto fail;
 
-	netsock->nativesock = bsdsock;
+	rlpsock->nativesock = bsdsock;
 
 	/* we need information on destination address used */
     rslt = setsockopt (bsdsock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
@@ -87,12 +87,12 @@ fail:
 }
 
 void
-neti_udpClose(netSocket_t *netsock)
+neti_udp_close(netSocket_t *rlpsock)
 {
-	close(netsock->nativesock);
+	close(rlpsock->nativesock);
 }
 
-int neti_changeGroup(netSocket_t *netsock, netAddr_t localGroup, bool add)
+int neti_change_group(netSocket_t *rlpsock, ip4addr_t localGroup, bool add)
 {
 	struct ip_mreqn multireq;
 	int rslt;
@@ -103,7 +103,7 @@ int neti_changeGroup(netSocket_t *netsock, netAddr_t localGroup, bool add)
 	multireq.imr_ifindex = 0;
 	multireq.imr_multiaddr.s_addr = localGroup;
 
-	rslt = setsockopt(netsock->nativesock, IPPROTO_IP, (add) ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP, (void *)&multireq, sizeof(multireq));
+	rslt = setsockopt(rlpsock->nativesock, IPPROTO_IP, (add) ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP, (void *)&multireq, sizeof(multireq));
 	return rslt;
 }
 
@@ -111,7 +111,7 @@ static int
 netiGetPkt(void)
 {
 	int rslt;
-	netSocket_t *netsock;
+	netSocket_t *rlpsock;
 	uint8_t *buf;
 //	struct pktAddr_s
 	netiHost_t remhost;
@@ -119,7 +119,7 @@ netiGetPkt(void)
 	struct iovec bufvec[1];
 	struct msghdr hdr;
 	struct cmsghdr *cmp;
-	netAddr_t destaddr;
+	ip4addr_t destaddr;
 
 	buf = neti_newPacket(INPACKETSIZE);
 	bufvec->iov_base = buf;
@@ -127,7 +127,7 @@ netiGetPkt(void)
 
 	/* need to do select on sockets here */
 	/* and work out which socket has data */
-	/* arrive with netsock pointing to the socket */
+	/* arrive with rlpsock pointing to the socket */
 
 
 	hdr.msg_name = &remhost;
@@ -140,7 +140,7 @@ netiGetPkt(void)
 
 	destaddr = NETI_INADDR_ANY;
 
-    rslt = recvmsg(netsock->nativesock, &hdr, 0);
+    rslt = recvmsg(rlpsock->nativesock, &hdr, 0);
 	if (rslt < 0)
 	{
 		perror("recvmsg");
@@ -151,34 +151,34 @@ netiGetPkt(void)
 	{
 		if (cmp->cmsg_level == IPPROTO_IP && cmp->cmsg_type == IP_PKTINFO)
 		{
-			netAddr_t pktaddr;
+			ip4addr_t pktaddr;
 
 			if ( isMulticast( pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr))
 				destaddr = pktaddr;
 		}
 	}
-	rlpProcessPacket(netsock, buf, rslt, destaddr, &remhost);
+	rlpProcessPacket(rlpsock, buf, rslt, destaddr, &remhost);
 }
 
 #elif defined(CONFIG_STACK_WATERLOO)	/* #if defined(CONFIG_STACK_BSD) */
 
-int neti_udpOpen(netSocket_t *netsock, port_t localPort)
+int neti_udp_open(struct rlpsocket_s *rlpsock, port_t localPort)
 {
-	if (udp_open(&netsock->nativesock, localPort, -1, 0, &netihandler) == 0)
+	if (udp_open(&rlpsock->nativesock, localPort, -1, 0, &netihandler) == 0)
 		return -1;
-	netsock->nativesock.usr_name = char *netsock;	/* use usr_name field to store reference pointer **EXPERIMENTAL** */
+	rlpsock->nativesock.usr_name = char *rlpsock;	/* use usr_name field to store reference pointer **EXPERIMENTAL** */
 	return 0;
 
 }
 
 void
-neti_udpClose(netSocket_t *netsock)
+neti_udp_close(netSocket_t *rlpsock)
 {
-	udp_close(&netsock->nativesock);
+	udp_close(&rlpsock->nativesock);
 }
 
 int
-neti_joinGroup(netSocket_t *netsock, netAddr_t localGroup)
+neti_joinGroup(netSocket_t *rlpsock, ip4addr_t localGroup)
 {
 	int rslt;
 
@@ -188,7 +188,7 @@ neti_joinGroup(netSocket_t *netsock, netAddr_t localGroup)
 }
 
 int
-neti_leaveGroup(netSocket_t *netsock, netAddr_t localGroup)
+neti_leaveGroup(netSocket_t *rlpsock, ip4addr_t localGroup)
 {
 	int rslt;
 
@@ -200,19 +200,19 @@ neti_leaveGroup(netSocket_t *netsock, netAddr_t localGroup)
 static int
 netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *hdr)
 {
-	netSocket_t *netsock;
+	netSocket_t *rlpsock;
 	port_t srcPort;
 	netiHost_t remhost;
-	netAddr_t destaddr;
+	ip4addr_t destaddr;
 
-	netsock = s->usr_name;
-	if (netsock != NULL)
+	rlpsock = s->usr_name;
+	if (rlpsock != NULL)
 	{
 /* warning Waterloo stack has not checked multicast destination yet */
 		destaddr = ((in_Header *)hdr)->destination;
 		remhost.addr = s->hisaddr;
 		remhost.port = s->hisport;
-		rlpProcessPacket(netsock, buf, dataLen, destaddr, &remhost);
+		rlpProcessPacket(rlpsock, buf, dataLen, destaddr, &remhost);
 	}
 	return dataLen;
 }

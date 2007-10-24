@@ -38,41 +38,53 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __netiface_h__
 #define __netiface_h__ 1
 
-#include "arch/types.h"
+#include "types.h"
 #include <string.h>
 
 #if defined(CONFIG_NET_IPV4)
 
 typedef uint16_t port_t;	/* net endpoint is a port */
-typedef uint32_t netAddr_t;	/* net group is a multicast address */
+typedef uint32_t ip4addr_t;	/* net group is a multicast address */
+typedef ip4addr_t groupaddr_t
+/*
+  netaddr_s represents a UDP level address
+*/
+struct netaddr_s {
+	port_t port;
+	ip4addr_t addr;
+};
 
 #define NETI_PORT_NONE 0
-#define NETI_INADDR_ANY ((netAddr_t)0)
+#define NETI_INADDR_ANY ((ip4addr_t)0)
+#define NETI_GROUP_UNICAST ((ip4addr_t)0)
 
-#define isMulticast(addr) (((addr) & 0xf0000000) == 0xe0000000)
+#define is_multicast(addr) (((addr) & 0xf0000000) == 0xe0000000)
 
 #if defined(CONFIG_STACK_BSD)
 
 #include <sys/socket.h>
-#include <netinet/ip.h>
+#include <netinet/in.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdio.h>
 
 typedef int neti_nativeSocket_t;
+/* a netaddr_s is simply a ip4addr_t */
+#define netaddr_s sockaddr_in
+
 typedef struct sockaddr_in netiHost_t;
 
-typedef struct netSocket_s {
+typedef struct netsocket_s {
 	neti_nativeSocket_t nativesock;
 	port_t localPort;
-} netSocket_t;
+};
 
-int neti_udpOpen(netSocket_t *netsock, port_t localPort);
-void neti_udpClose(netSocket_t *netsock);
-int neti_changeGroup(netSocket_t *netsock, netAddr_t localGroup, bool add);
+int neti_udp_open(struct netsocket_s *netsock, port_t localPort);
+void neti_udp_close(struct netsocket_s *netsock);
+int neti_change_group(struct netsocket_s *netsock, ip4addr_t localGroup, bool add);
 
-#define neti_joinGroup(netsock, group) neti_changeGroup(netsock, group, 1)
-#define neti_leaveGroup(netsock, group) neti_changeGroup(netsock, group, 0)
+#define neti_join_group(netsock, group) neti_change_group(netsock, group, 1)
+#define neti_leave_group(netsock, group) neti_change_group(netsock, group, 0)
 
 #elif defined(CONFIG_STACK_WATERLOO)
 
@@ -83,20 +95,20 @@ typedef udp_Socket neti_nativeSocket_t;
 /* mainain in network byte order */
 struct PACKED netiHost_s {
 	port_t port;
-	netAddr_t addr;
+	ip4addr_t addr;
 };
 
 typedef struct netiHost_s netiHost_t;
 
-typedef struct netSocket_s {
+typedef struct netsocket_s {
 	neti_nativeSocket_t nativesock;
 	port_t localPort;
-} netSocket_t;
+};
 
-int neti_udpOpen(netSocket_t *netsock, port_t localPort);
-void neti_udpClose(netSocket_t *netsock);
-int neti_joinGroup(netSocket_t *netsock, netAddr_t localGroup);
-int neti_leaveGroup(netSocket_t *netsock, netAddr_t localGroup);
+int neti_udp_open(struct netsocket_s *netsock, port_t localPort);
+void neti_udp_close(struct netsocket_s *netsock);
+int neti_join_group(struct netsocket_s *netsock, ip4addr_t localGroup);
+int neti_leave_group(struct netsocket_s *netsock, ip4addr_t localGroup);
 
 
 #endif

@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __rlp_h__
 #define __rlp_h__
 
-#include "arch/types.h"
+#include "types.h"
 #include "acn_arch.h"
 
 typedef void rlpHandler_t(
@@ -54,8 +54,25 @@ void rlpCloseSocket(void *s);
 void *rlpFindSocket(uint16 localPort);
 int initRlp(void);
 uint8 *rlpFormatPacket(const uint8 *srcCid, int vector);
-void rlpProcessPacket(netSocket_t *netsock, const uint8_t *data, int dataLen, netAddr_t destaddr, const netiHost_t *remhost);
+void rlpProcessPacket(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netiHost_t *remhost);
 
 int rlpEnqueue(int length);
 void rlpResendTo(void *sock, uint32 dstIP, uint16 dstPort, int numBack);
+
+struct rlp_txbuf_hdr {
+	usage_t usage;
+	unsigned int datasize;
+	uint8_t *blockstart;
+	uint8_t *blockend;
+#if !CONFIG_RLP_SINGLE_CLIENT	
+	protocolID_t protocol;
+#endif
+#if CONFIG_RLP_OPTIMIZE_PACK
+	uint8_t *curdata;
+	unsigned int curdatalen;
+#endif
+};
+
+
+
 #endif

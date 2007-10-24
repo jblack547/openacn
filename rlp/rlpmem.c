@@ -49,280 +49,294 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "acn_rlp.h"
 #include "netiface.h"
 #include "rlp.h"
+#include "rlpmem.h"
 #include "marshal.h"
 #include <syslog.h>
+
+/***********************************************************************************************/
+/*
+The socket/group/listener API is designed to allow dynamic allocation of
+channels within groups and/or a linked list or other more sophisticated
+implementation.
+
+API
+--
+rlpm_rlpsocks_init(), rlpFindSocket(), rlpNewSocket(), rlpFreeSocket()
+void rlpm_listeners_init(void);
+struct rlp_rxgroup_s *rlp_new_rxgroup(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr)
+void rlp_free_rxgroup(struct rlpsocket_s *rlpsock, struct rlp_rxgroup_s *rxgroup)
+struct rlp_rxgroup_s *rlpm_find_rxgroup(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr)
+int rlpm_rlpsock_has_rxgroups(struct rlpsocket_s *rlpsock)
+
+struct rlp_listener_s *rlpm_new_listener(struct rlp_rxgroup_s *rxgroup)
+void rlpm_free_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener)
+struct rlp_listener_s *rlpm_first_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol)
+struct rlp_listener_s *rlpNextChannel(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener, pduProtocol)
+int rlpm_rxgroup_has_listeners(struct rlp_rxgroup_s *rxgroup)
+
+struct rlp_rxgroup_s *rlpm_get_rxgroup(struct rlp_listener_s *listener)
+struct rlpsocket_s *rlpm_get_rlpsock(struct rlp_rxgroup_s *rxgroup)
+*/
+/***********************************************************************************************/
+
 
 #ifdef CONFIG_RLPMEM_STATIC
 
 /***********************************************************************************************/
 /*
-Socket memory as static array
-access using
-rlpInitSockets(), rlpFindSocket(), rlpNewSocket(), rlpFreeSocket()
+socket/group/listener memory as static array
 
-This currently also suffers from the Shlemeil the Painter problem
+This very simplistic (and inefficient for large numbers) implementation
+simply maintains an array of channels which are associated with sockets
+and groups only by their content. There is really no independent struct
+rlp_rxgroup_s - channelGroup is simply the first listener in the array
+with the correct group and socket association
+
+This currently suffers from the Shlemeil the Painter problem
 */
 
+/***********************************************************************************************/
+
 #define MAX_RLP_SOCKETS 50
-#define MAX_RLP_CHANNELS 100
+#define MAX_LISTENERS 100
 #define CHANNELS_PERSOCKET 50
 
-static netSocket_t rlpSockets[MAX_RLP_SOCKETS];
+static struct rlpsocket_s sockets[MAX_RLP_SOCKETS];
 
-void rlpInitChannels(void);
+static struct rlp_listener_s listeners[MAX_LISTENERS];
+
+typedef struct rlp_listener_s struct rlp_rxgroup_s;
+
+void rlpm_listeners_init(void);
 
 /***********************************************************************************************/
-void
-rlpInitSockets(void)
+/*
+  find the socket (if any) with matching port 
+*/
+static inline
+struct rlpsocket_s *
+_find_rlpsock(port_t port)
 {
-	netSocket_t *sockp;
+	struct rlpsocket_s *sockp;
 
-	for (sockp = rlpSockets; sockp < rlpSockets + MAX_RLP_SOCKETS; ++sockp)
-		sockp->localPort = NETI_PORT_NONE;
-	rlpInitChannels();
+	sockp = sockets;
+	while (sockp->localport != port)
+		if (++sockp >= sockets + MAX_RLP_SOCKETS) return NULL;
+	return sockp;
 }
 
 /***********************************************************************************************/
-//find the socket (if any) with matching local port 
-netSocket_t *
-rlpFindNetSock(port_t localPort)
+struct rlpsocket_s *
+rlpm_find_rlpsock(struct netaddr_s *localaddr)
 {
-	netSocket_t *sockp;
-	
-	for (sockp = rlpSockets; sockp < rlpSockets + MAX_RLP_SOCKETS; ++sockp)
-	{
-		if(localPort == sockp->localPort)
-			return sockp;
-	}
-	return NULL;
+	return _find_rlpsock(localaddr->port);
 }
 
 /***********************************************************************************************/
-netSocket_t *
-rlpNewNetSock(void)
+struct rlpsocket_s *
+rlpm_new_rlpsock(void)
 {
-	netSocket_t *sockp;
-	
-	for (sockp = rlpSockets; sockp < rlpSockets + MAX_RLP_SOCKETS; ++sockp)
-	{
-		if (sockp->localPort == NETI_PORT_NONE)
-			return sockp;
-	}
-	return NULL;
+	return _find_rlpsock(NETI_PORT_NONE);
 }
 
 /***********************************************************************************************/
 void 
-rlpFreeNetSock(netSocket_t *sockp)
+rlpm_free_rlpsock(struct rlpsocket_s *sockp)
 {
-	sockp->localPort = NETI_PORT_NONE;
+	sockp->localport = NETI_PORT_NONE;
+}
+
+/***********************************************************************************************/
+void
+rlpm_rlpsocks_init(void)
+{
+	struct rlpsocket_s *sockp;
+
+	for (sockp = sockets; sockp < sockets + MAX_RLP_SOCKETS; ++sockp)
+		sockp->localport = NETI_PORT_NONE;
+	rlpm_listeners_init();
 }
 
 /***********************************************************************************************/
 /*
-
-The socket/group/channel API is designed to allow dynamic allocation of
-channels within groups and/or a linked list or other more sophisticated
-implementation. However, this very simplistic (and inefficient for large
-numbers) implementation simply maintains an array of channels which are
-associated with sockets and groups only by their content. There is really no
-independent rlpChannelGroup_t - channelGroup is simply the first channel in
-the array with the correct group and socket association
-
-API
---
-void rlpInitChannels(void);
-rlpChannelGroup_t *rlpNewChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
-void rlpFreeChannelGroup(netSocket_t *netsock, rlpChannelGroup_t *channelgroup)
-rlpChannelGroup_t *rlpFindChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
-int sockHasGroups(netSocket_t *netsock)
-
-rlpChannel_t *rlpNewChannel(rlpChannelGroup_t *channelgroup)
-void rlpFreeChannel(rlpChannelGroup_t *channelgroup, rlpChannel_t *channel)
-rlpChannel_t *rlpFirstChannel(rlpChannelGroup_t *channelgroup, acnProtocol_t pduProtocol)
-rlpChannel_t *rlpNextChannel(rlpChannelGroup_t *channelgroup, rlpChannel_t *channel, pduProtocol)
-int groupHasChannels(rlpChannelGroup_t *channelgroup)
-
-rlpChannelGroup_t *getChannelgroup(rlpChannel_t *channel)
-netSocket_t *getNetsock(rlpChannelGroup_t *channelgroup)
-
+find a rxgroup associated with this socket which has the correct groupaddr
 */
+struct rlp_rxgroup_s *
+rlpm_find_rxgroup(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr)
+{
+	struct rlp_rxgroup_s *rxgroup;
+	int sockix;
 
-typedef struct {
-	int socketNum;			// negative for no association
-	netAddr_t groupAddr;
-	acnProtocol_t protocol;	// PROTO_NONE if this channel within the group is not used
-	rlpHandler_t *callback;
-	void *ref;
-} rlpChannel_t;
+	sockix = rlpsock - sockets;	// index of our socket
 
-static rlpChannel_t rlpChannels[MAX_RLP_CHANNELS];
+	for (rxgroup = listeners; rxgroup < listeners + MAX_LISTENERS; ++rxgroup)
+	{
+		if (
+			rxgroup->socketNum == sockix
+			&& rxgroup->groupaddr == groupaddr
+			)
+			return rxgroup;	// return first matching listener
+	}
+	return NULL;
+}
 
-typedef rlpChannel_t rlpChannelGroup_t;
+/***********************************************************************************************/
+/*
+Free a listener group
+Only call if group is empty (no listeners exist)
+*/
+void 
+rlpm_free_rxgroup(struct rlpsocket_s *rlpsock, struct rlp_rxgroup_s *rxgroup)
+{
+	rxgroup->socketNum = -1;
+}
+
+/***********************************************************************************************/
+/*
+"Create" a new empty listener group and associate it with a socket and groupaddr
+*/
+struct rlp_rxgroup_s *
+rlpm_new_rxgroup(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr)
+{
+	struct rlp_rxgroup_s *rxgroup;
+
+	for (rxgroup = listeners; rxgroup < listeners + MAX_LISTENERS; ++rxgroup)
+	{
+		if (rxgroup->socketNum < 0)		// negative socket marks unused listener
+		{
+			rxgroup->socketNum = rlpsock - sockets;
+			rxgroup->groupaddr = groupaddr;
+			rxgroup->protocol = PROTO_NONE;
+			return rxgroup;
+		}
+	}
+	return NULL;
+}
+
+/***********************************************************************************************/
+/*
+"Create" a new empty (no associated protocol) listener within a group
+*/
+struct rlp_listener_s *
+rlpm_new_listener(struct rlp_rxgroup_s *rxgroup)
+{
+	int sockix;
+
+	if (rxgroup->protocol == PROTO_NONE) return rxgroup;	// first is unused
+	
+	sockix = rxgroup->socketNum;
+	while (++rxgroup < listeners + MAX_LISTENERS)
+	{
+		if (rxgroup->socketNum < 0)		// negative socket marks unused listener
+		{
+			rxgroup->socketNum = sockix;
+			rxgroup->protocol = PROTO_NONE;
+			return rxgroup;
+		}
+	}
+	return NULL;
+}
+
+/***********************************************************************************************/
+/*
+Free an unused listener
+*/
+void 
+rlpm_free_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener)
+{
+	if (listener == rxgroup) listener->protocol = PROTO_NONE;
+	else listener->socketNum = -1;
+}
+
+/***********************************************************************************************/
+/*
+Find the next listener in a group with a given protocol
+*/
+static
+struct rlp_listener_s *
+__next_listener(struct rlp_rxgroup_s *rxgroup, int socketNum, groupaddr_t groupaddr, protocolID_t pduProtocol)
+{
+	while (++rxgroup < listeners + MAX_LISTENERS)
+	{
+		if (
+			rxgroup->socketNum == socketNum
+			&& rxgroup->groupaddr == groupaddr
+			&& rxgroup->protocol == pduProtocol
+			)
+			return rxgroup;
+	}
+	return NULL;
+}
+
+/***********************************************************************************************/
+/*
+Find the next listener in a group with a given protocol
+*/
+struct rlp_listener_s *
+rlp_next_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol)
+{
+	return __next_listener(rxgroup, rxgroup->socketNum, rxgroup->groupaddr, pduProtocol);
+}
+
+/***********************************************************************************************/
+/*
+Find the first listener in a group with a given protocol
+*/
+struct rlp_listener_s *
+rlpm_first_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol)
+{
+	if (rxgroup->protocol == pduProtocol) return rxgroup;
+	return __next_listener(rxgroup, rxgroup->socketNum, rxgroup->groupaddr, pduProtocol);
+}
 
 /***********************************************************************************************/
 /*
 Initialize channels and groups
 */
 void 
-rlpInitChannels(void)
+rlpm_listeners_init(void)
 {
-	rlpChannel_t *channel;
+	struct rlp_listener_s *listener;
 
-	for (channel = rlpChannels; channel < rlpChannels + MAX_RLP_CHANNELS; ++channel) channel->socketNum = -1;
+	for (listener = listeners; listener < listeners + MAX_LISTENERS; ++listener) listener->socketNum = -1;
 }
-
-/***********************************************************************************************/
-/*
-"Create" a new empty channel group and associate it with a socket and groupAddr
-*/
-rlpChannelGroup_t *
-rlpNewChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
-{
-	rlpChannelGroup_t *channelgroup;
-
-	for (channelgroup = rlpChannels; channelgroup < rlpChannels + MAX_RLP_CHANNELS; ++channelgroup)
-	{
-		if (channelgroup->socketNum < 0)		// negative socket marks unused channel
-		{
-			channelgroup->socketNum = netsock - rlpSockets;
-			channelgroup->groupAddr = groupAddr;
-			channelgroup->protocol = PROTO_NONE;
-			return channelgroup;
-		}
-	}
-	return NULL;
-}
-
-/***********************************************************************************************/
-/*
-Free a channel group
-Only call if group is empty (no channels exist)
-*/
-void 
-rlpFreeChannelGroup(netSocket_t *netsock, rlpChannelGroup_t *channelgroup)
-{
-	channelgroup->socketNum = -1;
-}
-
-/***********************************************************************************************/
-/*
-find a channelgroup associated with this socket which has the correct groupAddr
-*/
-rlpChannelGroup_t *
-rlpFindChannelGroup(netSocket_t *netsock, netAddr_t groupAddr)
-{
-	rlpChannelGroup_t *channelgroup;
-	int sockx;
-
-	sockx = netsock - rlpSockets;	// index of our socket
-	for (channelgroup = rlpChannels; channelgroup < rlpChannels + MAX_RLP_CHANNELS; ++channelgroup)
-	{
-		if (
-			channelgroup->socketNum == sockx
-			&& channelgroup->groupAddr == groupAddr
-			)
-			return channelgroup;	// return first matching channel
-	}
-	return NULL;
-}
-
-/***********************************************************************************************/
-/*
-"Create" a new empty (no associated protocol) channel within a group
-*/
-rlpChannel_t *
-rlpNewChannel(rlpChannelGroup_t *channelgroup)
-{
-	rlpChannel_t *channel;
-
-	if (channelgroup->protocol == PROTO_NONE) return channelgroup;	// first is unused
-	
-	for (channel = channelgroup; channel < rlpChannels + MAX_RLP_CHANNELS; ++channel)
-	{
-		if (channel->socketNum < 0)		// negative socket marks unused channel
-		{
-			channel->socketNum = channelgroup->socketNum;
-			channel->groupAddr = channelgroup->groupAddr;
-			channel->protocol = PROTO_NONE;
-			return channel;
-		}
-	}
-	return NULL;
-}
-
-/***********************************************************************************************/
-/*
-Free an unused channel
-*/
-void 
-rlpFreeChannel(rlpChannelGroup_t *channelgroup, rlpChannel_t *channel)
-{
-	if (channel == channelgroup) channel->protocol = PROTO_NONE;
-	else channel->socketNum = -1;
-}
-
-/***********************************************************************************************/
-/*
-Find the first channel in a group with a given protocol
-*/
-rlpChannel_t *
-rlpFirstChannel(rlpChannelGroup_t *channelgroup, acnProtocol_t pduProtocol)
-{
-	rlpChannel_t *channel;
-	int sockx = channelgroup->socketNum;
-	netAddr_t groupAddr = channelgroup->groupAddr;
-	
-	for (channel = channelgroup; channel < rlpChannels + MAX_RLP_CHANNELS; ++channel)
-	{
-		if (
-			channel->socketNum == sockx
-			&& channel->groupAddr == groupAddr
-			&& channel->protocol == pduProtocol
-			)
-			return channel;
-	}
-	return NULL;
-}
-
-/***********************************************************************************************/
-/*
-Find the next channel in a group with a given protocol
-*/
-#define rlpNextChannel(channelgroup, channel, pduProtocol) rlpFirstChannel((channel) + 1, (pduProtocol))
 
 /***********************************************************************************************/
 /*
 true if a socket has channelgroups
 */
 int 
-sockHasGroups(netSocket_t *netsock)
+rlpm_rlpsock_has_rxgroups(struct rlpsocket_s *rlpsock)
 {
-	rlpChannel_t *channel;
-	int sockx;
+	struct rlp_listener_s *listener;
+	int sockix;
 
-	sockx = netsock - rlpSockets;	// index of our socket
-	for (channel = rlpChannels; channel < rlpChannels + MAX_RLP_CHANNELS; ++channel)
-		if (channel->socketNum == sockx) return 1;
+	sockix = rlpsock - sockets;	// index of our socket
+	for (listener = listeners; listener < listeners + MAX_LISTENERS; ++listener)
+		if (listener->socketNum == sockix) return 1;
 	return 0;
 }
 
 /***********************************************************************************************/
 /*
-true if a channelgroup is not empty
+true if a rxgroup is not empty
 */
 int 
-groupHasChannels(rlpChannelGroup_t *channelgroup)
+rlpm_rxgroup_has_listeners(struct rlp_rxgroup_s *rxgroup)
 {
-	rlpChannel_t *channel;
-	int sockx = channelgroup->socketNum;
-	netAddr_t groupAddr = channelgroup->groupAddr;
+	int sockix;
+	groupaddr_t groupaddr;
 
-	for (channel = channelgroup; channel < rlpChannels + MAX_RLP_CHANNELS; ++channel)
+	if (rxgroup->protocol != PROTO_NONE) return 1;
+
+	sockix = rxgroup->socketNum;
+	groupaddr = rxgroup->groupaddr;
+	
+	while (++rxgroup < listeners + MAX_LISTENERS)
 		if (
-			channel->socketNum == sockx
-			&& channel->groupAddr == groupAddr
-			&& channel->protocol != PROTO_NONE
+			rxgroup->socketNum == sockix
+			&& rxgroup->groupaddr == groupaddr
+			&& rxgroup->protocol != PROTO_NONE
 			)
 			return 1;
 	return 0;
@@ -330,15 +344,15 @@ groupHasChannels(rlpChannelGroup_t *channelgroup)
 
 /***********************************************************************************************/
 /*
-Get the group containing a given channel
+Get the group containing a given listener
 */
-#define getChannelgroup(channel) rlpFindChannelGroup(rlpSockets + (channel)->socketNum, (channel)->groupAddr)
+#define rlpm_get_rxgroup(listener) rlpm_find_rxgroup(sockets + (listener)->socketNum, (listener)->groupaddr)
 
 /***********************************************************************************************/
 /*
 Get the netSocket containing a given group
 */
-#define getNetsock(channelgroup) (rlpSockets + (channelgroup)->socketNum)
+#define rlpm_get_rlpsock(rxgroup) (sockets + (rxgroup)->socketNum)
 
 #endif
 
@@ -384,24 +398,28 @@ rlpFreeTxBuf will only actually free the buffer if usage is zero.
 */
 
 /***********************************************************************************************/
-struct rlpTxBuf *rlpNewTxBuf(int size)
+struct rlpTxBuf *rlpNewTxBuf(int size, cid_t owner)
 {
 	uint8_t *buf;
 	
 	buf = malloc(
 			sizeof(struct rlpTxbufhdr_s)
 			+ RLP_PREAMBLE_LENGTH
-			+ sizeof(acnProtocol_t)
+			+ sizeof(protocolID_t)
 			+ sizeof(cid_t)
 			+ size
 			+ RLP_POSTAMBLE_LENGTH
 		);
-	rlpGetUsage(buf) = 0;
-	((struct rlpTxbufhdr_s *)buf)->datasize = RLP_PREAMBLE_LENGTH
-			+ sizeof(acnProtocol_t)
-			+ sizeof(cid_t)
-			+ size
-			+ RLP_POSTAMBLE_LENGTH;
+	if (buf != NULL)
+	{
+		rlpGetUsage(buf) = 0;
+		((struct rlpTxbufhdr_s *)buf)->datasize = RLP_PREAMBLE_LENGTH
+				+ sizeof(protocolID_t)
+				+ sizeof(cid_t)
+				+ size
+				+ RLP_POSTAMBLE_LENGTH;
+		((struct rlpTxbufhdr_s *)buf)->ownerCID = owner;
+	}
 
 	return buf;
 }
@@ -415,7 +433,7 @@ void rlpFreeTxBuf(struct rlpTxBuf *buf)
 #define rlpItsData(buf) ((uint8_t *)(buf) \
 			+ sizeof(struct rlpTxbufhdr_s) \
 			+ RLP_PREAMBLE_LENGTH \
-			+ sizeof(acnProtocol_t) \
+			+ sizeof(protocolID_t) \
 			+ sizeof(cid_t))
 
 #define rlpGetUsage(buf) (((struct rlpTxbufhdr_s *)(buf))->usage)

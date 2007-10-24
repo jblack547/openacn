@@ -46,13 +46,13 @@ netSocket_t *rlpNewNetSock(void);
 void rlpFreeNetSock(netSocket_t *sockp);
 
 void rlpInitChannels(void);
-struct rlpChannelGroup_s *rlpNewChannelGroup(netSocket_t *netsock, netAddr_t groupAddr);
+struct rlpChannelGroup_s *rlpNewChannelGroup(netSocket_t *netsock, ip4addr_t groupAddr);
 void rlpFreeChannelGroup(netSocket_t *netsock, struct rlpChannelGroup_s *channelgroup);
-struct rlpChannelGroup_s *rlpFindChannelGroup(netSocket_t *netsock, netAddr_t groupAddr);
+struct rlpChannelGroup_s *rlpFindChannelGroup(netSocket_t *netsock, ip4addr_t groupAddr);
 struct rlpChannel_s *rlpNewChannel(struct rlpChannelGroup_s *channelgroup);
 void rlpFreeChannel(struct rlpChannelGroup_s *channelgroup, struct rlpChannel_s *channel);
-struct rlpChannel_s *rlpFirstChannel(struct rlpChannelGroup_s *channelgroup, acnProtocol_t pduProtocol);
-struct rlpChannel_s *rlpNextChannel(struct rlpChannelGroup_s *channelgroup, struct rlpChannel_s *channel, acnProtocol_t pduProtocol);
+struct rlpChannel_s *rlpFirstChannel(struct rlpChannelGroup_s *channelgroup, protocolID_t pduProtocol);
+struct rlpChannel_s *rlpNextChannel(struct rlpChannelGroup_s *channelgroup, struct rlpChannel_s *channel, protocolID_t pduProtocol);
 int sockHasGroups(netSocket_t *netsock);
 int groupHasChannels(struct rlpChannelGroup_s *channelgroup);
 struct rlpChannel_s *getChannelgroup(struct rlpChannel_s *channel);
@@ -61,20 +61,30 @@ void rlpInitBuffers(void);
 
 typedef uint16_t usage_t;
 
+#ifdef CONFIG_RLPMEM_STATIC
+
+typedef struct {
+	int socketNum;			// negative for no association
+	ip4addr_t groupAddr;
+	protocolID_t protocol;	// PROTO_NONE if this listener within the group is not used
+	rlpHandler_t *callback;
+	void *ref;
+} struct rlp_listener_s;
+#endif
+
+
 #if defined(CONFIG_RLPMEM_DYNAMICBUF)
 struct rlpTxbufhdr_s {
 	struct rlpTxbuf_s *next;
 	usage_t usage;
-	uint16_t datasize;
+	unsigned int datasize;
 	uint8_t *blockstart;
 	uint8_t *blockend;
-	acnProtocol_t protocol;
-	uint8_t *vector;
-	uint8_t *header;
-	uint8_t *data;
-	int	datasize;
+	protocolID_t protocol;
 };
 #endif
+
 #define bufhdrp(buf) ((struct rlpTxbufhdr_s *)(buf))
+#define bufdatap(buf) ((uint8_t *)(buf) + sizeof(struct rlpTxbufhdr_s))
 
 #endif
