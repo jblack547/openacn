@@ -22,7 +22,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
 IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
 TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
-OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INUUIDENTAL, SPECIAL,
 EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
 PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
 PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
@@ -81,18 +81,18 @@ inline uint32_t unmarshalU32(const uint8_t *data)
 		);
 }
 
-#if !defined(marshalCID)
-inline size_t marshalCID(uint8_t *data, const uint8_t *cid)
+#if !defined(marshalUUID)
+inline size_t marshalUUID(uint8_t *data, const uint8_t *uuid)
 {
-	memcpy(data, cid, sizeof(uuid_t));
+	memcpy(data, uuid, sizeof(uuid_t));
 	return sizeof(uuid_t);
 }
 #endif
 
-#if !defined(unmarshalCID)
-inline size_t unmarshalCID(const uint8_t *data, uint8_t *cid)
+#if !defined(unmarshalUUID)
+inline size_t unmarshalUUID(const uint8_t *data, uint8_t *uuid)
 {
-	memcpy(cid, data, sizeof(uuid_t));
+	memcpy(uuid, data, sizeof(uuid_t));
 	return sizeof(uuid_t);
 }
 #endif

@@ -22,7 +22,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
 IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
 TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
-OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INUUIDENTAL, SPECIAL,
 EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
 PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
 PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
@@ -49,14 +49,14 @@ inline uint16_t unmarshalU16(const uint8_t *data);
 inline size_t marshalU32(uint8_t *data, uint32_t u32);
 inline uint32_t unmarshalU32(const uint8_t *data);
 
-#define marshalCID(data, cid) (memcpy((uint8_t *)(data), (uint8_t *)(cid), sizeof(uuid_t)), sizeof(uuid_t))
-#define unmarshalCID(data, cid) marshalCID(cid, data)
+#define marshalUUID(data, uuid) (memcpy((uint8_t *)(data), (uint8_t *)(uuid), sizeof(uuid_t)), sizeof(uuid_t))
+#define unmarshalUUID(data, uuid) marshalUUID(uuid, data)
 
-#if !defined(marshalCID)
-inline size_t marshalCID(uint8_t *data, const uint8_t *cid);
+#if !defined(marshalUUID)
+inline size_t marshalUUID(uint8_t *data, const uint8_t *uuid);
 #endif
-#if !defined(unmarshalCID)
-inline size_t unmarshalCID(const uint8_t *data, uint8_t *cid);
+#if !defined(unmarshalUUID)
+inline size_t unmarshalUUID(const uint8_t *data, uint8_t *uuid);
 #endif
 
 inline size_t marshal_p_string(uint8_t *data, const p_string_t *str);
