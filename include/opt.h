@@ -202,11 +202,18 @@ Protocols to build
   However, efficiency gains can be made if RLP is built for only one,
   in this case set CONFIG_RLP_SINGLE_CLIENT to the protocol ID
   of that client (in user_opt.h) e.g.
-
   #define CONFIG_RLP_SINGLE_CLIENT PROTO_SDT
 */
 #ifndef CONFIG_RLP_SINGLE_CLIENT
 #define CONFIG_RLP_SINGLE_CLIENT 0
+#endif
+
+/*
+  If we want RLP to optimize packing for size (instead of handling speed)
+  define this true
+*/
+#ifndef CONFIG_RLP_OPTIMIZE_PACK
+#define CONFIG_RLP_OPTIMIZE_PACK 0
 #endif
 
 /*
