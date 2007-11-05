@@ -69,8 +69,6 @@ struct netaddr_s {
 #include <stdio.h>
 
 typedef int neti_nativeSocket_t;
-/* a netaddr_s is simply a ip4addr_t */
-#define netaddr_s sockaddr_in
 
 typedef struct sockaddr_in netiHost_t;
 
