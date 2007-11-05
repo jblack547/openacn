@@ -107,6 +107,22 @@ int neti_change_group(netSocket_t *rlpsock, ip4addr_t localGroup, bool add)
 	return rslt;
 }
 
+int
+neti_send_to(
+	struct rlpsocket_s *rlpsock,
+	struct netaddr_s *destaddr,
+	uint8_t *data,
+	size_t datalen
+)
+{
+	struct sockaddr_in dadr;
+
+	dadr->sin_family = AF_INET;
+	dadr->sin_port = destaddr->port;
+	dadr->sin_addr = destaddr->addr;
+	return sendto(rlpsock->nativesock, data, datalen, 0, &dadr, sizeof(dadr));
+}
+
 static int
 netiGetPkt(void)
 {
@@ -195,6 +211,17 @@ neti_leaveGroup(netSocket_t *rlpsock, ip4addr_t localGroup)
 	if (!isMulticast(localGroup)) return 0;
 	rslt = mcast_leave(localGroup);
 	return -rslt;
+}
+
+int
+neti_send_to(
+	struct rlpsocket_s *rlpsock,
+	struct netaddr_s *destaddr,
+	uint8_t *data,
+	size_t datalen
+)
+{
+	sock_sendto((void*)&(sock->nativesock), data, datalen, destaddr->addr, destaddr->port);
 }
 
 static int
