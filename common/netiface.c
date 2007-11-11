@@ -34,26 +34,30 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 /*--------------------------------------------------------------------*/
-#include "configure.h"
+#include "opt.h"
+#include "types.h"
+#include "acn_arch.h"
 #include "netiface.h"
-#if defined(CONFIG_EPI20)
-#include "epi20.h"
-#endif
 #include "rlp.h"
 
 #define INPACKETSIZE DEFAULT_MTU
 
 extern uint8_t *neti_newPacket(int size);
 
-#if defined(CONFIG_NET_IPV4)
+#if CONFIG_NET_IPV4
 
 const int optionOn = 1;
 const int optionOff = 0;
 
-#if defined(CONFIG_STACK_BSD)
+#if CONFIG_STACK_BSD
+
+void neti_init(void)
+{
+	return;
+}
 
 int
-neti_udp_open(netSocket_t *rlpsock, port_t localPort)
+neti_udp_open(struct netsocket_s *rlpsock, port_t localport)
 {
 	int bsdsock;
 	int rslt;
@@ -68,12 +72,13 @@ neti_udp_open(netSocket_t *rlpsock, port_t localPort)
 	if (rslt < 0) goto fail;
 
 	localaddr.gen.sa_family = AF_INET;
-	localaddr.ip4.sin_port = localPort;
+	localaddr.ip4.sin_port = localport;
 	localaddr.ip4.sin_addr.s_addr = INADDR_ANY;
 	rslt = bind(bsdsock, &localaddr.gen, sizeof(struct sockaddr_in));
 	if (rslt < 0) goto fail;
 
 	rlpsock->nativesock = bsdsock;
+	rlpsock->localport = localport;
 
 	/* we need information on destination address used */
     rslt = setsockopt (bsdsock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
@@ -87,17 +92,17 @@ fail:
 }
 
 void
-neti_udp_close(netSocket_t *rlpsock)
+neti_udp_close(struct netsocket_s *rlpsock)
 {
 	close(rlpsock->nativesock);
 }
 
-int neti_change_group(netSocket_t *rlpsock, ip4addr_t localGroup, bool add)
+int neti_change_group(struct netsocket_s *rlpsock, ip4addr_t localGroup, bool add)
 {
 	struct ip_mreqn multireq;
 	int rslt;
 
-	if (!isMulticast(localGroup)) return 0;
+	if (!is_multicast(localGroup)) return 0;
 
 	multireq.imr_address.s_addr = INADDR_ANY;
 	multireq.imr_ifindex = 0;
@@ -109,7 +114,7 @@ int neti_change_group(netSocket_t *rlpsock, ip4addr_t localGroup, bool add)
 
 int
 neti_send_to(
-	struct rlpsocket_s *rlpsock,
+	struct netsocket_s *netsock,
 	struct netaddr_s *destaddr,
 	uint8_t *data,
 	size_t datalen
@@ -117,17 +122,18 @@ neti_send_to(
 {
 	struct sockaddr_in dadr;
 
-	dadr->sin_family = AF_INET;
-	dadr->sin_port = destaddr->port;
-	dadr->sin_addr = destaddr->addr;
-	return sendto(rlpsock->nativesock, data, datalen, 0, &dadr, sizeof(dadr));
+	dadr.sin_family = AF_INET;
+	dadr.sin_port = destaddr->port;
+	dadr.sin_addr.s_addr = destaddr->addr;
+	return sendto(netsock->nativesock, data, datalen, 0, (const struct sockaddr *)&dadr, sizeof(dadr));
 }
 
-static int
+//static
+int
 netiGetPkt(void)
 {
 	int rslt;
-	netSocket_t *rlpsock;
+	struct netsocket_s *rlpsock;
 	uint8_t *buf;
 //	struct pktAddr_s
 	netiHost_t remhost;
@@ -144,7 +150,7 @@ netiGetPkt(void)
 	/* need to do select on sockets here */
 	/* and work out which socket has data */
 	/* arrive with rlpsock pointing to the socket */
-
+	rlpsock = NULL;
 
 	hdr.msg_name = &remhost;
 	hdr.msg_namelen = sizeof(struct sockaddr_in);
@@ -169,18 +175,23 @@ netiGetPkt(void)
 		{
 			ip4addr_t pktaddr;
 
-			if ( isMulticast( pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr))
+			if ( is_multicast( pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr))
 				destaddr = pktaddr;
 		}
 	}
 	rlpProcessPacket(rlpsock, buf, rslt, destaddr, &remhost);
+	return 0;
 }
 
-#elif defined(CONFIG_STACK_WATERLOO)	/* #if defined(CONFIG_STACK_BSD) */
+#elif CONFIG_STACK_WATERLOO	/* #if CONFIG_STACK_BSD */
 
-int neti_udp_open(struct rlpsocket_s *rlpsock, port_t localPort)
+void neti_init(void)
 {
-	if (udp_open(&rlpsock->nativesock, localPort, -1, 0, &netihandler) == 0)
+}
+
+int neti_udp_open(struct rlpsocket_s *rlpsock, port_t localport)
+{
+	if (udp_open(&rlpsock->nativesock, localport, -1, 0, &netihandler) == 0)
 		return -1;
 	rlpsock->nativesock.usr_name = char *rlpsock;	/* use usr_name field to store reference pointer **EXPERIMENTAL** */
 	return 0;
@@ -188,13 +199,13 @@ int neti_udp_open(struct rlpsocket_s *rlpsock, port_t localPort)
 }
 
 void
-neti_udp_close(netSocket_t *rlpsock)
+neti_udp_close(struct netsocket_s *rlpsock)
 {
 	udp_close(&rlpsock->nativesock);
 }
 
 int
-neti_joinGroup(netSocket_t *rlpsock, ip4addr_t localGroup)
+neti_joinGroup(struct netsocket_s *rlpsock, ip4addr_t localGroup)
 {
 	int rslt;
 
@@ -204,7 +215,7 @@ neti_joinGroup(netSocket_t *rlpsock, ip4addr_t localGroup)
 }
 
 int
-neti_leaveGroup(netSocket_t *rlpsock, ip4addr_t localGroup)
+neti_leaveGroup(struct netsocket_s *rlpsock, ip4addr_t localGroup)
 {
 	int rslt;
 
@@ -215,19 +226,19 @@ neti_leaveGroup(netSocket_t *rlpsock, ip4addr_t localGroup)
 
 int
 neti_send_to(
-	struct rlpsocket_s *rlpsock,
+	struct netsocket_s *netsock,
 	struct netaddr_s *destaddr,
 	uint8_t *data,
 	size_t datalen
 )
 {
-	sock_sendto((void*)&(sock->nativesock), data, datalen, destaddr->addr, destaddr->port);
+	sock_sendto((void*)&(netsock->nativesock), data, datalen, destaddr->addr, destaddr->port);
 }
 
 static int
 netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *hdr)
 {
-	netSocket_t *rlpsock;
+	struct netsocket_s *rlpsock;
 	port_t srcPort;
 	netiHost_t remhost;
 	ip4addr_t destaddr;
@@ -244,6 +255,6 @@ netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *h
 	return dataLen;
 }
 
-#endif	/* #elif defined(CONFIG_STACK_BSD) */
+#endif	/* #elif CONFIG_STACK_BSD */
 
-#endif	/* #if defined(CONFIG_NET_IPV4) */
+#endif	/* #if CONFIG_NET_IPV4 */

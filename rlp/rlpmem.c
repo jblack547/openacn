@@ -43,8 +43,8 @@ static const char *rcsid __attribute__ ((unused)) =
    "$Id: rlp.c 8 2007-10-08 16:32:56Z philipnye $";
 
 #include <string.h>
-#include "configure.h"
-#include "arch/types.h"
+#include "opt.h"
+#include "types.h"
 #include "acn_arch.h"
 #include "acn_rlp.h"
 #include "netiface.h"
@@ -80,7 +80,7 @@ struct rlpsocket_s *rlpm_get_rlpsock(struct rlp_rxgroup_s *rxgroup)
 /***********************************************************************************************/
 
 
-#ifdef CONFIG_RLPMEM_STATIC
+#if CONFIG_RLPMEM_STATIC
 
 /***********************************************************************************************/
 /*
@@ -99,13 +99,11 @@ This currently suffers from the Shlemeil the Painter problem
 
 #define MAX_RLP_SOCKETS 50
 #define MAX_LISTENERS 100
-#define CHANNELS_PERSOCKET 50
+#define MAX_TXBUFS 10
 
 static struct rlpsocket_s sockets[MAX_RLP_SOCKETS];
-
 static struct rlp_listener_s listeners[MAX_LISTENERS];
-
-typedef struct rlp_listener_s struct rlp_rxgroup_s;
+static struct rlp_txbuf_s txbufs[MAX_TXBUFS];
 
 void rlpm_listeners_init(void);
 
@@ -120,7 +118,7 @@ _find_rlpsock(port_t port)
 	struct rlpsocket_s *sockp;
 
 	sockp = sockets;
-	while (sockp->localport != port)
+	while (sockp->nsock.localport != port)
 		if (++sockp >= sockets + MAX_RLP_SOCKETS) return NULL;
 	return sockp;
 }
@@ -143,7 +141,7 @@ rlpm_new_rlpsock(void)
 void 
 rlpm_free_rlpsock(struct rlpsocket_s *sockp)
 {
-	sockp->localport = NETI_PORT_NONE;
+	sockp->nsock.localport = NETI_PORT_NONE;
 }
 
 /***********************************************************************************************/
@@ -153,8 +151,7 @@ rlpm_rlpsocks_init(void)
 	struct rlpsocket_s *sockp;
 
 	for (sockp = sockets; sockp < sockets + MAX_RLP_SOCKETS; ++sockp)
-		sockp->localport = NETI_PORT_NONE;
-	rlpm_listeners_init();
+		sockp->nsock.localport = NETI_PORT_NONE;
 }
 
 /***********************************************************************************************/
@@ -354,33 +351,21 @@ Get the netSocket containing a given group
 */
 #define rlpm_get_rlpsock(rxgroup) (sockets + (rxgroup)->socketNum)
 
-#endif
 
 /***********************************************************************************************/
 void 
-rlpInitBuffers(void)
+rlpmem_init(void)
 {
-	int i;
-	for (i = 0; i < NUM_PACKET_BUFFERS; i++)
-	{
-		memcpy(buffers[i], rlpPreamble, PREAMBLE_LENGTH);
-		bufferLengths[i] = PREAMBLE_LENGTH;
-	}
-	currentBufNum = 0;
-}
-
-uint8_t *
-rlpNewPacketBuffer(void)
-{
-	return buffers[currentBufNum];
+	rlpm_rlpsocks_init();
+	rlpm_listeners_init();
 }
 
 /***********************************************************************************************/
 /*
 Transmit network buffer API
 (note receive buffers may be the same thing internally but are not externally treated the same)
-Network buffers are struct rlpTxBuf {...};
-Client protocols obtain network buffers using rlpNewTxBuf() and rlpFreeTxBuf()
+Network buffers are struct rlp_txbuf_s {...};
+Client protocols obtain network buffers using rlpm_newtxbuf() and rlp_freetxbuf()
 The can obtain a pointer to the data area of the buffer using a macro:
 
   rlpItsData(buf)
@@ -390,15 +375,55 @@ data to send which need not start at the beginning of the buffers data area.
 This allows for example, a higher protocol to re-transmit only a part of a former packet.
 However, in this case, the content of the data area before that passed may be overwritten by rlp.
 
-To track usage the protocol can use rlpIncUsage(buf) and rlpDecUsage(buf). Also rlpGetUsage(buf)
+To track usage the protocol can use rlp_incuse(buf) and rlp_decuse(buf). Also rlp_getuse(buf)
 which will be non zero if the buffer is used. These can generally be implemented as macros.
 
-rlpFreeTxBuf will only actually free the buffer if usage is zero.
+rlp_freetxbuf will only actually free the buffer if usage is zero.
 
 */
+/***********************************************************************************************/
+static int bufnum = 0;
+
+struct rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
+{
+	int i;
+	
+	i = bufnum;
+	while (txbufs[i].usage != 0)
+	{
+		++i;
+		if (i >= MAX_TXBUFS) i = 0;
+		if (i == bufnum) return NULL;
+	}
+
+	txbufs[i].usage = 1;
+	txbufs[i].ownerCID = *owner;
+	bufnum = i;
+	return txbufs + i;
+}
 
 /***********************************************************************************************/
-struct rlpTxBuf *rlpNewTxBuf(int size, cid_t owner)
+void rlp_freetxbuf(struct rlp_txbuf_s *buf)
+{
+	--(buf->usage);
+}
+
+#define rlpItsData(buf) ((uint8_t *)(buf) \
+			+ sizeof(struct rlpTxbufhdr_s) \
+			+ RLP_PREAMBLE_LENGTH \
+			+ sizeof(protocolID_t) \
+			+ sizeof(cid_t))
+
+#define rlp_getuse(buf) (((struct rlpTxbufhdr_s *)(buf))->usage)
+#define rlp_incuse(buf) (++rlp_getuse(buf))
+#define rlp_decuse(buf) (--rlp_getuse(buf))
+
+/***********************************************************************************************/
+
+#elif CONFIG_RLPMEM_MALLOC
+
+/***********************************************************************************************/
+struct rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
 {
 	uint8_t *buf;
 	
@@ -412,7 +437,7 @@ struct rlpTxBuf *rlpNewTxBuf(int size, cid_t owner)
 		);
 	if (buf != NULL)
 	{
-		rlpGetUsage(buf) = 0;
+		rlp_getuse(buf) = 0;
 		((struct rlpTxbufhdr_s *)buf)->datasize = RLP_PREAMBLE_LENGTH
 				+ sizeof(protocolID_t)
 				+ sizeof(cid_t)
@@ -425,9 +450,9 @@ struct rlpTxBuf *rlpNewTxBuf(int size, cid_t owner)
 }
 
 /***********************************************************************************************/
-void rlpFreeTxBuf(struct rlpTxBuf *buf)
+void rlp_freetxbuf(struct rlp_txbuf_s *buf)
 {
-	if (!rlpGetUsage(buf)) free(buf);
+	if (!rlp_getuse(buf)) free(buf);
 }
 
 #define rlpItsData(buf) ((uint8_t *)(buf) \
@@ -436,9 +461,9 @@ void rlpFreeTxBuf(struct rlpTxBuf *buf)
 			+ sizeof(protocolID_t) \
 			+ sizeof(cid_t))
 
-#define rlpGetUsage(buf) (((struct rlpTxbufhdr_s *)(buf))->usage)
-#define rlpIncUsage(buf) (++rlpGetUsage(buf))
-#define rlpDecUsage(buf) (--rlpGetUsage(buf))
+#define rlp_getuse(buf) (((struct rlpTxbufhdr_s *)(buf))->usage)
+#define rlp_incuse(buf) (++rlp_getuse(buf))
+#define rlp_decuse(buf) (--rlp_getuse(buf))
 
 /***********************************************************************************************/
 /*
@@ -448,8 +473,6 @@ void rlpFreeTxBuf(struct rlpTxBuf *buf)
 
 
 
-
-#elif defined(CONFIG_RLPMEM_DYNAMIC)
 
 #endif	/* #elif defined(CONFIG_RLPMEM_DYNAMIC) */
 

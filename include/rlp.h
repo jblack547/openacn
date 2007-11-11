@@ -38,7 +38,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __rlp_h__
 
 #include "types.h"
-#include "acn_arch.h"
 
 typedef void rlpHandler_t(
 	const uint8_t *data,
@@ -48,17 +47,22 @@ typedef void rlpHandler_t(
 	const cid_t *remcid
 	);
 
-int rlpSendTo(void *sock, uint32 dstIP, uint16 dstPort, int keep);
-void *rlpOpenSocket(uint16 localPort);
+int rlpSendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int keep);
+void *rlpOpenSocket(uint16_t localPort);
 void rlpCloseSocket(void *s);
-void *rlpFindSocket(uint16 localPort);
+void *rlpFindSocket(uint16_t localPort);
 int initRlp(void);
-uint8 *rlpFormatPacket(const uint8 *srcCid, int vector);
+uint8_t *rlpFormatPacket(const uint8_t *srcCid, int vector);
 void rlpProcessPacket(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netiHost_t *remhost);
 
 int rlpEnqueue(int length);
-void rlpResendTo(void *sock, uint32 dstIP, uint16 dstPort, int numBack);
+void rlpResendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int numBack);
 
+struct rlpsocket_s {
+	struct netsocket_s nsock;
+};
+
+/*
 struct rlp_txbuf_hdr {
 	usage_t usage;
 	unsigned int datasize;
@@ -72,7 +76,6 @@ struct rlp_txbuf_hdr {
 	unsigned int curdatalen;
 #endif
 };
-
-
+*/
 
 #endif

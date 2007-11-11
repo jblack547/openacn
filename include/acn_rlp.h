@@ -35,15 +35,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 /*
-This header contains declarations for the values defined in the SDT standard
+This header contains declarations for the values defined in the RLP standard
 
-Code which sits on top of SDT should not really have to use this header
+Code which sits on top of RLP should not really have to use this header
 */
 
 #ifndef __acn_rlp_h__
 #define __acn_rlp_h__
-
-#include <arch/types.h>
 
 #if defined(CONFIG_EPI17)
 

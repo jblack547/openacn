@@ -43,8 +43,8 @@ static const char *rcsid __attribute__ ((unused)) =
 #define PREAMBLE_LENGTH 16
 
 #include <string.h>
-#include "configure.h"
-#include "arch/types.h"
+#include "opt.h"
+#include "types.h"
 #include "acn_arch.h"
 #include "acn_rlp.h"
 #include "netiface.h"
@@ -184,16 +184,15 @@ static and dynamic implementations are provided.
 Initialize RLP (if not already done)
 */
 int
-initRlp(void)
+rlp_init(void)
 {	
 	static bool initialized = 0;
 
 	if (!initialized)
 	{
-		rlpInitSockets();
-		rlpInitBuffers();
+		rlpmem_init();
+		neti_init();
 
-		//packetBuffer = rlpNewPacketBuffer();
 		initialized = 1;
 	}
 	return 0;
@@ -217,7 +216,7 @@ initRlp(void)
 
 for example.
 
-	mybuf = rlpNewTxBuf(200);
+	mybuf = rlpm_newtxbuf(200);
 	pduptr = rlp_init_block(mybuf, NULL);
 	... assemble first PDU data to pduptr ...
 	pduptr = rlp_add_pdu(mybuf, pduptr, PDU1size, PROTO_XYZ, NULL);
@@ -244,7 +243,7 @@ Start an RLP PDU block
 
 */
 uint8_t *
-rlp_init_block(struct rlpTxbuf *buf, uint8_t *datap)
+rlp_init_block(struct rlp_txbuf_s *buf, uint8_t *datap)
 {
 	uint8_t *blockstart;
 	
@@ -306,7 +305,7 @@ rlp_init_block(struct rlpTxbuf *buf, uint8_t *datap)
 
 uint8_t *
 rlp_add_pdu(
-	struct rlpTxbuf *buf,
+	struct rlp_txbuf_s *buf,
 	uint8_t *pdudata,
 	int size,
 #if !CONFIG_RLP_SINGLE_CLIENT
@@ -378,7 +377,7 @@ rlp_add_pdu(
 	if (pdudata != pdup)
 	{
 		/* move data into position */
-		memmove(pdup, pdudata, size)
+		memmove(pdup, pdudata, size);
 	}
 	if (packetdatap) *packetdatap = pdup;
 	pduend = pdup + size;
@@ -403,7 +402,7 @@ rlp_add_pdu(
 #if CONFIG_RLP_SINGLE_CLIENT
 		marshallU32(pdup, CONFIG_RLP_SINGLE_CLIENT);
 #else
-		marshallU32(pdup, protocol);
+		marshalU32(pdup, protocol);
 		bufhdrp(buf)->protocol = protocol;
 #endif
 	}
@@ -423,12 +422,12 @@ rlp_add_pdu(
 
 int
 rlp_send_block(
-	struct rlpTxbuf *buf, 
+	struct rlp_txbuf_s *buf, 
 	struct rlpsocket_s *rlpsock,
 	struct netaddr_s *destaddr
 )
 {
-	neti_send_to(rlpsock, destaddr, bufhdrp(buf)->blockstart, bufhdrp(buf)->blockend - bufhdrp(buf)->blockstart);
+	neti_send_to(&rlpsock->nsock, destaddr, bufhdrp(buf)->blockstart, bufhdrp(buf)->blockend - bufhdrp(buf)->blockstart);
 }
 
 /***********************************************************************************************/
@@ -445,12 +444,11 @@ rlp_open_rlpsocket(struct netaddr_s *localaddr)
 
 	if ((rlpsock = rlpm_new_rlpsock()) == NULL) return NULL;		/* cannot allocate a new one */
 
-	if (neti_udp_open(rlpsock, localaddr) != 0)
+	if (neti_udp_open(&rlpsock->nsock, localaddr->port) != 0)
 	{
 		rlpm_free_rlpsock(rlpsock);	/* UDP open fails */
 		return NULL;
 	}
-	rlpsock->netaddr = *localaddr;
 
 	return rlpsock;
 }

@@ -38,12 +38,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __acn_arch_h__
 #define __acn_arch_h__ 1
 
-#include "configure.h"
-
 typedef uint32_t protocolID_t;
 #define PROTO_NONE 0
 
 #include "uuid.h"
+
 typedef uuid_t cid_t;
 
 /* PDU flags */

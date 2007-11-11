@@ -43,7 +43,7 @@ Code which sits on top of SDT should not really have to use this header
 #ifndef __acn_sdt_h__
 #define __acn_sdt_h__
 
-#include <arch/types.h>
+#include <types.h>
 
 /* ESTA registered protocol code */
 #define PROTO_SDT  1
@@ -94,29 +94,30 @@ enum
 };
 
 /* transport layer addresses */
-#if defined(CONFIG_MULTI_NET)
+#if CONFIG_MULTI_NET
 #error Multiple networks not yet supported
 #else
 
-#if defined(CONFIG_NET_IPV4)
+#if CONFIG_NET_IPV4
+
 struct PACKED transportLayerAddress_s {
 	uint8_t type;	//must be SDT_ADDR_IPV4
 	uint16_t n_port;
-	netAddr_t n_addr;
+	ip4addr_t n_addr;
 };
 
-#elif defined(CONFIG_NET_IPV6)
+#elif CONFIG_NET_IPV6
 struct PACKED transportLayerAddress_s {
 	uint8_t type;	//must be SDT_ADDR_IPV6
 	uint16_t n_port;
-	netAddr_t n_addr;
+	ip6addr_t n_addr;
 };
 
 #endif
 #endif
 
 
-#if defined(CONFIG_EPI18)
+#if CONFIG_EPI18
 #include "epi18.h"
 #endif
 

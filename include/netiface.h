@@ -41,11 +41,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "types.h"
 #include <string.h>
 
-#if defined(CONFIG_NET_IPV4)
+#if CONFIG_NET_IPV4
+
+#if CONFIG_EPI20
+#include "epi20.h"
+#endif
 
 typedef uint16_t port_t;	/* net endpoint is a port */
 typedef uint32_t ip4addr_t;	/* net group is a multicast address */
-typedef ip4addr_t groupaddr_t
+typedef ip4addr_t groupaddr_t;
 /*
   netaddr_s represents a UDP level address
 */
@@ -60,7 +64,9 @@ struct netaddr_s {
 
 #define is_multicast(addr) (((addr) & 0xf0000000) == 0xe0000000)
 
-#if defined(CONFIG_STACK_BSD)
+extern void neti_init(void);
+
+#if CONFIG_STACK_BSD
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -72,19 +78,21 @@ typedef int neti_nativeSocket_t;
 
 typedef struct sockaddr_in netiHost_t;
 
-typedef struct netsocket_s {
+struct netsocket_s {
 	neti_nativeSocket_t nativesock;
-	port_t localPort;
+	port_t localport;
 };
 
-int neti_udp_open(struct netsocket_s *netsock, port_t localPort);
+int neti_udp_open(struct netsocket_s *netsock, port_t localport);
 void neti_udp_close(struct netsocket_s *netsock);
 int neti_change_group(struct netsocket_s *netsock, ip4addr_t localGroup, bool add);
 
 #define neti_join_group(netsock, group) neti_change_group(netsock, group, 1)
 #define neti_leave_group(netsock, group) neti_change_group(netsock, group, 0)
 
-#elif defined(CONFIG_STACK_WATERLOO)
+int neti_send_to(struct netsocket_s *netsock, struct netaddr_s *destaddr, uint8_t *data, size_t datalen);
+
+#elif CONFIG_STACK_WATERLOO
 
 #include "wattcp.h"
 
@@ -100,10 +108,10 @@ typedef struct netiHost_s netiHost_t;
 
 typedef struct netsocket_s {
 	neti_nativeSocket_t nativesock;
-	port_t localPort;
+	port_t localport;
 };
 
-int neti_udp_open(struct netsocket_s *netsock, port_t localPort);
+int neti_udp_open(struct netsocket_s *netsock, port_t localport);
 void neti_udp_close(struct netsocket_s *netsock);
 int neti_join_group(struct netsocket_s *netsock, ip4addr_t localGroup);
 int neti_leave_group(struct netsocket_s *netsock, ip4addr_t localGroup);
@@ -111,12 +119,12 @@ int neti_leave_group(struct netsocket_s *netsock, ip4addr_t localGroup);
 
 #endif
 
-#if defined(CONFIG_SDT)
+#if CONFIG_SDT
 /*
 SDT packets use a standard transport address format for address and port which may differ from native format
 */
 
-#if defined(CONFIG_STACK_BSD)
+#if CONFIG_STACK_BSD
 
 #include "acn_sdt.h"
 
@@ -136,7 +144,7 @@ extern __inline__ void hostToTransportAddr(const netiHost_t *hostaddr, uint8_t *
 	memcpy(transaddr+3, &hostaddr->sin_addr, 4);
 }
 
-#elif defined(CONFIG_STACK_WATERLOO)
+#elif CONFIG_STACK_WATERLOO
 
 /* Both native and ACN formats are network byte order */
 extern __inline__ void transportAddrToHost(const uint8_t *transaddr, netiHost_t *hostaddr)
@@ -151,7 +159,7 @@ extern __inline__ void hostToTransportAddr(const netiHost_t *hostaddr, uint8_t *
 	memcpy(transaddr+1, &hostaddr, 6);
 }
 
-#endif	/* #if defined(CONFIG_STACK_BSD) */
-#endif	/* #if defined(CONFIG_SDT) */
-#endif	/* #if defined(CONFIG_NET_IPV4) */
+#endif	/* #if CONFIG_STACK_BSD */
+#endif	/* #if CONFIG_SDT */
+#endif	/* #if CONFIG_NET_IPV4 */
 #endif	/* #ifndef __netiface_h__ */

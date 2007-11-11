@@ -38,53 +38,63 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __rlpmem_h__
 #define __rlpmem_h__ 1
 
-void rlpInitChannels(void);
 
-void rlpInitSockets(void);
-netSocket_t *rlpFindNetSock(port_t localPort);
-netSocket_t *rlpNewNetSock(void);
-void rlpFreeNetSock(netSocket_t *sockp);
+typedef int usage_t;
 
-void rlpInitChannels(void);
-struct rlpChannelGroup_s *rlpNewChannelGroup(netSocket_t *netsock, ip4addr_t groupAddr);
-void rlpFreeChannelGroup(netSocket_t *netsock, struct rlpChannelGroup_s *channelgroup);
-struct rlpChannelGroup_s *rlpFindChannelGroup(netSocket_t *netsock, ip4addr_t groupAddr);
-struct rlpChannel_s *rlpNewChannel(struct rlpChannelGroup_s *channelgroup);
-void rlpFreeChannel(struct rlpChannelGroup_s *channelgroup, struct rlpChannel_s *channel);
-struct rlpChannel_s *rlpFirstChannel(struct rlpChannelGroup_s *channelgroup, protocolID_t pduProtocol);
-struct rlpChannel_s *rlpNextChannel(struct rlpChannelGroup_s *channelgroup, struct rlpChannel_s *channel, protocolID_t pduProtocol);
-int sockHasGroups(netSocket_t *netsock);
-int groupHasChannels(struct rlpChannelGroup_s *channelgroup);
-struct rlpChannel_s *getChannelgroup(struct rlpChannel_s *channel);
-netSocket_t *getNetsock(struct rlpChannelGroup_s *channelgroup);
-void rlpInitBuffers(void);
+#if CONFIG_RLPMEM_STATIC
 
-typedef uint16_t usage_t;
-
-#ifdef CONFIG_RLPMEM_STATIC
-
-typedef struct {
+struct rlp_listener_s {
 	int socketNum;			// negative for no association
-	ip4addr_t groupAddr;
+	ip4addr_t groupaddr;
 	protocolID_t protocol;	// PROTO_NONE if this listener within the group is not used
 	rlpHandler_t *callback;
 	void *ref;
-} struct rlp_listener_s;
-#endif
+};
 
+#define rlp_rxgroup_s rlp_listener_s
 
-#if defined(CONFIG_RLPMEM_DYNAMICBUF)
-struct rlpTxbufhdr_s {
-	struct rlpTxbuf_s *next;
+struct rlp_txbuf_s {
 	usage_t usage;
 	unsigned int datasize;
 	uint8_t *blockstart;
 	uint8_t *blockend;
 	protocolID_t protocol;
+	uuid_t ownerCID;
+	uint8_t data[MAX_MTU];
 };
-#endif
-
-#define bufhdrp(buf) ((struct rlpTxbufhdr_s *)(buf))
-#define bufdatap(buf) ((uint8_t *)(buf) + sizeof(struct rlpTxbufhdr_s))
 
 #endif
+
+
+#if CONFIG_RLPMEM_MALLOC
+
+struct rlp_txbuf_s;
+
+struct rlp_txbuf_s {
+	struct rlp_txbuf_s *next;
+	usage_t usage;
+	unsigned int datasize;
+	uint8_t *blockstart;
+	uint8_t *blockend;
+	protocolID_t protocol;
+	uint8_t data[];
+};
+
+#endif
+
+void rlpmem_init(void);
+
+struct rlpsocket_s *rlpm_find_rlpsock(struct netaddr_s *localaddr);
+struct rlpsocket_s *rlpm_new_rlpsock(void);
+void rlpm_free_rlpsock(struct rlpsocket_s *sockp);
+
+struct rlp_listener_s *rlpm_new_listener(struct rlp_rxgroup_s *rxgroup);
+void  rlpm_free_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener);
+struct rlp_listener_s *rlp_next_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol);
+struct rlp_listener_s *rlpm_first_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol);
+
+
+#define bufhdrp(buf) ((struct rlp_txbuf_s *)(buf))
+#define bufdatap(buf) (((struct rlp_txbuf_s *)(buf))->data)
+
+#endif  /* __rlpmem_h__ */
