@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 
-#include "configure.h"
+#include "opt.h"
 #include "uuid.h"
 #include <ctype.h>
 
