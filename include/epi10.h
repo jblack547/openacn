@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __epi10_h__
 #define __epi10_h__ 1
 
-#define E1_17_AUTO_SCOPE_ADDRESS htonl((( 239 << 8 | 194) << 8 | 0) << 8 | 0)
+#define E1_17_AUTO_SCOPE_ADDRESS htonl((( 239 << 8 | 192) << 8 | 0) << 8 | 0)
 #define E1_17_AUTO_SCOPE_MASK htonl((( 255 << 8 | 252) << 8 | 0) << 8 | 0)
 
 #endif
