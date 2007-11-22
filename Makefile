@@ -56,3 +56,6 @@ clean :
 
 test :
 	@echo ARCH: ${ARCH} 
+
+ts : test/test.o common/netiface.o
+	${CC} -o $@ $^
