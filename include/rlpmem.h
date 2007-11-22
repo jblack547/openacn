@@ -43,6 +43,10 @@ typedef int usage_t;
 
 #if CONFIG_RLPMEM_STATIC
 
+#define MAX_RLP_SOCKETS 50
+#define MAX_LISTENERS 100
+#define MAX_TXBUFS 10
+
 struct rlp_listener_s {
 	int socketNum;			// negative for no association
 	ip4addr_t groupaddr;
@@ -59,7 +63,7 @@ struct rlp_txbuf_s {
 	uint8_t *blockstart;
 	uint8_t *blockend;
 	protocolID_t protocol;
-	uuid_t ownerCID;
+	cid_t ownerCID;
 	uint8_t data[MAX_MTU];
 };
 
