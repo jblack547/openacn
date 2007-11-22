@@ -97,10 +97,6 @@ This currently suffers from the Shlemeil the Painter problem
 
 /***********************************************************************************************/
 
-#define MAX_RLP_SOCKETS 50
-#define MAX_LISTENERS 100
-#define MAX_TXBUFS 10
-
 static struct rlpsocket_s sockets[MAX_RLP_SOCKETS];
 static struct rlp_listener_s listeners[MAX_LISTENERS];
 static struct rlp_txbuf_s txbufs[MAX_TXBUFS];
@@ -397,7 +393,7 @@ struct rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
 	}
 
 	txbufs[i].usage = 1;
-	txbufs[i].ownerCID = *owner;
+	memcpy(txbufs[i].ownerCID, owner, sizeof(cid_t));
 	bufnum = i;
 	return txbufs + i;
 }
