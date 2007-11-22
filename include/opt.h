@@ -128,16 +128,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   Network stack and API to use - pick just one
 */
 /* BSD sockets */
-#ifndef CONFIG_NETAPI_BSD
-#define	CONFIG_NETAPI_BSD       1
+#ifndef CONFIG_STACK_BSD
+#define	CONFIG_STACK_BSD       1
 #endif
 /* Winsock sockets */
-#ifndef CONFIG_NETAPI_WINSOCK
-#define	CONFIG_NETAPI_WINSOCK   0
+#ifndef CONFIG_STACK_WINSOCK
+#define	CONFIG_STACK_WINSOCK   0
 #endif
-/* Waterloo stack */
-#ifndef CONFIG_NETAPI_WATERLOO
-#define	CONFIG_NETAPI_WATERLOO  0
+/* Pathway Connectivity stack - derived from Waterloo stack */
+#ifndef CONFIG_STACK_PATHWAY
+#define	CONFIG_STACK_PATHWAY  0
 #endif
 
 /*
@@ -245,9 +245,12 @@ Protocols to build
 #define CONFIG_MULTI_NET 1
 #endif
 
-/* check on network stack */
-#if (CONFIG_NETAPI_BSD + CONFIG_NETAPI_WINSOCK + CONFIG_NETAPI_WATERLOO) != 1
+/* checks on network stack */
+#if (CONFIG_STACK_BSD + CONFIG_STACK_WINSOCK + CONFIG_STACK_PATHWAY) != 1
 #error Need to select exactly one network stack
+#endif
+#if CONFIG_STACK_PATHWAY && (!CONFIG_NET_IPV4 || CONFIG_MULTI_NET)
+#error Pathway stack only supports IPv4
 #endif
 
 /* Sanity check for CONFIG_RLP_SINGLE_CLIENT */
