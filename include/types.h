@@ -50,6 +50,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Work out what we can automatically
 */
 #include <limits.h>
+#include <stddef.h>
 
 /* 8-bit types */
 #if (UCHAR_MAX == 255)
