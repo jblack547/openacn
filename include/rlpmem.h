@@ -47,6 +47,8 @@ typedef int usage_t;
 #define MAX_LISTENERS 100
 #define MAX_TXBUFS 10
 
+extern struct netsocket_s sockets[MAX_RLP_SOCKETS];
+
 struct rlp_listener_s {
 	int socketNum;			// negative for no association
 	ip4addr_t groupaddr;
@@ -86,19 +88,38 @@ struct rlp_txbuf_s {
 
 #endif
 
-void rlpmem_init(void);
+extern void rlpmem_init(void);
+extern void rlpm_netsocks_init(void);
+extern void rlpm_listeners_init(void);
 
-struct rlpsocket_s *rlpm_find_rlpsock(struct netaddr_s *localaddr);
-struct rlpsocket_s *rlpm_new_rlpsock(void);
-void rlpm_free_rlpsock(struct rlpsocket_s *sockp);
+extern struct netsocket_s *rlpm_new_netsock(void);
+extern struct netsocket_s *rlpm_find_netsock(struct netaddr_s *localaddr);
+extern void rlpm_free_netsock(struct netsocket_s *sockp);
 
-struct rlp_listener_s *rlpm_new_listener(struct rlp_rxgroup_s *rxgroup);
-void  rlpm_free_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener);
-struct rlp_listener_s *rlp_next_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol);
-struct rlp_listener_s *rlpm_first_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol);
+extern struct rlp_listener_s *rlpm_new_listener(struct rlp_rxgroup_s *rxgroup);
+extern void  rlpm_free_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener);
+extern struct rlp_listener_s *rlpm_first_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol);
+extern struct rlp_listener_s *rlpm_next_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener, protocolID_t pduProtocol);
 
+extern struct rlp_rxgroup_s *rlpm_new_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr);
+extern struct rlp_rxgroup_s *rlpm_find_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr);
+extern void  rlpm_free_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup);
+
+extern int rlpm_netsock_has_rxgroups(struct netsocket_s *netsock);
+extern int rlpm_rxgroup_has_listeners(struct rlp_rxgroup_s *rxgroup);
+extern struct rlp_rxgroup_s *rlpm_get_rxgroup(struct rlp_listener_s *listener);
+extern struct netsocket_s *rlpm_get_netsock(struct rlp_rxgroup_s *rxgroup);
+
+extern struct rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner);
+extern void rlp_freetxbuf(struct rlp_txbuf_s *buf);
 
 #define bufhdrp(buf) ((struct rlp_txbuf_s *)(buf))
 #define bufdatap(buf) (((struct rlp_txbuf_s *)(buf))->data)
+
+#if CONFIG_RLPMEM_STATIC
+#define rlpm_get_rxgroup(listener) rlpm_find_rxgroup(sockets + (listener)->socketNum, (listener)->groupaddr)
+#define rlpm_get_netsock(rxgroup) (sockets + (rxgroup)->socketNum)
+#endif
+
 
 #endif  /* __rlpmem_h__ */

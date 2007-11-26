@@ -61,12 +61,12 @@ implementation.
 
 API
 --
-rlpm_rlpsocks_init(), rlpFindSocket(), rlpNewSocket(), rlpFreeSocket()
+rlpm_netsocks_init(), rlpFindSocket(), rlpNewSocket(), rlpFreeSocket()
 void rlpm_listeners_init(void);
-struct rlp_rxgroup_s *rlp_new_rxgroup(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr)
-void rlp_free_rxgroup(struct rlpsocket_s *rlpsock, struct rlp_rxgroup_s *rxgroup)
-struct rlp_rxgroup_s *rlpm_find_rxgroup(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr)
-int rlpm_rlpsock_has_rxgroups(struct rlpsocket_s *rlpsock)
+struct rlp_rxgroup_s *rlp_new_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
+void rlp_free_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup)
+struct rlp_rxgroup_s *rlpm_find_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
+int rlpm_netsock_has_rxgroups(struct netsocket_s *netsock)
 
 struct rlp_listener_s *rlpm_new_listener(struct rlp_rxgroup_s *rxgroup)
 void rlpm_free_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener)
@@ -75,7 +75,7 @@ struct rlp_listener_s *rlpNextChannel(struct rlp_rxgroup_s *rxgroup, struct rlp_
 int rlpm_rxgroup_has_listeners(struct rlp_rxgroup_s *rxgroup)
 
 struct rlp_rxgroup_s *rlpm_get_rxgroup(struct rlp_listener_s *listener)
-struct rlpsocket_s *rlpm_get_rlpsock(struct rlp_rxgroup_s *rxgroup)
+struct netsocket_s *rlpm_get_netsock(struct rlp_rxgroup_s *rxgroup)
 */
 /***********************************************************************************************/
 
@@ -97,7 +97,7 @@ This currently suffers from the Shlemeil the Painter problem
 
 /***********************************************************************************************/
 
-static struct rlpsocket_s sockets[MAX_RLP_SOCKETS];
+struct netsocket_s sockets[MAX_RLP_SOCKETS];
 static struct rlp_listener_s listeners[MAX_LISTENERS];
 static struct rlp_txbuf_s txbufs[MAX_TXBUFS];
 
@@ -108,46 +108,46 @@ void rlpm_listeners_init(void);
   find the socket (if any) with matching port 
 */
 static inline
-struct rlpsocket_s *
-_find_rlpsock(port_t port)
+struct netsocket_s *
+_find_netsock(port_t port)
 {
-	struct rlpsocket_s *sockp;
+	struct netsocket_s *sockp;
 
 	sockp = sockets;
-	while (sockp->nsock.localport != port)
+	while (sockp->localport != port)
 		if (++sockp >= sockets + MAX_RLP_SOCKETS) return NULL;
 	return sockp;
 }
 
 /***********************************************************************************************/
-struct rlpsocket_s *
-rlpm_find_rlpsock(struct netaddr_s *localaddr)
+struct netsocket_s *
+rlpm_find_netsock(struct netaddr_s *localaddr)
 {
-	return _find_rlpsock(localaddr->port);
+	return _find_netsock(localaddr->port);
 }
 
 /***********************************************************************************************/
-struct rlpsocket_s *
-rlpm_new_rlpsock(void)
+struct netsocket_s *
+rlpm_new_netsock(void)
 {
-	return _find_rlpsock(NETI_PORT_NONE);
+	return _find_netsock(NETI_PORT_NONE);
 }
 
 /***********************************************************************************************/
 void 
-rlpm_free_rlpsock(struct rlpsocket_s *sockp)
+rlpm_free_netsock(struct netsocket_s *sockp)
 {
-	sockp->nsock.localport = NETI_PORT_NONE;
+	sockp->localport = NETI_PORT_NONE;
 }
 
 /***********************************************************************************************/
 void
-rlpm_rlpsocks_init(void)
+rlpm_netsocks_init(void)
 {
-	struct rlpsocket_s *sockp;
+	struct netsocket_s *sockp;
 
 	for (sockp = sockets; sockp < sockets + MAX_RLP_SOCKETS; ++sockp)
-		sockp->nsock.localport = NETI_PORT_NONE;
+		sockp->localport = NETI_PORT_NONE;
 }
 
 /***********************************************************************************************/
@@ -155,12 +155,12 @@ rlpm_rlpsocks_init(void)
 find a rxgroup associated with this socket which has the correct groupaddr
 */
 struct rlp_rxgroup_s *
-rlpm_find_rxgroup(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr)
+rlpm_find_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 {
 	struct rlp_rxgroup_s *rxgroup;
 	int sockix;
 
-	sockix = rlpsock - sockets;	// index of our socket
+	sockix = netsock - sockets;	// index of our socket
 
 	for (rxgroup = listeners; rxgroup < listeners + MAX_LISTENERS; ++rxgroup)
 	{
@@ -179,7 +179,7 @@ Free a listener group
 Only call if group is empty (no listeners exist)
 */
 void 
-rlpm_free_rxgroup(struct rlpsocket_s *rlpsock, struct rlp_rxgroup_s *rxgroup)
+rlpm_free_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup)
 {
 	rxgroup->socketNum = -1;
 }
@@ -189,7 +189,7 @@ rlpm_free_rxgroup(struct rlpsocket_s *rlpsock, struct rlp_rxgroup_s *rxgroup)
 "Create" a new empty listener group and associate it with a socket and groupaddr
 */
 struct rlp_rxgroup_s *
-rlpm_new_rxgroup(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr)
+rlpm_new_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 {
 	struct rlp_rxgroup_s *rxgroup;
 
@@ -197,7 +197,7 @@ rlpm_new_rxgroup(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr)
 	{
 		if (rxgroup->socketNum < 0)		// negative socket marks unused listener
 		{
-			rxgroup->socketNum = rlpsock - sockets;
+			rxgroup->socketNum = netsock - sockets;
 			rxgroup->groupaddr = groupaddr;
 			rxgroup->protocol = PROTO_NONE;
 			return rxgroup;
@@ -266,9 +266,9 @@ __next_listener(struct rlp_rxgroup_s *rxgroup, int socketNum, groupaddr_t groupa
 Find the next listener in a group with a given protocol
 */
 struct rlp_listener_s *
-rlp_next_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol)
+rlpm_next_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener, protocolID_t pduProtocol)
 {
-	return __next_listener(rxgroup, rxgroup->socketNum, rxgroup->groupaddr, pduProtocol);
+	return __next_listener(listener, listener->socketNum, listener->groupaddr, pduProtocol);
 }
 
 /***********************************************************************************************/
@@ -299,12 +299,12 @@ rlpm_listeners_init(void)
 true if a socket has channelgroups
 */
 int 
-rlpm_rlpsock_has_rxgroups(struct rlpsocket_s *rlpsock)
+rlpm_netsock_has_rxgroups(struct netsocket_s *netsock)
 {
 	struct rlp_listener_s *listener;
 	int sockix;
 
-	sockix = rlpsock - sockets;	// index of our socket
+	sockix = netsock - sockets;	// index of our socket
 	for (listener = listeners; listener < listeners + MAX_LISTENERS; ++listener)
 		if (listener->socketNum == sockix) return 1;
 	return 0;
@@ -345,14 +345,14 @@ Get the group containing a given listener
 /*
 Get the netSocket containing a given group
 */
-#define rlpm_get_rlpsock(rxgroup) (sockets + (rxgroup)->socketNum)
+#define rlpm_get_netsock(rxgroup) (sockets + (rxgroup)->socketNum)
 
 
 /***********************************************************************************************/
 void 
 rlpmem_init(void)
 {
-	rlpm_rlpsocks_init();
+	rlpm_netsocks_init();
 	rlpm_listeners_init();
 }
 

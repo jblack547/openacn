@@ -62,4 +62,4 @@ inline size_t unmarshalUUID(const uint8_t *data, uint8_t *uuid);
 inline size_t marshal_p_string(uint8_t *data, const p_string_t *str);
 inline size_t unmarshal_p_string(const uint8_t *data, p_string_t *str);
 
-#endif
+#endif	/* __marshal_h__ */

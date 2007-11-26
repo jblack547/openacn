@@ -240,9 +240,9 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 			struct msghdr hdr;
 			struct cmsghdr *cmp;
 			ip4addr_t destaddr;
-			struct netsocket_s *rlpsock;
+			struct netsocket_s *netsock;
 
-			rlpsock = sockps[i];
+			netsock = sockps[i];
 			bufvec->iov_base = buf;
 			bufvec->iov_len = INPACKETSIZE;
 			hdr.msg_name = &remhost;
@@ -255,7 +255,7 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 
 			destaddr = NETI_INADDR_ANY;
 
-    		rslt = recvmsg(rlpsock->nativesock, &hdr, 0);
+    		rslt = recvmsg(netsock->nativesock, &hdr, 0);
 			if (rslt < 0)
 			{
 				haderr = errno;
@@ -272,7 +272,8 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 						destaddr = pktaddr;
 				}
 			}
-			//rlpProcessPacket(rlpsock, buf, rslt, destaddr, &remhost);
+void rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netiHost_t *remhost);
+			rlp_process_packet(netsock, buf, rslt, destaddr, &remhost);
 		}
 
 	neti_freepacket(buf);
@@ -296,7 +297,7 @@ netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *h
 		destaddr = ((in_Header *)hdr)->destination;
 		remhost.addr = s->hisaddr;
 		remhost.port = s->hisport;
-		rlpProcessPacket(rlpsock, buf, dataLen, destaddr, &remhost);
+		rlp_process_packet(rlpsock, buf, dataLen, destaddr, &remhost);
 	}
 	return dataLen;
 }

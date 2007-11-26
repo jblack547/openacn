@@ -80,39 +80,33 @@ in subsequent PDUs any field except flags/length may be inherited
 #define RLP_FIRSTPDU_MINLENGTH (2 + 4 + sizeof(cid_t))
 #define RLP_PDU_MINLENGTH 2
 
-static uint8_t buffers[NUM_PACKET_BUFFERS][MAX_PACKET_SIZE];
-static int bufferLengths[NUM_PACKET_BUFFERS];
-static int currentBufNum = 0;
-static uint8_t *packetBuffer;
-static int bufferLength;
-
 /*
 
 API description
 
 This RLP implementation is designed for IPv4 - it may operate with IPv6
 with little modification. This code understands IP but the stack details
-are abstracted into netiface.c. This abstraction uses rlpsocket_s
+are abstracted into netiface.c. This abstraction uses netsocket_s
 structures representing each socket or similar UDP connection between
-RLP and the stack. Each rlpsocket corresponds to a different local
+RLP and the stack. Each netsocket corresponds to a different local
 unicast-address/port combination given by a netaddr_s.
 
 Note - currently the only local unicast address supported is
 NETI_INADDR_ANY - meaning any local address as decided by the network
 stack. This may change.
 
-RLP manages rlpsocket structures and the client calls rlp_open_rlpsock
-to get one and rlp_close_rlpsock() to free it again.
+RLP manages netsocket structures and the client calls rlp_open_netsock
+to get one and rlp_close_netsock() to free it again.
 
-To transmit PDUs the client only needs a rlpsocket which is passed to
+To transmit PDUs the client only needs a netsocket which is passed to
 rlp_send_block() once the PDU block has been assembled.
 
 To receive packets, the client must call rlp_add_listener() to register
-a callback function for a particular rlpsocket. A listener associates a
+a callback function for a particular netsocket. A listener associates a
 destination address for incoming packets (either a multicast group or
-the unicast address associated with the rlpsocket), with a protocol
+the unicast address associated with the netsocket), with a protocol
 (e.g. SDT) and a callback function. When a packet is received matching
-the rlpsocket, the destination address, and the protocol, the associated
+the netsocket, the destination address, and the protocol, the associated
 callback function is invoked.
 
 rlp_add_listener() subscribes to the supplied group address if
@@ -135,12 +129,12 @@ In order to manage the relationship between channels at the client
 protocol side the network interface layer, RLP maintains three
 structures:
 
-	struct rlpsocket_s represents an interface to the netiface layer -
-	there is one struct rlpsocket_s for each incoming (local) port and
+	struct netsocket_s represents an interface to the netiface layer -
+	there is one struct netsocket_s for each incoming (local) port and
 	unicast address (but see multiple interface note above).
 
 	struct rlp_rxgroup_s represents a multicast group (and port). Any
-	struct rlpsocket_s may have multiple rxgroups. Because of stack
+	struct netsocket_s may have multiple rxgroups. Because of stack
 	vagaries with multicast handling, RLP examines and filters the
 	multicast destination address of every incoming packet early on and
 	finds the associated rlp_rxgroup_s If none is found, the packet is
@@ -165,7 +159,7 @@ items which it requires to keep.
 
 Management of structures in memory
 --
-To allow flexibility in implementation, the rlpsocket_s, rlp_rxgroup_s
+To allow flexibility in implementation, the netsocket_s, rlp_rxgroup_s
 and rlp_listener_s structures used are manipulated using the API of the
 rlpmem module - they should not be accessed directly. This allows
 dynamic or static allocation strategies, and organization by linked
@@ -423,44 +417,44 @@ rlp_add_pdu(
 int
 rlp_send_block(
 	struct rlp_txbuf_s *buf, 
-	struct rlpsocket_s *rlpsock,
+	struct netsocket_s *netsock,
 	struct netaddr_s *destaddr
 )
 {
-	neti_send_to(&rlpsock->nsock, destaddr, bufhdrp(buf)->blockstart, bufhdrp(buf)->blockend - bufhdrp(buf)->blockstart);
+	return neti_send_to(netsock, destaddr, bufhdrp(buf)->blockstart, bufhdrp(buf)->blockend - bufhdrp(buf)->blockstart);
 }
 
 /***********************************************************************************************/
 /*
-Find a matching rlpsocket or create a new one if necessary
+Find a matching netsocket or create a new one if necessary
 */
 
-struct rlpsocket_s *
-rlp_open_rlpsocket(struct netaddr_s *localaddr)
+struct netsocket_s *
+rlp_open_netsocket(struct netaddr_s *localaddr)
 {
-	struct rlpsocket_s *rlpsock;
+	struct netsocket_s *netsock;
 
-	if ((rlpsock = rlpm_find_rlpsock(localaddr))) return rlpsock;	/* found existing matching socket */
+	if ((netsock = rlpm_find_netsock(localaddr))) return netsock;	/* found existing matching socket */
 
-	if ((rlpsock = rlpm_new_rlpsock()) == NULL) return NULL;		/* cannot allocate a new one */
+	if ((netsock = rlpm_new_netsock()) == NULL) return NULL;		/* cannot allocate a new one */
 
-	if (neti_udp_open(&rlpsock->nsock, localaddr->port) != 0)
+	if (neti_udp_open(netsock, localaddr->port) != 0)
 	{
-		rlpm_free_rlpsock(rlpsock);	/* UDP open fails */
+		rlpm_free_netsock(netsock);	/* UDP open fails */
 		return NULL;
 	}
 
-	return rlpsock;
+	return netsock;
 }
 
 /***********************************************************************************************/
 void 
-rlp_close_rlpsocket(struct rlpsocket_s *rlpsock)
+rlp_close_netsocket(struct netsocket_s *netsock)
 {
-	if (rlpm_rlpsock_has_rxgroups(rlpsock)) return;
+	if (rlpm_netsock_has_rxgroups(netsock)) return;
 
-	neti_udp_close(rlpsock);
-	rlpm_free_rlpsock(rlpsock);
+	neti_udp_close(netsock);
+	rlpm_free_netsock(netsock);
 }
 
 /***********************************************************************************************/
@@ -469,24 +463,24 @@ Find a matching rxgroup or create a new one if necessary
 */
 static
 struct rlp_rxgroup_s *
-rlp_open_rxgroup(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr)
+rlp_open_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 {
 	struct rlp_rxgroup_s *rxgroup;
 
 	if (!is_multicast(groupaddr) && groupaddr != NETI_GROUP_UNICAST)
 	{
-		if (groupaddr != rlpsock->netaddr.addr) return NULL;	/* illegal group address */
+		if (groupaddr != neti_getmyip(NETI_INADDR_ANY)) return NULL;	/* illegal group address */
 		groupaddr = NETI_GROUP_UNICAST;		/* force generic unicast */
 	}
 
-	if ((rxgroup = rlpm_find_rxgroup(rlpsock, groupaddr))) return rxgroup;	/* found existing matching group */
-	if ((rxgroup = rlpm_new_rxgroup(rlpsock, groupaddr)) == NULL) return NULL;	/* cannot allocate a new one */
+	if ((rxgroup = rlpm_find_rxgroup(netsock, groupaddr))) return rxgroup;	/* found existing matching group */
+	if ((rxgroup = rlpm_new_rxgroup(netsock, groupaddr)) == NULL) return NULL;	/* cannot allocate a new one */
 
 	if (groupaddr != NETI_INADDR_ANY)
 	{
-		if (neti_join_group(rlpsock, groupaddr) != 0)
+		if (neti_change_group(netsock, groupaddr, NETI_JOINGROUP) != 0)
 		{
-			rlpm_free_rxgroup(rlpsock, rxgroup);
+			rlpm_free_rxgroup(netsock, rxgroup);
 			return NULL;
 		}
 	}
@@ -497,12 +491,12 @@ rlp_open_rxgroup(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr)
 /***********************************************************************************************/
 static
 void 
-rlp_close_rxgroup(struct rlpsocket_s *rlpsock, struct rlp_rxgroup_s *rxgroup)
+rlp_close_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup)
 {
 	if (rlpm_rxgroup_has_listeners(rxgroup)) return;
 
-	neti_leave_group(rlpsock, rxgroup->groupaddr);
-	rlpm_free_rxgroup(rlpsock, rxgroup);
+	neti_change_group(netsock, rxgroup->groupaddr, NETI_LEAVEGROUP);
+	rlpm_free_rxgroup(netsock, rxgroup);
 }
 
 /***********************************************************************************************/
@@ -511,16 +505,16 @@ Add a new listener
 */
 
 struct rlp_listener_s *
-rlp_add_listener(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr, protocolID_t protocol, rlpHandler_t *callback, void *ref)
+rlp_add_listener(struct netsocket_s *netsock, groupaddr_t groupaddr, protocolID_t protocol, rlpHandler_t *callback, void *ref)
 {
 	struct rlp_listener_s *listener;
 	struct rlp_rxgroup_s *rxgroup;
 
-	if ((rxgroup = rlp_open_rxgroup(rlpsock, groupaddr)) == NULL) return NULL;
+	if ((rxgroup = rlp_open_rxgroup(netsock, groupaddr)) == NULL) return NULL;
 
 	if ((listener = rlpm_new_listener(rxgroup)) == NULL)
 	{
-		rlp_close_rxgroup(rlpsock, rxgroup);
+		rlp_close_rxgroup(netsock, rxgroup);
 		return NULL;
 	}
 
@@ -534,13 +528,13 @@ rlp_add_listener(struct rlpsocket_s *rlpsock, groupaddr_t groupaddr, protocolID_
 
 /***********************************************************************************************/
 void 
-rlp_del_listener(struct rlpsocket_s *rlpsock, struct rlp_listener_s *listener)
+rlp_del_listener(struct netsocket_s *netsock, struct rlp_listener_s *listener)
 {
 	struct rlp_rxgroup_s *rxgroup;
 
 	rxgroup = rlpm_get_rxgroup(listener);
 	rlpm_free_listener(rxgroup, listener);
-	rlp_close_rxgroup(rlpsock, rxgroup);
+	rlp_close_rxgroup(netsock, rxgroup);
 }
 
 /***********************************************************************************************/
@@ -549,7 +543,7 @@ Process a packet - called by network interface layer on receipt of a packet
 */
 
 void
-rlpProcessPacket(struct rlpsocket_s *rlpsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netiHost_t *remhost)
+rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netiHost_t *remhost)
 {
 	struct rlp_rxgroup_s *rxgroup;
 	struct rlp_listener_s *listener;
@@ -561,19 +555,19 @@ rlpProcessPacket(struct rlpsocket_s *rlpsock, const uint8_t *data, int dataLen, 
 	pdup = data;
 	if(dataLen < RLP_PREAMBLE_LENGTH + RLP_FIRSTPDU_MINLENGTH + RLP_POSTAMBLE_LENGTH)
 	{
-		syslog(LOG_ERR|LOG_LOCAL0,"rlpProcessPacket: Packet too short to be valid");
+		syslog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: Packet too short to be valid");
 		return;	
 	}
 	/* Check and strip off EPI 17 preamble  */
 	if(memcmp(pdup, rlpPreamble, RLP_PREAMBLE_LENGTH))
 	{
-		syslog(LOG_ERR|LOG_LOCAL0,"rlpProcessPacket: Invalid Preamble");
+		syslog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: Invalid Preamble");
 		return;
 	}
 	pdup += RLP_PREAMBLE_LENGTH;
 	/* Find if we have a handler */
 	
-	if ((rxgroup = rlpm_find_rxgroup(rlpsock, destaddr)) == NULL) return;	/* No handler for this dest address */
+	if ((rxgroup = rlpm_find_rxgroup(netsock, destaddr)) == NULL) return;	/* No handler for this dest address */
 
 	srcCidp = NULL;
 	pduProtocol = PROTO_NONE;
@@ -581,7 +575,7 @@ rlpProcessPacket(struct rlpsocket_s *rlpsock, const uint8_t *data, int dataLen, 
 	/* first PDU must have all fields */
 	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG))
 	{
-		syslog(LOG_ERR|LOG_LOCAL0,"rlpProcessPacket: illegal first PDU flags");
+		syslog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: illegal first PDU flags");
 		return;
 	}
 
@@ -596,7 +590,7 @@ rlpProcessPacket(struct rlpsocket_s *rlpsock, const uint8_t *data, int dataLen, 
 		pdup += getpdulen(pdup);	/* pdup now points to end */
 		if (pdup > data + dataLen)	/* sanity check */
 		{
-			syslog(LOG_ERR|LOG_LOCAL0,"rlpProcessPacket: packet length error");
+			syslog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: packet length error");
 			return;
 		}
 		if (flags & VECTOR_bFLAG)
@@ -611,7 +605,7 @@ rlpProcessPacket(struct rlpsocket_s *rlpsock, const uint8_t *data, int dataLen, 
 		}
 		if (pp > pdup)
 		{
-			syslog(LOG_ERR|LOG_LOCAL0,"rlpProcessPacket: pdu length error");
+			syslog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: pdu length error");
 			return;
 		}
 		if (flags & DATA_bFLAG)

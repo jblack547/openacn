@@ -60,6 +60,7 @@ typedef uuid_t cid_t;
 #define DATA_bFLAG      0x10
 #define LENGTH_bMASK   0x0F
 
-
+#include "marshal.h"
+#define getpdulen(pdup) (unmarshalU16(pdup) & 0x0fff)
 
 #endif
