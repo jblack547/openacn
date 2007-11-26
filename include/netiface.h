@@ -74,17 +74,7 @@ struct netaddr_s {
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-
 #include <netdb.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <errno.h>
-#include <stdlib.h>
-#if 0
-#endif
-
 
 typedef int neti_nativeSocket_t;
 typedef struct sockaddr_in netiHost_t;
