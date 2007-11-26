@@ -1,0 +1,287 @@
+Open ACN
+--
+Coding guidelines
+Acknowledgement: Many of these guidelines originated in the Wireshark
+Code Style guidelines (README.developer in the Wireshark sources)
+
+Portability
+--
+OpenACN must compile on a wide variety of platforms and compilers.
+
+Compiler differences
+--
+Do not rely on knowledge of the architecture and compiler you are using
+since your code will then not fit another compiler or target
+architecture. The following guidelines should prevent some common
+compiler incompatibilities. 
+
+ - Do not use C++-style comments (comments beginning with "//" and
+running to the end of the line);
+
+ - Do not initialize variables in their declaration with non-constant
+values e.g. don't use this:
+  int i = somearray[2];
+
+ - Do not declare variables in the middle of executable code. Variables
+should be declared outside a function, or at the beginning of a function
+or compound statement. This is OK:
+
+      {
+        int i;	/* declare i here */
+
+        while (x) {
+          ...
+        }
+        for (i = 0; i < 10; i++) {
+          ...
+        }
+      }
+
+This is not:
+
+      {
+        while (x) {
+          ...
+        }
+        int i;	/* don't declare i here */
+        for (i = 0; i < 10; i++) {
+          ...
+        }
+      }
+
+Nor is this:
+
+      {
+        while (x) {
+          ...
+        }
+        for (int i = 0; i < 10; i++) {  /* C++ style - don't do it */
+          ...
+        }
+      }
+
+ - Do not use zero length arrays.
+
+ - Do not use anonymous unions. Example:
+  typedef struct foo {
+	int foo;
+	union {
+      long foo_l;
+      short foo_s;
+	} u;  /* must have a name here */
+  } foo_t;
+
+ - Don't use a label without a statement following it - if necessary
+insert a null statement. For example:
+
+    if (result == BAD_THING) goto abort;
+    ...
+  abort:
+    ;  /* a null statement. Without the semicolon compilers may barf */
+  }
+
+Data sizes and formats
+--
+Fixed size integer types:
+types.h defines fixed size types. It is a wrapper for arch-xxx/types.h
+which must be re-written for each different architecture or compiler to
+ensure that the right sizes are generated.
+
+If you need a fixed size integer use the types defined in types.h. Make
+no assumptions about the size  of char, short, int, long etc. Do not
+define or redefine new fixed size types which duplicate those in type.h.
+The only exception is in order to wrap a piece of code which has been
+imported in its entirety from elsewhere.
+
+If your data item does not need to be of a fixed length for good
+protocol reasons use a standard C type. This allows the compiler to pick
+its most efficient type. For example if you just want to count from 0 to
+100 use an int for the counter; similarly use "char" (or "unsigned
+char") type for text strings (or "wchar" type for unicode). Note: ANSI C
+*does* specify minimum sizes for integer types and requires a limits.h
+header file, so standard types are not totally unrestrained.
+
+For example, a sequence number is defined by the SDT standard to be
+unsigned 32-bits whereas a simple loop counter should be left to the
+compiler.
+
+  uint32_t seqno;
+  int count;
+
+Byte ordering
+--
+As with any network code, be very careful about byte ordering. ACN is a
+network protocol and its byte ordering differs from native order on many
+processors. Use the functions/macros htons(), htonl() etc. There are
+also a set of functions defined in marshal.h for packing data items into
+buffers and unpacking them again. Remember network byte order is
+big-endian throughout ACN and IP. Host byte order varies so on some
+hosts ntohl() etc will be null functions. They must nevertheless be
+used.
+
+Source formatting
+--
+ - In function definitions place the return type on a separate line so
+the function name begins in column 1 (there are source management and
+analysis tools which rely on this - it also aids searching for a
+function definition) and put opening/closing braces on their own line.
+e.g.
+
+void 
+my_function_foo(int x, int y) 
+{
+  ...
+}
+
+ - where the argument declarations get too long to go on one line place
+them one per line like this:
+
+int
+my_long_function(
+    int firstarg,
+    const struct struct_with_a_long_tag_name *silly_ptr,
+    long int anotherarg,
+    unsigned char andanother
+)
+{
+    ...
+}
+
+ - Include at least one line of '*'s at least 70 chars long before each
+function:
+/*********************************************************************/
+
+ - Prototypes should be provided in the header file unless the function
+  is  defined as "static"
+
+ - Prototypes (unlike the function block) should include the return type
+and function name on the same line. As with the definition, either
+include all arguments on the same line or divide them one per line.
+
+ - Prototypes for functions with no parameters should explicitly state
+void:
+
+void my_void_parameter_function(void)
+
+ - Use underscore_convention rather than the InterCapConvention for
+  function  names and variables
+
+ - Code should be free from compiler warnings. In general compiler flags
+should be set to generate all warnings. However there are cases where
+avoiding warnings may require additional unnecessary code - in
+exceptional cases insert a comment at the line stating why.
+
+ - The C standard specifies that static and global variables can be
+assumed to be zero when program is started. However, if your program
+relies on a particular variable being initialized to zero then an
+explicit initialization emphasizes the fact.
+
+ - Do not put spaces between a function name and the opening bracket.
+
+ - Where multiple terms are separated by commas (e.g. with multiple
+function arguments) put a space (or line break if lines are too long)
+after each comma.
+
+ - Style relating to tabs vs spaces, tab width, placing of opening
+braces of blocks, alignment of case labels and other matters engenders
+strong personal preferences and rigid enforcement is doomed to failure.
+However, wild inconsistency within a source is unforgivable.
+
+If editing an existing source file, respect the conventions in it and do
+not introduce new ones. If generating new sources attempt to keep close
+to the style of acssociated sources and *be consistent*.
+
+ - Tab spacing convention should be declared near the top of a file
+using this syntax:
+
+  #tabs=4
+
+or if you use spaces exclusively and no tabs:
+
+  #tabs=none
+
+This line should begin at the start of the line and should contain no
+other text.  Hide it in a comment if necessary. Many editors can use
+this (e.g. via a macro) to set up tabs automatically. Conventions which
+mix tabs and spaces are severely deprecated.
+
+- Stadard naming suffix
+  "_init"  - Initialization routines. It is expected that these are
+called once.
+  "_start" - Start a services
+  "_stop"  - Stop a service 
+
+- where an if or else is followed by a single statement, it does not
+technically need to be placed in braces (compound statement) but unless
+the statement is terse and the meaning abundantly clear, braces usually
+help the reader:
+
+    if (x)
+      do_x();
+    else
+      do_not_x();
+
+is OK, but this is not
+
+    if ((var = testA(param1, arg2)) == 73
+        && some_variable <= 6
+        && (test() == TRUE || end_of_the_world()))
+        do_the_right_thing(with_arguiment);
+    else do_something_else();
+
+Build configuration
+--
+Compile options and switches
+--
+ - All main build time compile configuration options should have a
+defined value. In the case of a boolean option define it as 0 rather
+than leaving undefined. Configuration options go in "configure.h".
+
+The source file "config-check.c" contains configuration checks to ensure
+that users have not specified unreasonable or conflicting
+configurations.
+
+C Library functions
+--
+ANSI C defines a wide range of standard library functions but these are
+aimed at large systems. You cannot be sure that any of these will be
+available for embedded platforms or that they will conform well to
+arcane niceties of the specification.
+
+malloc, realloc, free
+--
+These assume dynamic memory allocation is available which may well not
+be the case. Where available, dynamic memory management may be very
+simplistic - realloc() poses special problems and may not be available -
+DO NOT ASSUME realloc() to a smaller size will not modify the pointer to
+the start of the memory block. Code which uses these functions should be
+isolated behind an API which allows alternative memory management
+strategies to be used. See Root Layer memory handling for examples.
+
+printf etc.
+--
+Use syslog() for diagnostic messages. This can be ported to different
+environments or simply overridden with a NULL macro if no facilities
+exist.
+
+sprintf, sscanf etc.
+--
+These may not be available on small platforms or may require a
+relatively huge amount of resource - try not to use them.
+
+bzero, bcopy, bcmp
+--
+Do not use these.
+
+memset, memcpy, memmove, memcmp
+--
+These can be used. They are built in to many compilers and if the worst
+comes to the worst, they are fairly easy to write from scratch if
+necessary.
+
+- Code in ASCII with english comments. Where other characters are
+essential use UTF-8. (This does not apply to XML used in DDL which uses
+other tools and where unicode is the norm).
+
+- Generally, put comments about what a function does in the source file,
+  not the header file.
