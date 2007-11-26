@@ -53,14 +53,7 @@ void rlpCloseSocket(void *s);
 void *rlpFindSocket(uint16_t localPort);
 int initRlp(void);
 uint8_t *rlpFormatPacket(const uint8_t *srcCid, int vector);
-void rlpProcessPacket(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netiHost_t *remhost);
-
-int rlpEnqueue(int length);
-void rlpResendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int numBack);
-
-struct rlpsocket_s {
-	struct netsocket_s nsock;
-};
+void rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netiHost_t *remhost);
 
 /*
 struct rlp_txbuf_hdr {
