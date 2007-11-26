@@ -56,6 +56,6 @@ endif
 
 CFLAGS:=
 CFLAGS+=-O2
-CFLAGS+= -std=c99 -Wall
+CFLAGS+= -std=c99 -Wall -Wno-uninitialized
 CFLAGS+=-I ${TOPDIR}/include
 CFLAGS+=-D_XOPEN_SOURCE=600
