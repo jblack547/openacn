@@ -38,7 +38,7 @@
 #
 
 TOPDIR:=..
-OBJS:=sdt.o
+OBJS:=sdt.o sdt_handlers.o
 
 include ${TOPDIR}/common.makefile
 

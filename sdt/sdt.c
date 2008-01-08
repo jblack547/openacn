@@ -53,7 +53,7 @@ static const char *rcsid __attribute__ ((unused)) =
 #include <marshal.h>
 #include <syslog.h>
 #include "mcast_util.h"
-
+#include "sdt_handlers.h"
 
 typedef struct foreign_member_t
 {
@@ -558,7 +558,8 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 	uint16 MAKThreshold;
 	local_member_t *member;
 
-	rx_handler_t *rxHandler;
+	rx_handler_t rx_handler;
+	void* ref;
 	
 	srcComp = findForeignComponent(srcCID);
 	if (!srcComp)
@@ -696,18 +697,20 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 				{
 					localChannel = 0;
 				}
-				
+/* TODO CONFIG_SDT_SINGLE_CLIENT test */
 				if (clientProtocol == PROTO_SDT)
 				{
 				    sdtClientRxHandler(remoteLeader, remoteChannel, member, localLeader, localChannel, clientPdu.data, clientPdu.dataLength);
-				} else {
-				     rxHandler = getRXHandler(clientProtocol,handlers)    
-				     if (!rxHandler) {
+				}else  {
+				     rx_handler = sdt_get_rx_handler(clientProtocol,ref)    
+				     if(!rx_handler){
 				           syslog(LOG_DEBUG|LOG_LOCAL1,"sdtRxWrapper: Unknown Vector - skip");
-				      } else {
-				           rxHandler(remoteLeader->component,member->component,remoteChannel, clientPdu.data, clientPdu.dataLength);
+				      }else{
+				           rx_handler(remoteLeader->component,member->component,
+						      remoteChannel, clientPdu.data, clientPdu.dataLength, ref);
 				      }				
 				}
+			
 			}
 			member = member->next;
 		}
