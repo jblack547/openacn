@@ -92,7 +92,7 @@ RLP and the stack. Each netsocket corresponds to a different local
 unicast-address/port combination given by a netaddr_s.
 
 Note - currently the only local unicast address supported is
-NETI_INADDR_ANY - meaning any local address as decided by the network
+NETI_GROUP_UNICAST - meaning any local address as decided by the network
 stack. This may change.
 
 RLP manages netsocket structures and the client calls rlp_open_netsock
@@ -469,14 +469,22 @@ rlp_open_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 
 	if (!is_multicast(groupaddr) && groupaddr != NETI_GROUP_UNICAST)
 	{
-		if (groupaddr != neti_getmyip(NETI_INADDR_ANY)) return NULL;	/* illegal group address */
+		/* a specific non-multicast address has been provided - dangerous */
+		/* FIXME should we check for broadcast here? Otherwise it is dropped */
+		/*
+		FIXME it is hard to check against all valid unicast addresses
+		(loopback etc). Should we look through the routing table here? Is
+		there a way to get the stack to check?
+		For now just assume a single valid address.
+		*/
+		if (groupaddr != neti_getmyip(NETI_INADDR_ANY)) return NULL;	/* illegal address */
 		groupaddr = NETI_GROUP_UNICAST;		/* force generic unicast */
 	}
 
 	if ((rxgroup = rlpm_find_rxgroup(netsock, groupaddr))) return rxgroup;	/* found existing matching group */
 	if ((rxgroup = rlpm_new_rxgroup(netsock, groupaddr)) == NULL) return NULL;	/* cannot allocate a new one */
 
-	if (groupaddr != NETI_INADDR_ANY)
+	if (groupaddr != NETI_GROUP_UNICAST)
 	{
 		if (neti_change_group(netsock, groupaddr, NETI_JOINGROUP) != 0)
 		{

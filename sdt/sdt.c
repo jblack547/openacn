@@ -1846,7 +1846,7 @@ int initSdt(bool acceptAdHoc)
 	if (acceptAdHoc)
 	{
 		/* Open ad hoc channel on ephemerql port */
-		adhoc = rlpOpenChannel(NETI_PORT_NONE, NETI_INADDR_ANY, PROTO_SDT, &adhocRxHandler, adhocMsgTab);
+		adhoc = rlpOpenChannel(NETI_PORT_NONE, NETI_GROUP_UNICAST, PROTO_SDT, &adhocRxHandler, adhocMsgTab);
 		
 		/* now need to register with SLP passing port getLocalPort(adhoc) */
 	}

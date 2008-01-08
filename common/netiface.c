@@ -253,7 +253,7 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 			hdr.msg_controllen = sizeof(pktinfo);
 			hdr.msg_flags = 0;
 
-			destaddr = NETI_INADDR_ANY;
+			destaddr = NETI_GROUP_UNICAST;
 
     		rslt = recvmsg(netsock->nativesock, &hdr, 0);
 			if (rslt < 0)

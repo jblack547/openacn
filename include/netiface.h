@@ -60,7 +60,7 @@ struct netaddr_s {
 
 #define NETI_PORT_NONE 0
 #define NETI_INADDR_ANY ((ip4addr_t)0)
-#define NETI_GROUP_UNICAST ((ip4addr_t)0)
+#define NETI_GROUP_UNICAST NETI_INADDR_ANY
 
 #define is_multicast(addr) (((addr) & 0xf0000000) == 0xe0000000)
 
