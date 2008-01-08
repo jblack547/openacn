@@ -40,7 +40,7 @@ handling. See rlp.c for description of 3-level structure.
 
 */
 static const char *rcsid __attribute__ ((unused)) =
-   "$Id: rlp.c 8 2007-10-08 16:32:56Z philipnye $";
+   "$Id$";
 
 #include <string.h>
 #include "opt.h"
