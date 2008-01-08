@@ -557,6 +557,8 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 	uint16 lastMid = 0;
 	uint16 MAKThreshold;
 	local_member_t *member;
+
+	rx_handler_t *rxHandler;
 	
 	srcComp = findForeignComponent(srcCID);
 	if (!srcComp)
@@ -694,16 +696,17 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 				{
 					localChannel = 0;
 				}
-				switch(clientProtocol)
+				
+				if (clientProtocol == PROTO_SDT)
 				{
-					case PROTO_DMP :
-						dmpRxHandler(remoteLeader->component, member->component, remoteChannel, clientPdu.data, clientPdu.dataLength);
-						break;
-					case PROTO_SDT :
-						sdtClientRxHandler(remoteLeader, remoteChannel, member, localLeader, localChannel, clientPdu.data, clientPdu.dataLength);
-						break;
-					default : 
-						syslog(LOG_DEBUG|LOG_LOCAL1,"sdtRxWrapper: Unknown Vector - skip");
+				    sdtClientRxHandler(remoteLeader, remoteChannel, member, localLeader, localChannel, clientPdu.data, clientPdu.dataLength);
+				} else {
+				     rxHandler = getRXHandler(clientProtocol,handlers)    
+				     if (!rxHandler) {
+				           syslog(LOG_DEBUG|LOG_LOCAL1,"sdtRxWrapper: Unknown Vector - skip");
+				      } else {
+				           rxHandler(remoteLeader->component,member->component,remoteChannel, clientPdu.data, clientPdu.dataLength);
+				      }				
 				}
 			}
 			member = member->next;
