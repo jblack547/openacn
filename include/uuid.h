@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __uuid_h__
 #define __uuid_h__ 1
 
-#include <types.h>
+#include "types.h"
 
 /*
 For most purposes a UUID is simply an array of 16 octets

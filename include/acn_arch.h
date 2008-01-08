@@ -38,6 +38,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __acn_arch_h__
 #define __acn_arch_h__ 1
 
+#include "types.h"
+
 typedef uint32_t protocolID_t;
 #define PROTO_NONE 0
 
@@ -51,14 +53,14 @@ typedef uuid_t cid_t;
 #define VECTOR_FLAG    0x4000
 #define HEADER_FLAG    0x2000
 #define DATA_FLAG      0x1000
-#define LENGTH_MASK   0x0FFF
+#define LENGTH_MASK    0x0FFF
 
 /* sometimes we only want 8 bits */
 #define LENGTH_bFLAG    0x80
 #define VECTOR_bFLAG    0x40
 #define HEADER_bFLAG    0x20
 #define DATA_bFLAG      0x10
-#define LENGTH_bMASK   0x0F
+#define LENGTH_bMASK    0x0F
 
 #include "marshal.h"
 #define getpdulen(pdup) (unmarshalU16(pdup) & 0x0fff)

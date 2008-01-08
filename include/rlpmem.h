@@ -38,14 +38,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __rlpmem_h__
 #define __rlpmem_h__ 1
 
+#include "opt.h"
+#include "acn_arch.h"
 
 typedef int usage_t;
 
 #if CONFIG_RLPMEM_STATIC
-
-#define MAX_RLP_SOCKETS 50
-#define MAX_LISTENERS 100
-#define MAX_TXBUFS 10
 
 extern struct netsocket_s sockets[MAX_RLP_SOCKETS];
 

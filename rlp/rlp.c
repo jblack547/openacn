@@ -39,19 +39,15 @@ static const char *rcsid __attribute__ ((unused)) =
 
 /* syslog facility LOG_LOCAL0 is used for ACN:RLP */
 
-#define MAX_PACKET_SIZE 1450
-#define PREAMBLE_LENGTH 16
-
 #include <string.h>
 #include "opt.h"
-#include "types.h"
 #include "acn_arch.h"
-#include "acn_rlp.h"
-#include "netiface.h"
+
 #include "rlp.h"
+#include "acn_rlp.h"
+
 #include "rlpmem.h"
-#include "marshal.h"
-#include <syslog.h>
+#include "syslog.h"
 
 #define NUM_PACKET_BUFFERS	16
 #define BUFFER_ROLLOVER_MASK  (NUM_PACKET_BUFFERS - 1)
@@ -193,6 +189,17 @@ rlp_init(void)
 }
 
 /***********************************************************************************************/
+uint8_t *
+rlp_create_packet(struct rlp_txbuf_s *txbuf, cid_t cid);
+{
+  if (!txbuf) {
+    txbuf = rlpm_newtxbuf(DEFAULT_TPU,cid);
+  }
+  return rlp_init_block(txbuf, NULL);
+}
+
+
+/***********************************************************************************************/
 /*
   To send PDUs via the root layer, the client must fill in a RLP PDU
   block in an RLP txbuffer. It must first initialise the buffer by
@@ -219,7 +226,6 @@ for example.
 	rlp_send_block(mybuf);
 
 */
-
 /***********************************************************************************************/
 /*
 Start an RLP PDU block
@@ -338,6 +344,7 @@ rlp_add_pdu(
 		}
 #else /* not CONFIG_RLP_OPTIMIZE_PACK */
 #if CONFIG_RLP_SINGLE_CLIENT
+    /* since we only have SDT PDUs, we don't have to repeat vector (protocol id) */
 		pdup += 2;	/* allow for length field */
 		flags = DATA_FLAG;
 #else
@@ -388,6 +395,7 @@ rlp_add_pdu(
 		marshalUUID(pdup + 2 + sizeof(protocolID_t), bufhdrp(buf)->ownerCID);
 	}
 
+	/* PDU length and flags */
 	marshalU16(pdup, (uint16_t)(pduend - pdup) | flags);
 	pdup += 2;
 
@@ -561,7 +569,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 	int datasize;
 
 	pdup = data;
-	if(dataLen < RLP_PREAMBLE_LENGTH + RLP_FIRSTPDU_MINLENGTH + RLP_POSTAMBLE_LENGTH)
+	if(dataLen < (int)(RLP_PREAMBLE_LENGTH + RLP_FIRSTPDU_MINLENGTH + RLP_POSTAMBLE_LENGTH))
 	{
 		syslog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: Packet too short to be valid");
 		return;	

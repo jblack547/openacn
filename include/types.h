@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #ifndef __types_h__
-#define __types_h__
+#define __types_h__ 1
 /*
   Type definitions for fixed size types in 8, 16, 32 bits
 
@@ -112,14 +112,16 @@ typedef long long int sint64_t;
 #endif
 #endif /* #ifdef NEED_INT64 */
 
-#include "user_types.h"
-
-#define bool uint8_t
 #define PACKED __attribute__((__packed__))
+#define UNUSED_ARG(x) (void)x
+#define bool uint8_t
+
 typedef struct
 {
 	uint16_t length;
 	uint8_t value[0];
 } p_string_t;
+
+#include "user_types.h"
 
 #endif /* __types_h__ */

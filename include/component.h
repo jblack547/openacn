@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Information structures and handling relating to components
 */
 #ifndef __component_h__
-#define __component_h__
+#define __component_h__ 1
 
 #include <arch/types.h>
 #include "uuid.h"

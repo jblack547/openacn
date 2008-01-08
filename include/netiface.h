@@ -38,15 +38,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __netiface_h__
 #define __netiface_h__ 1
 
-#include "types.h"
 #include <string.h>
+#include "opt.h"
+#include "acn_arch.h"
 
 #if CONFIG_EPI20
 #include "epi20.h"
 #endif
 
 #if CONFIG_NET_IPV4
-
 typedef uint16_t port_t;	/* net endpoint is a port */
 typedef uint32_t ip4addr_t;	/* net group is a multicast address */
 typedef ip4addr_t groupaddr_t;
@@ -66,8 +66,24 @@ struct netaddr_s {
 
 #endif	/* CONFIG_NET_IPV4 */
 
-#if CONFIG_STACK_BSD
+#if CONFIG_STACK_LWIP
+#include "lwip/udp.h"
+#include "lwip/sockets.h"
+#include "lwip/netif.h"
+#include "lwip/igmp.h"
+#include "lwip/pbuf.h"
+typedef int neti_nativeSocket_t;
+typedef struct sockaddr_in netiHost_t;
 
+#if CONFIG_NET_IPV4
+#define NETI_FAMILY AF_INET
+#elif CONFIG_NET_IPV6
+#define NETI_FAMILY AF_INET6
+#endif
+
+#endif
+
+#if CONFIG_STACK_BSD
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <errno.h>
@@ -85,7 +101,9 @@ typedef struct sockaddr_in netiHost_t;
 #define NETI_FAMILY AF_INET6
 #endif
 
-#elif CONFIG_STACK_PATHWAY
+#endif /* CONFIG_STACK_BSD */
+
+#if CONFIG_STACK_PATHWAY
 
 #include "wattcp.h"
 
@@ -113,16 +131,25 @@ extern void neti_udp_close(struct netsocket_s *netsock);
 
 #if CONFIG_STACK_BSD
 #define neti_udp_close(netsock) close((netsock)->nativesock)
-#elif CONFIG_STACK_PATHWAY
+#endif
+
+#if CONFIG_STACK_PATHWAY
 #define neti_udp_close(netsock) udp_close(&(netsock)->nativesock)
 #endif
 
 extern int neti_change_group(struct netsocket_s *netsock, ip4addr_t localGroup, int operation);
 /* operation argument */
+#if CONFIG_STACK_LWIP
+#define NETI_JOINGROUP IP_ADD_MEMBERSHIP
+#define NETI_LEAVEGROUP IP_DROP_MEMBERSHIP
+#endif
+
 #if CONFIG_STACK_BSD
 #define NETI_JOINGROUP IP_ADD_MEMBERSHIP
 #define NETI_LEAVEGROUP IP_DROP_MEMBERSHIP
-#elif CONFIG_STACK_PATHWAY
+#endif /* CONFIG_STACK_BSD */
+
+#if CONFIG_STACK_PATHWAY
 #define NETI_JOINGROUP 1
 #define NETI_LEAVEGROUP 0
 #endif /* CONFIG_STACK_PATHWAY */
@@ -143,25 +170,43 @@ SDT packets use a standard transport address format for address and port which m
 #include "acn_sdt.h"
 
 /* Both native and ACN formats are network byte order */
+extern __inline__ void transportAddrToHost(const uint8_t *transaddr, netiHost_t *hostaddr);
 extern __inline__ void transportAddrToHost(const uint8_t *transaddr, netiHost_t *hostaddr)
 {
+#if CONFIG_STACK_LWIP
+	//hostaddr->sin_family = AF_INET;
+	//memcpy(&hostaddr->sin_port, transaddr+1, 2);
+	//memcpy(&hostaddr->sin_addr, transaddr+3, 4);
+#endif /* CONFIG_STACK_LWIP */
+
 #if CONFIG_STACK_BSD
 	hostaddr->sin_family = AF_INET;
 	memcpy(&hostaddr->sin_port, transaddr+1, 2);
 	memcpy(&hostaddr->sin_addr, transaddr+3, 4);
-#elif CONFIG_STACK_PATHWAY
+#endif /* CONFIG_STACK_BSD */
+
+#if CONFIG_STACK_PATHWAY
 	memcpy(&hostaddr, transaddr+1, 6);
 #endif	/* CONFIG_STACK_PATHWAY */
 }
 
 /* Both native and ACN formats are network byte order */
+extern __inline__ void hostToTransportAddr(const netiHost_t *hostaddr, uint8_t *transaddr);
 extern __inline__ void hostToTransportAddr(const netiHost_t *hostaddr, uint8_t *transaddr)
 {
 	*transaddr = SDT_ADDR_IPV4;
+
+#if CONFIG_STACK_LWIP
+	//memcpy(transaddr+1, &hostaddr->sin_port, 2);
+	//memcpy(transaddr+3, &hostaddr->sin_addr, 4);
+#endif /* CONFIG_STACK_LWIP */
+
 #if CONFIG_STACK_BSD
 	memcpy(transaddr+1, &hostaddr->sin_port, 2);
 	memcpy(transaddr+3, &hostaddr->sin_addr, 4);
-#elif CONFIG_STACK_PATHWAY
+#endif /* CONFIG_STACK_BSD */
+
+#if CONFIG_STACK_PATHWAY
 	memcpy(transaddr+1, &hostaddr, 6);
 #endif	/* CONFIG_STACK_PATHWAY */
 }

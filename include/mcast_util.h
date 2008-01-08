@@ -35,7 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #ifndef __mcast_util_h__
-#define __mcast_util_h__
+#define __mcast_util_h__ 1
+
 #include "acn_config.h"
 
 void mcast_alloc_init(int scopeaddr, int scopemask, local_component_t *comp);

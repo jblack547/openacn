@@ -41,9 +41,9 @@ Code which sits on top of RLP should not really have to use this header
 */
 
 #ifndef __acn_rlp_h__
-#define __acn_rlp_h__
+#define __acn_rlp_h__ 1
 
-#if defined(CONFIG_EPI17)
+#if CONFIG_EPI17
 
 #include "epi17.h"
 

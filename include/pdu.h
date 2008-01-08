@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #ifndef __pdu_h__
-#define __pdu_h__
+#define __pdu_h__ 1
 
 #include <arch/types.h>
 

@@ -44,14 +44,18 @@ static const char *rcsid __attribute__ ((unused)) =
 
 #include <string.h>
 #include "opt.h"
-#include "types.h"
 #include "acn_arch.h"
+
 #include "acn_rlp.h"
 #include "netiface.h"
 #include "rlp.h"
 #include "rlpmem.h"
 #include "marshal.h"
-#include <syslog.h>
+#include "syslog.h"
+
+#if CONFIG_RLPMEM_MALLOC
+#include <stdlib.h>
+#endif
 
 /***********************************************************************************************/
 /*
@@ -100,8 +104,6 @@ This currently suffers from the Shlemeil the Painter problem
 struct netsocket_s sockets[MAX_RLP_SOCKETS];
 static struct rlp_listener_s listeners[MAX_LISTENERS];
 static struct rlp_txbuf_s txbufs[MAX_TXBUFS];
-
-void rlpm_listeners_init(void);
 
 /***********************************************************************************************/
 /*
@@ -179,7 +181,7 @@ Free a listener group
 Only call if group is empty (no listeners exist)
 */
 void 
-rlpm_free_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup)
+rlpm_free_rxgroup(struct netsocket_s *netsock __attribute__ ((unused)), struct rlp_rxgroup_s *rxgroup)
 {
 	rxgroup->socketNum = -1;
 }
@@ -266,7 +268,7 @@ __next_listener(struct rlp_rxgroup_s *rxgroup, int socketNum, groupaddr_t groupa
 Find the next listener in a group with a given protocol
 */
 struct rlp_listener_s *
-rlpm_next_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener, protocolID_t pduProtocol)
+rlpm_next_listener(struct rlp_rxgroup_s *rxgroup  __attribute__ ((unused)), struct rlp_listener_s *listener, protocolID_t pduProtocol)
 {
 	return __next_listener(listener, listener->socketNum, listener->groupaddr, pduProtocol);
 }
@@ -380,7 +382,8 @@ rlp_freetxbuf will only actually free the buffer if usage is zero.
 /***********************************************************************************************/
 static int bufnum = 0;
 
-struct rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
+struct 
+rlp_txbuf_s *rlpm_newtxbuf(int size  __attribute__ ((unused)), cid_t owner)
 {
 	int i;
 	
@@ -399,7 +402,8 @@ struct rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
 }
 
 /***********************************************************************************************/
-void rlp_freetxbuf(struct rlp_txbuf_s *buf)
+void 
+rlp_freetxbuf(struct rlp_txbuf_s *buf)
 {
 	--(buf->usage);
 }
@@ -424,7 +428,7 @@ struct rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
 	uint8_t *buf;
 	
 	buf = malloc(
-			sizeof(struct rlpTxbufhdr_s)
+			sizeof(struct rlp_txbuf_s) 
 			+ RLP_PREAMBLE_LENGTH
 			+ sizeof(protocolID_t)
 			+ sizeof(cid_t)
@@ -434,12 +438,12 @@ struct rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
 	if (buf != NULL)
 	{
 		rlp_getuse(buf) = 0;
-		((struct rlpTxbufhdr_s *)buf)->datasize = RLP_PREAMBLE_LENGTH
+		((struct rlp_txbuf_s *)buf)->datasize = RLP_PREAMBLE_LENGTH
 				+ sizeof(protocolID_t)
 				+ sizeof(cid_t)
 				+ size
 				+ RLP_POSTAMBLE_LENGTH;
-		((struct rlpTxbufhdr_s *)buf)->ownerCID = owner;
+		((struct rlp_txbuf_s *)buf)->ownerCID = owner;
 	}
 
 	return buf;
@@ -466,9 +470,5 @@ void rlp_freetxbuf(struct rlp_txbuf_s *buf)
 
 */
 
-
-
-
-
-#endif	/* #elif defined(CONFIG_RLPMEM_DYNAMIC) */
+#endif	/* #elif CONFIG_RLPMEM_MALLOC */
 

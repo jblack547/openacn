@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opt.h"
 #include "uuid.h"
-#include <ctype.h>
+#include <ctype.h>  /* POSSIBLE COMPILER DEPENDENDENCY */
 
 int textToUuid(const char *uuidText, uuid_t uuidp)
 {

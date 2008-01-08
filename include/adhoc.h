@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #ifndef __adhoc_h__
-#define __adhoc_h__
+#define __adhoc_h__ 1
 
 #include <arch/types.h>
 

@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #ifndef __dmp_h__
-#define __dmp_h__
+#define __dmp_h__ 1
 
 #include <arch/types.h>
 #include <acn_config.h>

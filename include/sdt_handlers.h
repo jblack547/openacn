@@ -32,6 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
+#ifndef __sdt_handler_h__
+#define __sdt_handler_h__ 1
 /* 
    sdt_handler.h 
    Client protocol handler management for sdt
@@ -90,3 +92,4 @@ int deregisterHandlers(protocolID_t protocol, handler_t *handlers);
 int initHandlers(handler_t *handlers);
 int freeHandlers(handler_t *handlers);
 
+#endif

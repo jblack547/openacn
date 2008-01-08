@@ -41,7 +41,7 @@ Code which sits on top of DMP should not really have to use this header
 */
 
 #ifndef __acn_dmp_h__
-#define __acn_dmp_h__
+#define __acn_dmp_h__ 1
 
 #include <arch/types.h>
 

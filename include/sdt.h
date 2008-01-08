@@ -40,6 +40,6 @@ necessary for accessing SDT from higher layers
 */
 
 #ifndef __sdt_h__
-#define __sdt_h__
+#define __sdt_h__ 1
 
 #endif

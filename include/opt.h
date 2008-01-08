@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 
-#if !defined(__opt_h__)
+#ifndef __opt_h__
 #define __opt_h__ 1
 /*
   IMPORTANT
@@ -135,10 +135,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CONFIG_STACK_WINSOCK
 #define	CONFIG_STACK_WINSOCK   0
 #endif
+/* LightweightIP (LWIP) stack */
+#ifndef CONFIG_STACK_LWIP
+#define	CONFIG_STACK_LWIP  0
+#endif
 /* Pathway Connectivity stack - derived from Waterloo stack */
 #ifndef CONFIG_STACK_PATHWAY
 #define	CONFIG_STACK_PATHWAY  0
 #endif
+
 
 /*
   memory management models - pick one
@@ -148,6 +153,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #ifndef CONFIG_RLPMEM_STATIC
 #define	CONFIG_RLPMEM_STATIC   1
+#endif
+
+#if CONFIG_RLPMEM_STATIC
+  #ifndef MAX_RLP_SOCKETS
+  #define MAX_RLP_SOCKETS 50
+  #endif
+  #ifndef MAX_LISTENERS
+  #define MAX_LISTENERS 100
+  #endif
+  #ifndef MAX_TXBUFS
+  #define MAX_TXBUFS 10
+  #endif
 #endif
 
 /*
@@ -246,9 +263,10 @@ Protocols to build
 #endif
 
 /* checks on network stack */
-#if (CONFIG_STACK_BSD + CONFIG_STACK_WINSOCK + CONFIG_STACK_PATHWAY) != 1
+#if (CONFIG_STACK_BSD + CONFIG_STACK_WINSOCK + CONFIG_STACK_PATHWAY + CONFIG_STACK_LWIP) != 1
 #error Need to select exactly one network stack
 #endif
+
 #if CONFIG_STACK_PATHWAY && (!CONFIG_NET_IPV4 || CONFIG_MULTI_NET)
 #error Pathway stack only supports IPv4
 #endif
@@ -257,5 +275,11 @@ Protocols to build
 #if ((CONFIG_SDT + CONFIG_E131) > 1 && (CONFIG_RLP_SINGLE_CLIENT) != 0)
 #error Cannot support both SDT and E1.31 if CONFIG_RLP_SINGLE_CLIENT is set
 #endif
+
+// Sanity check for memory managment
+#if (CONFIG_RLPMEM_MALLOC +  CONFIG_RLPMEM_STATIC) != 1
+#error Need to select one memory managment model
+#endif
+
 
 #endif

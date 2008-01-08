@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #ifndef __datatypes_h__
-#define __datatypes_h__
+#define __datatypes_h__ 1
 /*
 enum
 {

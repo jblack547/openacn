@@ -37,7 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stddef.h>
 #include <string.h>
-#include "marshal.h"
+#include "opt.h"
+#include "acn_arch.h"
 
 inline size_t marshalU8(uint8_t *data, uint8_t u8)
 {

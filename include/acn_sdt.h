@@ -41,7 +41,7 @@ Code which sits on top of SDT should not really have to use this header
 */
 
 #ifndef __acn_sdt_h__
-#define __acn_sdt_h__
+#define __acn_sdt_h__ 1
 
 #include <types.h>
 

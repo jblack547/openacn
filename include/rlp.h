@@ -35,9 +35,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #ifndef __rlp_h__
-#define __rlp_h__
+#define __rlp_h__ 1
 
-#include "types.h"
+#include "netiface.h"
 
 typedef void rlpHandler_t(
 	const uint8_t *data,
@@ -45,15 +45,26 @@ typedef void rlpHandler_t(
 	void *ref,
 	const netiHost_t *remhost,
 	const cid_t *remcid
-	);
+);
 
-int rlpSendTo(void *sock, uint32_t dstIP, uint16_t dstPort, int keep);
-void *rlpOpenSocket(uint16_t localPort);
-void rlpCloseSocket(void *s);
-void *rlpFindSocket(uint16_t localPort);
-int initRlp(void);
-uint8_t *rlpFormatPacket(const uint8_t *srcCid, int vector);
-void rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netiHost_t *remhost);
+/* must be included after rlpHandler_t */
+#include "rlpmem.h"
+
+/* Prototypes */
+int       rlp_init(void);
+uint8_t  *rlp_create_packet(struct rlp_txbuf_s *txbuf, cid_t cid);
+uint8_t  *rlp_init_block(struct rlp_txbuf_s *buf, uint8_t *datap);
+#if !CONFIG_RLP_SINGLE_CLIENT
+uint8_t  *rlp_add_pdu(struct rlp_txbuf_s *buf, uint8_t *pdudata, int size, protocolID_t protocol, uint8_t **packetdatap);
+#else
+uint8_t  *rlp_add_pdu(struct rlp_txbuf_s *buf, uint8_t *pdudata, int size, uint8_t **packetdatap);
+#endif
+int       rlp_send_block(struct rlp_txbuf_s *buf, struct netsocket_s *netsock, struct netaddr_s *destaddr);
+struct netsocket_s * rlp_open_netsocket(struct netaddr_s *localaddr);
+void      rlp_close_netsocket(struct netsocket_s *netsock);
+struct    rlp_listener_s * rlp_add_listener(struct netsocket_s *netsock, groupaddr_t groupaddr, protocolID_t protocol, rlpHandler_t *callback, void *ref);
+void      rlp_del_listener(struct netsocket_s *netsock, struct rlp_listener_s *listener);
+void      rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netiHost_t *remhost);
 
 /*
 struct rlp_txbuf_hdr {
