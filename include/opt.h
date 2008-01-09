@@ -144,6 +144,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define	CONFIG_STACK_PATHWAY  0
 #endif
 
+/*
+In hosts with multiple interfaces (including the loopback interface) it
+is normal to accept incoming packets for any interface (local address)
+and to leave it to the stack to select the interface for outgoing
+packets (in BSD this is done by binding sockets to INADDR_ANY).
+
+If CONFIG_LOCALIP_ANY is set, RLP and SDT rely
+entirely on the stack to handle IP addresses and interfaces and the API
+does not allow local addresses to be specified (except for multicast) and
+only stores port information. This saves using resources tracking
+addresses which are always unspecified.
+
+If CONFIG_LOCALIP_ANY is false then the API allows higher layers to
+specify individual interfaces at the expense of slightly more code and
+memory. This setting still allows the value NETI_INADDR_ANY to be used
+as required.
+*/
+#ifndef CONFIG_LOCALIP_ANY
+#define	CONFIG_LOCALIP_ANY       1
+#endif
 
 /*
   memory management models - pick one

@@ -91,7 +91,7 @@ extern void rlpm_netsocks_init(void);
 extern void rlpm_listeners_init(void);
 
 extern struct netsocket_s *rlpm_new_netsock(void);
-extern struct netsocket_s *rlpm_find_netsock(struct netaddr_s *localaddr);
+extern struct netsocket_s *rlpm_find_netsock(localaddr_t localaddr);
 extern void rlpm_free_netsock(struct netsocket_s *sockp);
 
 extern struct rlp_listener_s *rlpm_new_listener(struct rlp_rxgroup_s *rxgroup);

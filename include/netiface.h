@@ -58,10 +58,6 @@ struct netaddr_s {
 	ip4addr_t addr;
 };
 
-#define NETI_PORT_NONE 0
-#define NETI_INADDR_ANY ((ip4addr_t)0)
-#define NETI_GROUP_UNICAST NETI_INADDR_ANY
-
 #define is_multicast(addr) (((addr) & 0xf0000000) == 0xe0000000)
 
 #endif	/* CONFIG_NET_IPV4 */
@@ -77,6 +73,7 @@ typedef struct sockaddr_in netiHost_t;
 
 #if CONFIG_NET_IPV4
 #define NETI_FAMILY AF_INET
+#define NETI_INADDR_ANY IP_ADDR_ANY
 #elif CONFIG_NET_IPV6
 #define NETI_FAMILY AF_INET6
 #endif
@@ -97,6 +94,7 @@ typedef struct sockaddr_in netiHost_t;
 
 #if CONFIG_NET_IPV4
 #define NETI_FAMILY AF_INET
+#define NETI_INADDR_ANY INADDR_ANY
 #elif CONFIG_NET_IPV6
 #define NETI_FAMILY AF_INET6
 #endif
@@ -119,14 +117,36 @@ struct PACKED netiHost_s {
 	ip4addr_t addr;
 };
 
+#if CONFIG_LOCALIP_ANY
 struct netsocket_s {
 	neti_nativeSocket_t nativesock;
 	port_t localport;
 };
+#define NETSOCKPORT(x) ((x).localport)
+#define NETSOCKADDR(x) NETI_INADDR_ANY
+
+typedef port_t localaddr_t;
+#define PORTPART(x) x
+#define ADDRPART(x) NETI_INADDR_ANY
+
+#else /* !CONFIG_LOCALIP_ANY */
+
+struct netsocket_s {
+	neti_nativeSocket_t nativesock;
+	struct netaddr_s local;
+};
+#define NETSOCKPORT(x) ((x).local.port)
+#define NETSOCKADDR(x) ((x).local.addr)
+
+typedef struct netsocket_s *localaddr_t;
+#define PORTPART(x) ((x)->port)
+#define ADDRPART(x) ((x)->addr)
+
+#endif /* !CONFIG_LOCALIP_ANY */
 
 extern void neti_init(void);
 extern int neti_poll(struct netsocket_s **sockps, int numsocks);
-extern int neti_udp_open(struct netsocket_s *netsock, port_t localport);
+extern int neti_udp_open(struct netsocket_s *netsock, localaddr_t localaddr);
 extern void neti_udp_close(struct netsocket_s *netsock);
 
 #if CONFIG_STACK_BSD
@@ -212,5 +232,18 @@ extern __inline__ void hostToTransportAddr(const netiHost_t *hostaddr, uint8_t *
 }
 
 #endif	/* CONFIG_SDT */
+
+#ifndef NETI_PORT_NONE
+#define NETI_PORT_NONE 0
+#endif
+#ifndef NETI_PORT_EPHEM
+#define NETI_PORT_EPHEM (port_t)0
+#endif
+#ifndef NETI_INADDR_ANY
+#define NETI_INADDR_ANY ((ip4addr_t)0)
+#endif
+#ifndef NETI_GROUP_UNICAST
+#define NETI_GROUP_UNICAST NETI_INADDR_ANY
+#endif
 
 #endif	/* #ifndef __netiface_h__ */

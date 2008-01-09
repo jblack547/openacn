@@ -189,6 +189,7 @@ rlp_init(void)
 }
 
 /***********************************************************************************************/
+#if 0
 uint8_t *
 rlp_create_packet(struct rlp_txbuf_s *txbuf, cid_t cid);
 {
@@ -197,7 +198,7 @@ rlp_create_packet(struct rlp_txbuf_s *txbuf, cid_t cid);
   }
   return rlp_init_block(txbuf, NULL);
 }
-
+#endif
 
 /***********************************************************************************************/
 /*
@@ -438,16 +439,20 @@ Find a matching netsocket or create a new one if necessary
 */
 
 struct netsocket_s *
-rlp_open_netsocket(struct netaddr_s *localaddr)
+rlp_open_netsocket(localaddr_t localaddr)
 {
 	struct netsocket_s *netsock;
 
-	if ((netsock = rlpm_find_netsock(localaddr))) return netsock;	/* found existing matching socket */
+	printf("rlp_open_netsocket: calling rlpm_find_netsock\n");
+	if (PORTPART(localaddr) != NETI_PORT_EPHEM && (netsock = rlpm_find_netsock(localaddr))) return netsock;	/* found existing matching socket */
 
+	printf("rlp_open_netsocket: calling rlpm_new_netsock\n");
 	if ((netsock = rlpm_new_netsock()) == NULL) return NULL;		/* cannot allocate a new one */
 
-	if (neti_udp_open(netsock, localaddr->port) != 0)
+	printf("rlp_open_netsocket: calling neti_udp_open\n");
+	if (neti_udp_open(netsock, localaddr) != 0)
 	{
+		printf("rlp_open_netsocket: calling rlpm_free_netsock\n");
 		rlpm_free_netsock(netsock);	/* UDP open fails */
 		return NULL;
 	}

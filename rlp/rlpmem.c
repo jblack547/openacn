@@ -107,39 +107,40 @@ static struct rlp_txbuf_s txbufs[MAX_TXBUFS];
 
 /***********************************************************************************************/
 /*
-  find the socket (if any) with matching port 
+  find the socket (if any) with matching local address 
 */
-static inline
 struct netsocket_s *
-_find_netsock(port_t port)
+rlpm_find_netsock(localaddr_t localaddr)
 {
 	struct netsocket_s *sockp;
 
 	sockp = sockets;
-	while (sockp->localport != port)
+#if CONFIG_LOCALIP_ANY
+	while (NETSOCKPORT(*sockp) != PORTPART(localaddr))
+#else
+	while (NETSOCKPORT(*sockp) != PORTPART(localaddr) || NETSOCKADDR(*sockp) != ADDRPART(localaddr))
+#endif
 		if (++sockp >= sockets + MAX_RLP_SOCKETS) return NULL;
 	return sockp;
 }
 
 /***********************************************************************************************/
 struct netsocket_s *
-rlpm_find_netsock(struct netaddr_s *localaddr)
-{
-	return _find_netsock(localaddr->port);
-}
-
-/***********************************************************************************************/
-struct netsocket_s *
 rlpm_new_netsock(void)
 {
-	return _find_netsock(NETI_PORT_NONE);
+	struct netsocket_s *sockp;
+
+	sockp = sockets;
+	while (NETSOCKPORT(*sockp) != NETI_PORT_NONE)
+		if (++sockp >= sockets + MAX_RLP_SOCKETS) return NULL;
+	return sockp;
 }
 
 /***********************************************************************************************/
 void 
 rlpm_free_netsock(struct netsocket_s *sockp)
 {
-	sockp->localport = NETI_PORT_NONE;
+	NETSOCKPORT(*sockp) = NETI_PORT_NONE;
 }
 
 /***********************************************************************************************/
@@ -149,7 +150,7 @@ rlpm_netsocks_init(void)
 	struct netsocket_s *sockp;
 
 	for (sockp = sockets; sockp < sockets + MAX_RLP_SOCKETS; ++sockp)
-		sockp->localport = NETI_PORT_NONE;
+		NETSOCKPORT(*sockp) = NETI_PORT_NONE;
 }
 
 /***********************************************************************************************/
@@ -181,8 +182,9 @@ Free a listener group
 Only call if group is empty (no listeners exist)
 */
 void 
-rlpm_free_rxgroup(struct netsocket_s *netsock __attribute__ ((unused)), struct rlp_rxgroup_s *rxgroup)
+rlpm_free_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup)
 {
+	UNUSED_ARG(netsock);
 	rxgroup->socketNum = -1;
 }
 
@@ -268,8 +270,9 @@ __next_listener(struct rlp_rxgroup_s *rxgroup, int socketNum, groupaddr_t groupa
 Find the next listener in a group with a given protocol
 */
 struct rlp_listener_s *
-rlpm_next_listener(struct rlp_rxgroup_s *rxgroup  __attribute__ ((unused)), struct rlp_listener_s *listener, protocolID_t pduProtocol)
+rlpm_next_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener, protocolID_t pduProtocol)
 {
+	UNUSED_ARG(rxgroup);
 	return __next_listener(listener, listener->socketNum, listener->groupaddr, pduProtocol);
 }
 
@@ -383,9 +386,10 @@ rlp_freetxbuf will only actually free the buffer if usage is zero.
 static int bufnum = 0;
 
 struct 
-rlp_txbuf_s *rlpm_newtxbuf(int size  __attribute__ ((unused)), cid_t owner)
+rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
 {
 	int i;
+	UNUSED_ARG(size);
 	
 	i = bufnum;
 	while (txbufs[i].usage != 0)

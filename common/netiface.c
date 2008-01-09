@@ -80,7 +80,7 @@ void neti_init(void)
 
 #if CONFIG_STACK_LWIP
 int
-neti_udp_open(struct netsocket_s *rlpsock, port_t localport)
+neti_udp_open(struct netsocket_s *rlpsock, localaddr_t localaddr)
 {
   struct udp_pcb *neti_pcb;        // common Protocol Control Block
 
@@ -91,7 +91,7 @@ neti_udp_open(struct netsocket_s *rlpsock, port_t localport)
   rlpsock->nativesock = (int)neti_pcb;
 
   // BIND:sets local_ip and local_port
-  if (!udp_bind(neti_pcb, IP_ADDR_ANY, localport) == ERR_OK)
+  if (!udp_bind(neti_pcb, ADDRPART(localaddr), PORTPART(localaddr)) == ERR_OK)
     return -1;
 
   // UDP Callback
@@ -106,14 +106,14 @@ static const int optionOn = 1;
 static const int optionOff = 0;
 
 int
-neti_udp_open(struct netsocket_s *rlpsock, port_t localport)
+neti_udp_open(struct netsocket_s *rlpsock, localaddr_t localaddr)
 {
 	int bsdsock;
 	int rslt;
 	union {
 		struct sockaddr gen;
 		struct sockaddr_in ip4;
-	} localaddr;
+	} nativeaddr;
 
 	bsdsock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (bsdsock < 0) return -errno;
@@ -124,16 +124,35 @@ neti_udp_open(struct netsocket_s *rlpsock, port_t localport)
     rslt = setsockopt (bsdsock, SOL_SOCKET, SO_REUSEADDR, (void *)&optionOn, sizeof(optionOn));
 	if (rslt < 0) goto fail;
 
-	localaddr.gen.sa_family = NETI_FAMILY;
-	localaddr.ip4.sin_port = localport;
-	localaddr.ip4.sin_addr.s_addr = INADDR_ANY;
-	rslt = bind(bsdsock, &localaddr.gen, sizeof(struct sockaddr_in));
+	nativeaddr.gen.sa_family = NETI_FAMILY;
+	nativeaddr.ip4.sin_port = PORTPART(localaddr);
+	nativeaddr.ip4.sin_addr.s_addr = ADDRPART(localaddr);
+	rslt = bind(bsdsock, &nativeaddr.gen, sizeof(struct sockaddr_in));
 	if (rslt < 0) goto fail;
 
 	rlpsock->nativesock = bsdsock;
-	rlpsock->localport = localport;
+	if (PORTPART(localaddr) != NETI_PORT_EPHEM)
+	{
+		NETSOCKPORT(*rlpsock) = PORTPART(localaddr);
+#if !CONFIG_LOCALIP_ANY
+		NETSOCKADDR(*rlpsock) = ADDRPART(localaddr);
+#endif
+	}
+	else
+	{
+		/* find the ephemeral port which has been assigned */
+		socklen_t socklen;
 
-	/* we need information on destination address used */
+		socklen = sizeof(nativeaddr);
+		rslt = getsockname(bsdsock, &nativeaddr.gen, &socklen);
+		if (rslt < 0) goto fail;
+		NETSOCKPORT(*rlpsock) = nativeaddr.ip4.sin_port;
+#if !CONFIG_LOCALIP_ANY
+		NETSOCKADDR(*rlpsock) = nativeaddr.ip4.sin_addr.sa_addr;
+#endif
+	}
+
+	/* we will need information on destination address used */
 	rslt = setsockopt (bsdsock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
 	if (rslt < 0) goto fail;
 
@@ -147,9 +166,9 @@ fail:
 
 #if CONFIG_STACK_PATHWAY
 int 
-neti_udp_open(struct rlpsocket_s *rlpsock, port_t localport)
+neti_udp_open(struct netsocket_s *rlpsock, struct localaddr_s *localaddr)
 {
-	if (udp_open(&rlpsock->nativesock, localport, -1, 0, &netihandler) == 0)
+	if (udp_open(&rlpsock->nativesock, localaddr->port, -1, 0, &netihandler) == 0)
 		return -1;
 	rlpsock->nativesock.usr_name = char *rlpsock;	/* use usr_name field to store reference pointer **EXPERIMENTAL** */
 	return 0;
@@ -373,7 +392,8 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 				{
 					ip4addr_t pktaddr;
 
-					if ( is_multicast( pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr))
+					pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr;
+					if (is_multicast(pktaddr))
 						destaddr = pktaddr;
 				}
 			}
@@ -487,6 +507,7 @@ the given remote address. For now we just get the first address
 	int rslt;
 	struct addrinfo *ilist;
 	ip4addr_t myaddr;
+	UNUSED_ARG(destaddr);
 
 	static const struct addrinfo hint = {
 		.ai_family = NETI_FAMILY,
