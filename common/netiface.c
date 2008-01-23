@@ -94,6 +94,18 @@ neti_udp_open(struct netsocket_s *rlpsock, localaddr_t localaddr)
   if (!udp_bind(neti_pcb, ADDRPART(localaddr), PORTPART(localaddr)) == ERR_OK)
     return -1;
 
+  if (PORTPART(localaddr) != NETI_PORT_EPHEM) {
+// if port was 0, then the stack should have given us a port, so assign it back
+	NETSOCKPORT(*rlpsock) = neti_pcb->local_port;
+  }
+  else
+  {
+	NETSOCKPORT(*rlpsock) = PORTPART(localaddr);
+  }
+#if !CONFIG_LOCALIP_ANY
+	NETSOCKADDR(*rlpsock) = ADDRPART(localaddr);
+#endif
+
   // UDP Callback
   udp_recv(neti_pcb, netihandler, rlpsock);
 
