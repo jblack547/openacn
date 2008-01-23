@@ -83,18 +83,16 @@ inline uint32_t unmarshalU32(const uint8_t *data)
 }
 
 #if !defined(marshalUUID)
-inline size_t marshalUUID(uint8_t *data, const uint8_t *uuid)
+void marshalUUID(uint8_t *data, const uint8_t *uuid)
 {
 	memcpy(data, uuid, sizeof(uuid_t));
-	return sizeof(uuid_t);
 }
 #endif
 
 #if !defined(unmarshalUUID)
-inline size_t unmarshalUUID(const uint8_t *data, uint8_t *uuid)
+void unmarshalUUID(const uint8_t *data, uint8_t *uuid)
 {
 	memcpy(uuid, data, sizeof(uuid_t));
-	return sizeof(uuid_t);
 }
 #endif
 
