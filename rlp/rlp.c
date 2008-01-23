@@ -188,15 +188,15 @@ rlp_init(void)
 	return 0;
 }
 
-/***********************************************************************************************/
 #if 0
+/***********************************************************************************************/
 uint8_t *
-rlp_create_packet(struct rlp_txbuf_s *txbuf, cid_t cid);
+rlp_create_packet(struct rlp_txbuf_s **txbuf, cid_t cid)
 {
-  if (!txbuf) {
-    txbuf = rlpm_newtxbuf(DEFAULT_TPU,cid);
+  if (!*txbuf) {
+    *txbuf = rlpm_newtxbuf(DEFAULT_MTU,cid);
   }
-  return rlp_init_block(txbuf, NULL);
+  return rlp_init_block(*txbuf, NULL);
 }
 #endif
 
@@ -403,7 +403,7 @@ rlp_add_pdu(
 	if ((flags & VECTOR_FLAG))
 	{
 #if CONFIG_RLP_SINGLE_CLIENT
-		marshallU32(pdup, CONFIG_RLP_SINGLE_CLIENT);
+		marshalU32(pdup, CONFIG_RLP_SINGLE_CLIENT);
 #else
 		marshalU32(pdup, protocol);
 		bufhdrp(buf)->protocol = protocol;
@@ -430,7 +430,9 @@ rlp_send_block(
 	struct netaddr_s *destaddr
 )
 {
+	//printf("rlp_send_block: start\n");
 	return neti_send_to(netsock, destaddr, bufhdrp(buf)->blockstart, bufhdrp(buf)->blockend - bufhdrp(buf)->blockstart);
+	//printf("rlp_send_block: end\n");
 }
 
 /***********************************************************************************************/
@@ -443,7 +445,7 @@ rlp_open_netsocket(localaddr_t localaddr)
 {
 	struct netsocket_s *netsock;
 
-	printf("rlp_open_netsocket: calling rlpm_find_netsock\n");
+	printf("rlp_open_netsocket: calling rlpm_find_netsock: %d\n", PORTPART(localaddr));
 	if (PORTPART(localaddr) != NETI_PORT_EPHEM && (netsock = rlpm_find_netsock(localaddr))) return netsock;	/* found existing matching socket */
 
 	printf("rlp_open_netsocket: calling rlpm_new_netsock\n");
@@ -456,6 +458,7 @@ rlp_open_netsocket(localaddr_t localaddr)
 		rlpm_free_netsock(netsock);	/* UDP open fails */
 		return NULL;
 	}
+  printf("rlp_open_netsocket: port=%d\n", netsock->localport);
 
 	return netsock;
 }
