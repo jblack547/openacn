@@ -73,7 +73,6 @@ typedef struct sockaddr_in netiHost_t;
 
 #if CONFIG_NET_IPV4
 #define NETI_FAMILY AF_INET
-#define NETI_INADDR_ANY IP_ADDR_ANY
 #elif CONFIG_NET_IPV6
 #define NETI_FAMILY AF_INET6
 #endif
