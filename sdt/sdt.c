@@ -59,15 +59,15 @@ typedef struct foreign_member_t
 {
         struct foreign_member_t *next;
         foreign_component_t *component;
-        uint16 mid;
+        uint16_t mid;
         
-        uint8 nak:1;
-        uint8 pending:1;
-        uint8 isLocal:1;
-        uint8        isConnected:1;
-        uint8 expiryTime;
+        uint8_t nak:1;
+        uint8_t pending:1;
+        uint8_t isLocal:1;
+        uint8_t        isConnected:1;
+        uint8_t expiryTime;
         
-        uint32 expiresAt;        
+        uint32_t expiresAt;        
 
 } foreign_member_t;
 
@@ -75,22 +75,22 @@ typedef struct local_member_t
 {
         struct local_member_t *next;
         local_component_t *component;
-        uint16 mid;
+        uint16_t mid;
         
-        uint8 nak:1;
-        uint8 pending:1;
-        uint8 isLocal:1;
-        uint8 isConnected:1;
+        uint8_t nak:1;
+        uint8_t pending:1;
+        uint8_t isLocal:1;
+        uint8_t isConnected:1;
         
-        uint8 expiryTime;
+        uint8_t expiryTime;
         
-        uint32 expiresAt;
+        uint32_t expiresAt;
 
-        uint16 nakHoldoff;
-        uint16 lastAcked;
+        uint16_t nakHoldoff;
+        uint16_t lastAcked;
         
-        uint16 nakModulus;
-        uint16 nakMaxWait;
+        uint16_t nakModulus;
+        uint16_t nakMaxWait;
         
 } local_member_t;
 
@@ -98,20 +98,20 @@ typedef struct channel_t
 {
         struct channel_t *next;
 
-        uint16 channelNumber;
-        uint16 availableMid;
+        uint16_t channelNumber;
+        uint16_t availableMid;
         
-        uint8  pending;
-        uint8  state;
-        uint16 downstreamPort;
+        uint8_t  pending;
+        uint8_t  state;
+        uint16_t downstreamPort;
         
-        uint32 downstreamIP;
+        uint32_t downstreamIP;
         
-        uint16 isLocal;
+        uint16_t isLocal;
         
-        uint32 totalSeq;
-        uint32 reliableSeq;
-        uint32 oldestAvail;
+        uint32_t totalSeq;
+        uint32_t reliableSeq;
+        uint32_t oldestAvail;
         local_member_t *memberList;
         void         *sock;
 } channel_t;
@@ -130,27 +130,27 @@ typedef struct session_t
         leader_t *foreignLeader;
         channel_t *localChannel;
         channel_t *foreignChannel;
-        uint32 protocol;
+        uint32_t protocol;
 } session_t;
 
-uint16 initSdt(void);
+uint16_t initSdt(void);
 void shutdownSdt(void);
 
-int sdtRxHandler(udp_transport_t *transportAddr, uint8 srcCID[16], uint8 *data, uint16 dataLen);
-//uint16 sdtJoinRequest(pdu_header_type *header);
-uint32 sdtTxUpstream(local_component_t *srcComp, foreign_component_t *dstComp, channel_t *channel, uint8 *data, uint32 dataLength);
-void txQueuedBlocks(uint32 queuedProto, uint16 relatedChannelNumber, uint16 firstMid, uint16 lastMid);
-uint8 *sdtFormatWrapper(int isReliable, local_component_t *srcComp, uint16 firstMid, uint16 lastMid, uint16 makThreshold);
-uint8 *sdtFormatClientBlock(foreign_component_t *dstComp, uint32 protocol, channel_t *foreignChannel);
-uint8 *enqueueClientBlock(int dataLength);
+int sdtRxHandler(udp_transport_t *transportAddr, uint8_t srcCID[16], uint8_t *data, uint16_t dataLen);
+//uint16_t sdtJoinRequest(pdu_header_type *header);
+uint32_t sdtTxUpstream(local_component_t *srcComp, foreign_component_t *dstComp, channel_t *channel, uint8_t *data, uint32_t dataLength);
+void txQueuedBlocks(uint32_t queuedProto, uint16_t relatedChannelNumber, uint16_t firstMid, uint16_t lastMid);
+uint8_t *sdtFormatWrapper(int isReliable, local_component_t *srcComp, uint16_t firstMid, uint16_t lastMid, uint16_t makThreshold);
+uint8_t *sdtFormatClientBlock(foreign_component_t *dstComp, uint32_t protocol, channel_t *foreignChannel);
+uint8_t *enqueueClientBlock(int dataLength);
 void sdtFlush(void);
 
-uint8 *getPduBuffer(void);
-uint8 *enqueuePdu(uint16 pduLength);
-uint16 remainingPacketBuffer();
-void delSdtMember(uint8 cid[16]);
-//component_t *registerSdtDevice(uint8 cid[16]);
-//component_t *unregisterSdtDevice(uint8 cid[16]);
+uint8_t *getPduBuffer(void);
+uint8_t *enqueuePdu(uint16_t pduLength);
+uint16_t remainingPacketBuffer();
+void delSdtMember(uint8_t cid[16]);
+//component_t *registerSdtDevice(uint8_t cid[16]);
+//component_t *unregisterSdtDevice(uint8_t cid[16]);
 
 static leader_t leaderMemory[MAX_LEADERS];
 static channel_t channelMemory[MAX_CHANNELS];
@@ -164,47 +164,47 @@ static inline leader_t *findLeader(void *component);
 static inline leader_t *addLeader(void *component);
 static inline void removeLeader(leader_t *leader);
 
-static inline channel_t *findChannel(leader_t *leader, uint16 channelNumber);
-static inline channel_t *addChannel(leader_t *leader, uint16 channelNumber);
+static inline channel_t *findChannel(leader_t *leader, uint16_t channelNumber);
+static inline channel_t *addChannel(leader_t *leader, uint16_t channelNumber);
 static inline void removeChannel(leader_t *leader,  channel_t *channel);
 
-static inline void *findMemberByMid(channel_t *channel, uint16 mid);
+static inline void *findMemberByMid(channel_t *channel, uint16_t mid);
 static inline void *findMemberByComponent(channel_t *channel, void *component);
 static inline local_member_t *addLocalMember(channel_t *channel);
 static inline foreign_member_t *addForeignMember(channel_t *channel);
 static inline void removeLocalMember(channel_t *channel, local_member_t *member);
 static inline void removeForeignMember(channel_t *channel, foreign_member_t *member);
 
-static inline int marshalChannelParamBlock(uint8 *paramBlock);
-static inline int unmarshalChannelParamBlock(local_member_t *member, uint8 *paramBlock);
+static inline int marshalChannelParamBlock(uint8_t *paramBlock);
+static inline int unmarshalChannelParamBlock(local_member_t *member, uint8_t *paramBlock);
 
-static inline int marshalTransportAddress(uint8 *data, uint16 port, uint32 ipAddress, int type);
-static inline int unmarshalTransportAddress(uint8 *data, udp_transport_t *transportAddr, uint16 *port, uint32 *ipAddress, int *type);
+static inline int marshalTransportAddress(uint8_t *data, uint16_t port, uint32_t ipAddress, int type);
+static inline int unmarshalTransportAddress(uint8_t *data, udp_transport_t *transportAddr, uint16_t *port, uint32_t *ipAddress, int *type);
 
 static void sdtTick(void);
 static void sdtTxJoin(local_component_t *lComp, channel_t *lChannel, foreign_component_t *fComp, channel_t *fChannel);
-static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_header_type *header);
+static uint32_t sdtRxJoin(udp_transport_t *transportAddr, uint8_t srcCID[16], pdu_header_type *header);
 static void sdtTxJoinAccept(foreign_component_t *fComp, channel_t *fChannel, local_member_t *lMember, channel_t *lChannel);
-static uint32 sdtRxJoinAccept(uint8 *srcCID, pdu_header_type *header);
-static void sdtTxJoinRefuse(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_header_type *header, uint8 reason);
-static uint32 sdtRxJoinRefuse(uint8 *srcCID, pdu_header_type *header);
+static uint32_t sdtRxJoinAccept(uint8_t *srcCID, pdu_header_type *header);
+static void sdtTxJoinRefuse(udp_transport_t *transportAddr, uint8_t srcCID[16], pdu_header_type *header, uint8_t reason);
+static uint32_t sdtRxJoinRefuse(uint8_t *srcCID, pdu_header_type *header);
 
-static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_header_type *wrapper);
-static void sdtClientRxHandler(leader_t *leader, channel_t *channel, local_member_t *member, leader_t *localLeader, channel_t *localChannel, uint8 *data, int dataLength);
-static inline uint32 checkSequence(channel_t *s, uint8 isReliable, uint32 rxTotal, uint32 rxReliable, uint32 oldestAvail);
-static void sdtTxNak(leader_t *leader, channel_t *channel, local_member_t *member, uint32 lastMissed);
-static void sdtRxNak(uint8 *srcCID, pdu_header_type *header);
+static int sdtRxWrapper(udp_transport_t *transportAddr, uint8_t *srcCID, pdu_header_type *wrapper);
+static void sdtClientRxHandler(leader_t *leader, channel_t *channel, local_member_t *member, leader_t *localLeader, channel_t *localChannel, uint8_t *data, int dataLength);
+static inline uint32_t checkSequence(channel_t *s, uint8_t isReliable, uint32_t rxTotal, uint32_t rxReliable, uint32_t oldestAvail);
+static void sdtTxNak(leader_t *leader, channel_t *channel, local_member_t *member, uint32_t lastMissed);
+static void sdtRxNak(uint8_t *srcCID, pdu_header_type *header);
 
-static uint8 *sdtTxAck(foreign_component_t *dstComp, channel_t *foreignChannel);
-static void sdtRxAck(foreign_member_t *remoteMember, uint8 *data, int dataLength);
+static uint8_t *sdtTxAck(foreign_component_t *dstComp, channel_t *foreignChannel);
+static void sdtRxAck(foreign_member_t *remoteMember, uint8_t *data, int dataLength);
 
-static void sdtRxConnect(leader_t *remoteLeader, channel_t *remoteChannel, leader_t *localLeader, channel_t *localChannel, uint8 *data, int dataLength);
-static void sdtTxConnect(leader_t *localLeader, channel_t *localChannel, foreign_component_t *dstComp, channel_t *foreignChannel, uint32 protocol);
-static void sdtRxConnectAccept(foreign_member_t *member, uint8 *data, int dataLength);
+static void sdtRxConnect(leader_t *remoteLeader, channel_t *remoteChannel, leader_t *localLeader, channel_t *localChannel, uint8_t *data, int dataLength);
+static void sdtTxConnect(leader_t *localLeader, channel_t *localChannel, foreign_component_t *dstComp, channel_t *foreignChannel, uint32_t protocol);
+static void sdtRxConnectAccept(foreign_member_t *member, uint8_t *data, int dataLength);
 //static void sdtTxLeave(leader_t *leader, channel_t *channel, foreign_member_t *member);
-static void sdtRxLeave(leader_t *remoteLeader, channel_t *remoteChannel, leader_t *localLeader, channel_t *localChannel, uint8 *data, int dataLength);
-static void sdtTxLeaving(leader_t *leader, channel_t *channel, local_member_t *member, uint8 reason);
-static int sdtRxLeaving(uint8 *srcCID, pdu_header_type *header);
+static void sdtRxLeave(leader_t *remoteLeader, channel_t *remoteChannel, leader_t *localLeader, channel_t *localChannel, uint8_t *data, int dataLength);
+static void sdtTxLeaving(leader_t *leader, channel_t *channel, local_member_t *member, uint8_t reason);
+static int sdtRxLeaving(uint8_t *srcCID, pdu_header_type *header);
 
 enum
 {
@@ -234,7 +234,7 @@ enum
 #define mJOIN_
 
 typedef int sdtMsgDespatcher(
-	const uint8_t *data,
+	const uint8_t_t *data,
 	int datasize,
 	void *ref,
 	const netiHost_t *remhost,
@@ -242,7 +242,7 @@ typedef int sdtMsgDespatcher(
 );
 
 struct msgDespatch_s {
-	uint8_t msgCode;
+	uint8_t_t msgCode;
 	sdtMsgDespatcher *func;
 	void *funcref;
 };
@@ -256,18 +256,18 @@ const struct msgDespatch_s adhocMsgTab[] = {
 
 void
 adhocRxHandler(
-	const uint8_t *data,
+	const uint8_t_t *data,
 	int datasize,
 	void *ref,
 	const netiHost_t *remhost,
 	const cid_t *remcid
 )
 {
-	const uint8_t *pdup, *pdudata;
+	const uint8_t_t *pdup, *pdudata;
 	int pdudatalen;
-	uint8_t flags;
-	const uint8_t *pp;
-	uint8_t msgtype;
+	uint8_t_t flags;
+	const uint8_t_t *pp;
+	uint8_t_t msgtype;
 	struct msgDespatch_s *pdufunc;
 
 	pdup = data;
@@ -313,9 +313,9 @@ adhocRxHandler(
 }
 
 
-int sdtRxHandler(udp_transport_t *transportAddr, uint8 srcCID[16], uint8 *data, uint16 dataLen)
+int sdtRxHandler(udp_transport_t *transportAddr, uint8_t srcCID[16], uint8_t *data, uint16_t dataLen)
 {
-	uint32 processed = 0;
+	uint32_t processed = 0;
 	pdu_header_type pduHeader;
 	
 	benchmark.sdtStart = ticks;
@@ -325,7 +325,7 @@ int sdtRxHandler(udp_transport_t *transportAddr, uint8 srcCID[16], uint8 *data, 
 	while(processed < dataLen)
 	{
 		//decode the pdu header
-		processed += decodePdu(data + processed, &pduHeader, sizeof(uint8), 0); //8 bit vectors, no headers
+		processed += decodePdu(data + processed, &pduHeader, sizeof(uint8_t), 0); //8 bit vectors, no headers
 		
 
 		//dispatch to vector
@@ -391,15 +391,15 @@ enum
 static leader_t *currentLeader = 0;
 static local_component_t *currentSrc = 0;
 static channel_t *currentChannel =0;
-static uint8 *currentBuffer = 0;
-static uint8 *currentWrapper = 0;
-static uint8* currentClientBlock = 0;
+static uint8_t *currentBuffer = 0;
+static uint8_t *currentWrapper = 0;
+static uint8_t* currentClientBlock = 0;
 static int currentIsReliable = 0;
 
-uint8 *sdtFormatWrapper(int isReliable, local_component_t *srcComp, uint16 firstMid, uint16 lastMid, uint16 makThreshold)
+uint8_t *sdtFormatWrapper(int isReliable, local_component_t *srcComp, uint16_t firstMid, uint16_t lastMid, uint16_t makThreshold)
 {
 //	foreign_member_t *member;
-//	uint16 dstMid;
+//	uint16_t dstMid;
 	//find the local leader and a channel to the remote component
 	if (srcComp != currentSrc)
 	{
@@ -421,7 +421,7 @@ uint8 *sdtFormatWrapper(int isReliable, local_component_t *srcComp, uint16 first
 	currentBuffer = rlpFormatPacket(srcComp->cid, PROTO_SDT);
 	currentWrapper = currentBuffer;
 	
-	currentBuffer += sizeof(uint16);
+	currentBuffer += sizeof(uint16_t);
 	currentIsReliable = isReliable;
 	
 	if (currentIsReliable)
@@ -447,10 +447,10 @@ uint8 *sdtFormatWrapper(int isReliable, local_component_t *srcComp, uint16 first
 }
 
 static foreign_component_t *currentDstComp = 0;
-static uint32 currentProtocol = 0;
+static uint32_t currentProtocol = 0;
 static channel_t *currentforeignChannel = 0;
 
-uint8 *sdtFormatClientBlock(foreign_component_t *dstComp, uint32 protocol, channel_t *foreignChannel)
+uint8_t *sdtFormatClientBlock(foreign_component_t *dstComp, uint32_t protocol, channel_t *foreignChannel)
 {
 	foreign_member_t *member;
 	
@@ -484,19 +484,19 @@ uint8 *sdtFormatClientBlock(foreign_component_t *dstComp, uint32 protocol, chann
 	return currentBuffer;
 }
 
-uint8 *enqueueClientBlock(int dataLength)
+uint8_t *enqueueClientBlock(int dataLength)
 {
-	uint16 clientBlockLength;
+	uint16_t clientBlockLength;
 	currentBuffer += dataLength;
 	clientBlockLength = currentBuffer - currentClientBlock;
-	marshalU16(currentClientBlock, clientBlockLength | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	marshalU16(currentClientBlock, clientBlockLength | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	return currentBuffer;
 }
 
 
 void sdtTxCurrentWrapper(void)
 {
-	uint16 wrapperLength;
+	uint16_t wrapperLength;
 
 	
 	if (!currentClientBlock) //empty wrapper don't tx
@@ -507,7 +507,7 @@ void sdtTxCurrentWrapper(void)
 		return;
 	}
 	wrapperLength = currentBuffer - currentWrapper;
-	marshalU16(currentWrapper, wrapperLength /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	marshalU16(currentWrapper, wrapperLength /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	
 
 	rlpEnqueue(wrapperLength);
@@ -524,19 +524,19 @@ void sdtFlush(void)
 	sdtTxCurrentWrapper();
 }
 
-static uint8 *sdtTxAck(foreign_component_t *dstComp, channel_t *foreignChannel)
+static uint8_t *sdtTxAck(foreign_component_t *dstComp, channel_t *foreignChannel)
 {
-	uint8 *buf;
+	uint8_t *buf;
 	
 	buf = sdtFormatClientBlock(dstComp, PROTO_SDT, foreignChannel);
-	buf += marshalU16(buf, 7 | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	buf += marshalU16(buf, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	buf += marshalU8(buf, SDT_ACK);
 	buf += marshalU32(buf, foreignChannel->reliableSeq);
 	
 	return enqueueClientBlock(7);
 }
 //static int packetCount = 0;
-static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_header_type *wrapper)
+static int sdtRxWrapper(udp_transport_t *transportAddr, uint8_t *srcCID, pdu_header_type *wrapper)
 {
 	int processed = 0;
 	
@@ -547,15 +547,15 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 	channel_t *remoteChannel;
 	leader_t *localLeader;
 	channel_t *localChannel;
-	uint16 channelNumber;
-	uint32 totalSeq;
-	uint32 reliableSeq;
-	uint32 oldestAvail;
-	uint32 clientProtocol;
-	uint16 relatedChannel;
-	uint16 firstMid = 0;
-	uint16 lastMid = 0;
-	uint16 MAKThreshold;
+	uint16_t channelNumber;
+	uint32_t totalSeq;
+	uint32_t reliableSeq;
+	uint32_t oldestAvail;
+	uint32_t clientProtocol;
+	uint16_t relatedChannel;
+	uint16_t firstMid = 0;
+	uint16_t lastMid = 0;
+	uint16_t MAKThreshold;
 	local_member_t *member;
 
 	rx_handler_t rx_handler;
@@ -575,7 +575,7 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 	}
 		
 	channelNumber = unmarshalU16(wrapper->data + processed);
-	processed += sizeof(uint16);
+	processed += sizeof(uint16_t);
 	remoteChannel = findChannel(remoteLeader, channelNumber);
 	
 	if (!remoteChannel)
@@ -585,22 +585,22 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 	}
 	
 	totalSeq = unmarshalU32(wrapper->data + processed);
-	processed += sizeof(uint32);
+	processed += sizeof(uint32_t);
 	
 	reliableSeq = unmarshalU32(wrapper->data + processed);
-	processed += sizeof(uint32);
+	processed += sizeof(uint32_t);
 	
 	oldestAvail = unmarshalU32(wrapper->data + processed);
-	processed += sizeof(uint32);
+	processed += sizeof(uint32_t);
 
 	firstMid = unmarshalU16(wrapper->data + processed);
-	processed += sizeof(uint16);
+	processed += sizeof(uint16_t);
 
 	lastMid = unmarshalU16(wrapper->data + processed);
-	processed += sizeof(uint16);
+	processed += sizeof(uint16_t);
 	
 	MAKThreshold = unmarshalU16(wrapper->data + processed);
-	processed += sizeof(uint16);
+	processed += sizeof(uint16_t);
 /*	
 
 	packetCount++;
@@ -645,7 +645,7 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 			//Discard and send sequence lost message to leader
 			member = remoteChannel->memberList;
 			if (member)
-				sdtTxLeaving(remoteLeader, remoteChannel, member, SDT_LEAVE_LOST_SEQUENCE);
+				sdtTxLeaving(remoteLeader, remoteChannel, member, SDT_REASON_LOST_SEQUENCE);
 			return wrapper->length;
 			break;
 	}
@@ -669,7 +669,7 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 	while(processed < wrapper->dataLength)
 	{
 		member = (local_member_t*)remoteChannel->memberList;
-		processed += decodePdu(wrapper->data + processed, &clientPdu, sizeof(uint16), 6); //vectors are MIDs, Header contains 6 bytes
+		processed += decodePdu(wrapper->data + processed, &clientPdu, sizeof(uint16_t), 6); //vectors are MIDs, Header contains 6 bytes
 		while(member)
 		{
 			if ((clientPdu.vector == 0xFFF) || (member->mid == clientPdu.vector))
@@ -720,10 +720,10 @@ static int sdtRxWrapper(udp_transport_t *transportAddr, uint8 *srcCID, pdu_heade
 	return processed;
 }
 
-static void sdtClientRxHandler(leader_t *remoteLeader, channel_t *remoteChannel, local_member_t *member, leader_t *localLeader, channel_t *localChannel, uint8 *data, int dataLength)
+static void sdtClientRxHandler(leader_t *remoteLeader, channel_t *remoteChannel, local_member_t *member, leader_t *localLeader, channel_t *localChannel, uint8_t *data, int dataLength)
 {
 	pdu_header_type pdu;
-	uint32 processed = 0;
+	uint32_t processed = 0;
 	foreign_member_t * remoteMember;
 	
 	memset(&pdu, 0, sizeof(pdu_header_type));
@@ -731,7 +731,7 @@ static void sdtClientRxHandler(leader_t *remoteLeader, channel_t *remoteChannel,
 //	syslog(LOG_DEBUG | LOG_LOCAL1,"sdtClientRx Begin");
 	while(processed < dataLength)
 	{
-		processed += decodePdu(data, &pdu, sizeof(uint8), 0); //single byte vectors and no headers
+		processed += decodePdu(data, &pdu, sizeof(uint8_t), 0); //single byte vectors and no headers
 		switch(pdu.vector)
 		{
 			case SDT_ACK :
@@ -792,9 +792,9 @@ static void sdtTxLeave(leader_t *leader, channel_t *channel, foreign_member_t *m
 }
 */
 
-static void sdtRxConnectAccept(foreign_member_t *member, uint8 *data, int dataLength)
+static void sdtRxConnectAccept(foreign_member_t *member, uint8_t *data, int dataLength)
 {
-	uint32 protocol;
+	uint32_t protocol;
 	
 	if (dataLength != 4)
 	{
@@ -810,20 +810,20 @@ static void sdtRxConnectAccept(foreign_member_t *member, uint8 *data, int dataLe
 	}
 }
 
-static void sdtTxConnectAccept(foreign_component_t *dstComp, uint32 protocol, channel_t *foreignChannel)
+static void sdtTxConnectAccept(foreign_component_t *dstComp, uint32_t protocol, channel_t *foreignChannel)
 {
-	uint8 *buf;
+	uint8_t *buf;
 	
 	buf = sdtFormatClientBlock(dstComp, PROTO_SDT, foreignChannel);
-	buf += marshalU16(buf, 7 | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	buf += marshalU16(buf, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	buf += marshalU8(buf, SDT_CONNECT_ACCEPT);
 	buf += marshalU32(buf, protocol);
 	enqueueClientBlock(7);
 }
 
-static void sdtRxConnect(leader_t *remoteLeader, channel_t *remoteChannel, leader_t *localLeader, channel_t *localChannel, uint8 *data, int dataLength)
+static void sdtRxConnect(leader_t *remoteLeader, channel_t *remoteChannel, leader_t *localLeader, channel_t *localChannel, uint8_t *data, int dataLength)
 {
-	uint32 protocol;
+	uint32_t protocol;
 	
 	if (dataLength != 4)
 	{
@@ -839,33 +839,33 @@ static void sdtRxConnect(leader_t *remoteLeader, channel_t *remoteChannel, leade
 	}
 }
 
-static void sdtTxConnect(leader_t *localLeader, channel_t *localChannel, foreign_component_t *dstComp, channel_t *foreignChannel, uint32 protocol)
+static void sdtTxConnect(leader_t *localLeader, channel_t *localChannel, foreign_component_t *dstComp, channel_t *foreignChannel, uint32_t protocol)
 {
-	uint8 *buf;
+	uint8_t *buf;
 	
 	buf = sdtFormatClientBlock(dstComp, PROTO_SDT, 0);
-	buf += marshalU16(buf, 7 | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	buf += marshalU16(buf, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	buf += marshalU8(buf, SDT_CONNECT);
 	buf += marshalU32(buf, protocol);
 	enqueueClientBlock(7);
 }
 
 
-static void sdtRxLeave(leader_t *remoteLeader, channel_t *remoteChannel, leader_t *localLeader, channel_t *localChannel, uint8 *data, int dataLength)
+static void sdtRxLeave(leader_t *remoteLeader, channel_t *remoteChannel, leader_t *localLeader, channel_t *localChannel, uint8_t *data, int dataLength)
 {
 //	syslog(LOG_LOCAL1 | LOG_DEBUG, "rxLeave Not dead yet");
 	local_member_t *member = findMemberByComponent(remoteChannel, localLeader->component);
 	
-	sdtTxLeaving(remoteLeader, remoteChannel, member, SDT_LEAVE_REQUESTED);
+	sdtTxLeaving(remoteLeader, remoteChannel, member, SDT_REASON_LEAVE_REQUESTED);
 	member->expiresAt = jiffies; //expire the member
 //	syslog(LOG_LOCAL1 | LOG_DEBUG, "rxLeave I'm feeling better");
 }
 
-static void sdtTxLeaving(leader_t *leader, channel_t *channel, local_member_t *member, uint8 reason)
+static void sdtTxLeaving(leader_t *leader, channel_t *channel, local_member_t *member, uint8_t reason)
 {
-	uint8 *buffer = rlpFormatPacket(member->component->cid, PROTO_SDT);
+	uint8_t *buffer = rlpFormatPacket(member->component->cid, PROTO_SDT);
 	
-	buffer += marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	buffer += marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	buffer += marshalU8(buffer, SDT_LEAVING);
 	buffer += marshalCID(buffer, ((foreign_component_t*)leader->component)->cid);
 	buffer += marshalU16(buffer, channel->channelNumber);
@@ -877,14 +877,14 @@ static void sdtTxLeaving(leader_t *leader, channel_t *channel, local_member_t *m
 }
 
 
-static void sdtTxDisconnect(leader_t *leader, channel_t *channel, local_member_t *member, uint32 protocol)
+static void sdtTxDisconnect(leader_t *leader, channel_t *channel, local_member_t *member, uint32_t protocol)
 {
-	uint8 *buf;
+	uint8_t *buf;
 	rlpFormatPacket(((local_component_t*)leader->component)->cid, PROTO_SDT);
 	sdtFormatWrapper(1, leader->component, 0xFFFF, 0xFFFF, 0);
 	
 	buf = sdtFormatClientBlock((foreign_component_t*)((member) ? member->component : 0), PROTO_SDT, 0);
-	buf += marshalU16(buf, 7 | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	buf += marshalU16(buf, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	buf += marshalU8(buf, SDT_DISCONNECT);
 	buf += marshalU32(buf, protocol);
 	enqueueClientBlock(7);
@@ -909,12 +909,12 @@ static void sdtTxLeave(leader_t *leader, channel_t *channel, local_member_t *mem
 	syslog(LOG_DEBUG|LOG_LOCAL1,"sdtTxLeave");
 }
 
-static void sdtTxNak(leader_t *leader, channel_t *channel, local_member_t *member, uint32 lastMissed)
+static void sdtTxNak(leader_t *leader, channel_t *channel, local_member_t *member, uint32_t lastMissed)
 {
 	//FIXME -  add proper nak storm suppression
-	uint8 *buffer = rlpFormatPacket(member->component->cid, PROTO_SDT);
+	uint8_t *buffer = rlpFormatPacket(member->component->cid, PROTO_SDT);
 	
-	buffer += marshalU16(buffer, 35 /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	buffer += marshalU16(buffer, 35 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	buffer += marshalU8(buffer, SDT_NAK);
 	buffer += marshalCID(buffer, ((foreign_component_t*)leader->component)->cid);
 	buffer += marshalU16(buffer, channel->channelNumber);
@@ -927,7 +927,7 @@ static void sdtTxNak(leader_t *leader, channel_t *channel, local_member_t *membe
 }
 
 //returns SEQ_VALID if packet is correctly sequenced
-static inline uint32 checkSequence(channel_t *s, uint8 isReliable, uint32 rxTotal, uint32 rxReliable, uint32 oldestAvail)
+static inline uint32_t checkSequence(channel_t *s, uint8_t isReliable, uint32_t rxTotal, uint32_t rxReliable, uint32_t oldestAvail)
 {
 	int diff;
 	
@@ -987,16 +987,16 @@ enum
 
 struct PACKED joinMsg_s {
 	cid_t cid;
-	uint16_t n_mid;
-	uint16_t n_channel;
-	uint16_t n_reciprocal;
-	uint32_t n_seq
+	uint16_t_t n_mid;
+	uint16_t_t n_channel;
+	uint16_t_t n_reciprocal;
+	uint32_t_t n_seq
 };
 
-//static uint32 sdtRxJoin(udp_transport_t *transportAddr, uint8 srcCID[16], pdu_header_type *header)
+//static uint32_t sdtRxJoin(udp_transport_t *transportAddr, uint8_t srcCID[16], pdu_header_type *header)
 
 static int sdtRxJoin(
-	const uint8_t *data,
+	const uint8_t_t *data,
 	int datasize,
 	void *ref,
 	const netiHost_t *remhost,
@@ -1005,10 +1005,10 @@ static int sdtRxJoin(
 {
 //	char srcText[40];
 //	char dstText[40];
-	uint8 dstCID[16];
-	uint16 foreignChannelNumber;
-	uint16 localChannelNumber;
-	uint32 processed = 0;
+	uint8_t dstCID[16];
+	uint16_t foreignChannelNumber;
+	uint16_t localChannelNumber;
+	uint32_t processed = 0;
 	local_component_t *localComp;
 	foreign_component_t *remComp;
 	leader_t *localLeader;
@@ -1016,7 +1016,7 @@ static int sdtRxJoin(
 	channel_t *localChannel;
 	channel_t *foreignChannel;
 	local_member_t *localMember;
-	uint16 mid;
+	uint16_t mid;
 	int addressType;
 	int allocations = 0;
 
@@ -1173,9 +1173,9 @@ static int sdtRxJoin(
 
 	//fill in the channel structure
 	foreignChannel->totalSeq = unmarshalU32(header->data + processed);
-	processed += sizeof(uint32);
+	processed += sizeof(uint32_t);
 	foreignChannel->reliableSeq = unmarshalU32(header->data + processed);
-	processed += sizeof(uint32);
+	processed += sizeof(uint32_t);
 	
 	processed += unmarshalTransportAddress(header->data + processed, 0, &(foreignChannel->downstreamPort), &(foreignChannel->downstreamIP), &addressType);
 	if (addressType == SDT_ADDR_IPV6)
@@ -1208,9 +1208,9 @@ static int sdtRxJoin(
 
 static void sdtTxJoin(local_component_t *lComp, channel_t *lChannel, foreign_component_t *fComp, channel_t *fChannel)
 {
-	uint32 allocations = 0;
+	uint32_t allocations = 0;
 	foreign_member_t *fMember;
-	uint8 *buffer = rlpFormatPacket(lComp->cid, PROTO_SDT);
+	uint8_t *buffer = rlpFormatPacket(lComp->cid, PROTO_SDT);
 	
 	fMember = findMemberByComponent(lChannel, fComp);
 	if (fMember)
@@ -1238,7 +1238,7 @@ static void sdtTxJoin(local_component_t *lComp, channel_t *lChannel, foreign_com
 		allocations |= ALLOCATED_FOREIGN_MEMBER;
 	}
 	
-	buffer += marshalU16(buffer, 49 /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	buffer += marshalU16(buffer, 49 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	buffer += marshalU8(buffer, SDT_JOIN);
 	buffer += marshalCID(buffer, fComp->cid);
 
@@ -1259,9 +1259,9 @@ static void sdtTxJoin(local_component_t *lComp, channel_t *lChannel, foreign_com
 
 static void sdtTxJoinAccept(foreign_component_t *fComp, channel_t *fChannel, local_member_t *lMember, channel_t *lChannel)
 {
-	uint8 *buffer = rlpFormatPacket(lMember->component->cid, PROTO_SDT);
+	uint8_t *buffer = rlpFormatPacket(lMember->component->cid, PROTO_SDT);
 	
-	buffer += marshalU16(buffer, 29 /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	buffer += marshalU16(buffer, 29 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	buffer += marshalU8(buffer, SDT_JOIN_ACCEPT);
 	buffer += marshalCID(buffer, fComp->cid);
 	buffer += marshalU16(buffer, fChannel->channelNumber);
@@ -1273,11 +1273,11 @@ static void sdtTxJoinAccept(foreign_component_t *fComp, channel_t *fChannel, loc
 	rlpSendTo(fChannel->sock, fComp->adhocIP, fComp->adhocPort, 0);
 }
 
-static void sdtTxJoinRefuse(udp_transport_t *transportAddr, uint8 cid[16], pdu_header_type *joinRequest, uint8 reason)
+static void sdtTxJoinRefuse(udp_transport_t *transportAddr, uint8_t cid[16], pdu_header_type *joinRequest, uint8_t reason)
 {
-	uint8 *buffer = rlpFormatPacket(cid, PROTO_SDT);
+	uint8_t *buffer = rlpFormatPacket(cid, PROTO_SDT);
 	
-	buffer += marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_wFLAG | HEADER_wFLAG | DATA_wFLAG);
+	buffer += marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 	buffer += marshalU8(buffer, SDT_JOIN_REFUSE);
 	buffer += marshalCID(buffer, cid);
 
@@ -1291,7 +1291,7 @@ static void sdtTxJoinRefuse(udp_transport_t *transportAddr, uint8 cid[16], pdu_h
 }
 
 
-static uint32 sdtRxJoinAccept(uint8 *srcCID, pdu_header_type *header)
+static uint32_t sdtRxJoinAccept(uint8_t *srcCID, pdu_header_type *header)
 {
 //	foreign_component_t *fComp;
 //	local_component_t *lComp;
@@ -1306,16 +1306,16 @@ static uint32 sdtRxJoinAccept(uint8 *srcCID, pdu_header_type *header)
 	return 1;
 }
 
-static uint32 sdtRxJoinRefuse(uint8 *srcCID, pdu_header_type *header)
+static uint32_t sdtRxJoinRefuse(uint8_t *srcCID, pdu_header_type *header)
 {
 	syslog(LOG_DEBUG|LOG_LOCAL1,"sdtRxJoinRefuse");
 	return (headerPresent(header->flags)) ? 24 : 0 + (dataPresent(header->flags)) ? 1 : 0;
 
 }
 
-static void sdtRxAck(foreign_member_t *remoteMember, uint8 *data, int dataLength)
+static void sdtRxAck(foreign_member_t *remoteMember, uint8_t *data, int dataLength)
 {
-	uint32 reliableSeq;
+	uint32_t reliableSeq;
 	
 	syslog(LOG_LOCAL1 | LOG_INFO, "sdtRxAck");
 	if (dataLength != 4)
@@ -1330,9 +1330,9 @@ static void sdtRxAck(foreign_member_t *remoteMember, uint8 *data, int dataLength
 	return;
 }
 
-static void sdtRxNak(uint8 *srcCID, pdu_header_type *header)
+static void sdtRxNak(uint8_t *srcCID, pdu_header_type *header)
 {
-	uint32 dstCID[4];
+	uint32_t dstCID[4];
 	
 	short channelNum;
 	leader_t *leader;
@@ -1349,7 +1349,7 @@ static void sdtRxNak(uint8 *srcCID, pdu_header_type *header)
 		return;
 	}
 	
-	offset += unmarshalCID(header->data + offset, (uint8 *)dstCID);
+	offset += unmarshalCID(header->data + offset, (uint8_t *)dstCID);
 	
 	comp = findLocalComponent((void*)dstCID);
 	if (!comp)
@@ -1365,7 +1365,7 @@ static void sdtRxNak(uint8 *srcCID, pdu_header_type *header)
 	}
 	
 	channelNum = unmarshalU16(header->data + offset);
-	offset += sizeof(uint16);
+	offset += sizeof(uint16_t);
 	channel = findChannel(leader, channelNum);
 	if (!channel)
 	{
@@ -1373,12 +1373,12 @@ static void sdtRxNak(uint8 *srcCID, pdu_header_type *header)
 		return;
 	}
 	//The next field is the MID - this is not used - throw away
-	offset += sizeof(uint16);
+	offset += sizeof(uint16_t);
 	//The next field is the member's Ack point - this is not used - throw away
-	offset += sizeof(uint32);
+	offset += sizeof(uint32_t);
 	
 	firstMissed = unmarshalU32(header->data + offset);
-	offset += sizeof(uint32);
+	offset += sizeof(uint32_t);
 	numBack = channel->reliableSeq - firstMissed;
 	if (firstMissed < channel->oldestAvail)
 	{
@@ -1386,7 +1386,7 @@ static void sdtRxNak(uint8 *srcCID, pdu_header_type *header)
 		return;
 	}
 	lastMissed = unmarshalU32(header->data + offset);
-	offset += sizeof(uint32);
+	offset += sizeof(uint32_t);
 	while(firstMissed != lastMissed)
 	{
 		rlpResendTo(channel->sock, channel->downstreamIP, channel->downstreamPort, numBack);
@@ -1396,9 +1396,9 @@ static void sdtRxNak(uint8 *srcCID, pdu_header_type *header)
 }
 
 
-static int sdtRxLeaving(uint8 *srcCID, pdu_header_type *header)
+static int sdtRxLeaving(uint8_t *srcCID, pdu_header_type *header)
 {
-	uint32 cid[4];
+	uint32_t cid[4];
 	leader_t *lLeader;
 	leader_t *fLeader;
 	foreign_component_t *fComp;
@@ -1410,7 +1410,7 @@ static int sdtRxLeaving(uint8 *srcCID, pdu_header_type *header)
 	fComp = findForeignComponent((void*)srcCID);
 	if (!fComp)
 		return 1;
-	unmarshalCID(header->data, (uint8 *)cid);
+	unmarshalCID(header->data, (uint8_t *)cid);
 	lComp = findLocalComponent((void*)cid);
 	lLeader = findLeader(lComp);
 	fLeader = findLeader(fComp);
@@ -1473,7 +1473,7 @@ static inline leader_t *addLeader(void *component)
 	return leader;
 }
 
-static inline channel_t *findChannel(leader_t *leader, uint16 channelNumber)
+static inline channel_t *findChannel(leader_t *leader, uint16_t channelNumber)
 {
 	channel_t *channel;
 	
@@ -1487,7 +1487,7 @@ static inline channel_t *findChannel(leader_t *leader, uint16 channelNumber)
 	return channel;
 }
 
-static inline channel_t *addChannel(leader_t *leader, uint16 channelNumber)
+static inline channel_t *addChannel(leader_t *leader, uint16_t channelNumber)
 {
 	channel_t *channel;
 	
@@ -1544,7 +1544,7 @@ static inline void removeLeader(leader_t *leader)
 	}
 }
 
-static inline void *findMemberByMid(channel_t *channel, uint16 mid)
+static inline void *findMemberByMid(channel_t *channel, uint16_t mid)
 {
 	local_member_t *member;
 	
@@ -1645,7 +1645,7 @@ static inline void *findMemberByComponent(channel_t *channel, void *component)
 }
 
 //currently these parameters are hard coded - if this changes this function will need more arguments
-static inline int marshalChannelParamBlock(uint8 *paramBlock)
+static inline int marshalChannelParamBlock(uint8_t *paramBlock)
 {
 	int offset = 0;
 	
@@ -1659,7 +1659,7 @@ static inline int marshalChannelParamBlock(uint8 *paramBlock)
 }
 
 
-static inline int unmarshalChannelParamBlock(local_member_t *member, uint8 *paramBlock)
+static inline int unmarshalChannelParamBlock(local_member_t *member, uint8_t *paramBlock)
 {
 	member->expiryTime = *paramBlock;
 	paramBlock++;
@@ -1667,15 +1667,15 @@ static inline int unmarshalChannelParamBlock(local_member_t *member, uint8 *para
 	member->nak = *paramBlock;
 	paramBlock++;
 	member->nakHoldoff = unmarshalU16(paramBlock);
-	paramBlock += sizeof(uint16);
+	paramBlock += sizeof(uint16_t);
 	member->nakModulus = unmarshalU16(paramBlock);
-	paramBlock += sizeof(uint16);
+	paramBlock += sizeof(uint16_t);
 	member->nakMaxWait = unmarshalU16(paramBlock);
-	paramBlock += sizeof(uint16);
+	paramBlock += sizeof(uint16_t);
 	return 8; //length of the ParamaterBlock
 }
 
-static inline int marshalTransportAddress(uint8 *data, uint16 port, uint32 ipAddress, int type)
+static inline int marshalTransportAddress(uint8_t *data, uint16_t port, uint32_t ipAddress, int type)
 {
 	int offset = 0;
 	switch(type)
@@ -1690,36 +1690,36 @@ static inline int marshalTransportAddress(uint8 *data, uint16 port, uint32 ipAdd
 }
 
 
-static inline int unmarshalTransportAddress(uint8 *data, udp_transport_t *transportAddr, uint16 *port, uint32 *ipAddress, int *type)
+static inline int unmarshalTransportAddress(uint8_t *data, udp_transport_t *transportAddr, uint16_t *port, uint32_t *ipAddress, int *type)
 {
 	int processed = 0;
 	
 	switch(*data)
 	{
 		case SDT_ADDR_NULL :
-			processed += sizeof(uint8); //Address Type Byte
+			processed += sizeof(uint8_t); //Address Type Byte
 			
 			*port = transportAddr->srcPort;
 			*ipAddress = transportAddr->srcIP;
 			*type = SDT_ADDR_NULL;
 			break;
 		case SDT_ADDR_IPV4 :
-			processed += sizeof(uint8); //Address Type Byte
+			processed += sizeof(uint8_t); //Address Type Byte
 			*port = unmarshalU16(data + processed);
-			processed += sizeof(uint16);
+			processed += sizeof(uint16_t);
 			*ipAddress = unmarshalU32(data + processed);
-			processed += sizeof(uint32);
+			processed += sizeof(uint32_t);
 			break;
 #if 0	//No longer in ACN spec
 		case SDT_ADDR_IPPORT :
-			processed += sizeof(uint8); //Address Type Byte
+			processed += sizeof(uint8_t); //Address Type Byte
 			*port = unmarshalU16(data + processed);
 			*ipAddress = transportAddr->srcIP;
 			break;
 #endif
 		case SDT_ADDR_IPV6 :
 		default :
-			processed += sizeof(uint8); //Address Type Byte
+			processed += sizeof(uint8_t); //Address Type Byte
 			;//syslog(LOG_LOCAL1 | LOG_WARNING, "sdtRxJoin : Unsupported upstream Address Type");
 	}
 	*type = *data;
@@ -1764,7 +1764,7 @@ static void sdtTick(void)
 					if (member->isLocal)
 					{
 						//send a leaving message
-						sdtTxLeaving(leader, channel, (local_member_t *)member, SDT_LEAVE_CHANNEL_EXPIRED);
+						sdtTxLeaving(leader, channel, (local_member_t *)member, SDT_REASON_CHANNEL_EXPIRED);
 					}
 					else
 //					{
@@ -1893,7 +1893,7 @@ void shutdownSdt(void)
 				while(member)
 				{
 					//send a leaving message
-					sdtTxLeaving(leader, channel, (local_member_t *)member, SDT_LEAVE_NONSPEC);
+					sdtTxLeaving(leader, channel, (local_member_t *)member, SDT_REASON_NONSPEC);
 					member = member->next;
 				}
 			}
