@@ -67,12 +67,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "pp_acn_config.h"
 
-typedef uint32 (*rxhandler_t) (foreign_component_t *srcComp, local_component_t *dstComp, uint8 *data, uint32 datalength);
+typedef uint32_t (*rxhandler_t) (foreign_component_t *srcComp, local_component_t *dstComp, uint8_t *data, uint32_t datalength);
 
 /* Message callback 
    TODO decide on a format for messaging to client protocols 
 */
-typedef uint32 (*msghandler_t)(foreign_component_t *srcComp, local_component_t *dstComp, uint8 *message);
+typedef uint32_t (*msghandler_t)(foreign_component_t *srcComp, local_component_t *dstComp, uint8_t *message);
 
 typedef struct handler_t
 {
@@ -81,11 +81,10 @@ typedef struct handler_t
   protocolID_t protocol;
   rx_handler_t *rx_handler;
   msg_handler_t *msg_handler;
+} handler_t;
 
-} handler_t 
-
-client_rx_t getRXHhandler(protocolID_t protocol, handler_t *handlers);
-client_msg_t getMsgHhandler(protocolID_t protocol, handler_t *handlers);
+rx_handler_t getRXHhandler(protocolID_t protocol, handler_t *handlers);
+rx_handler_t getMsgHhandler(protocolID_t protocol, handler_t *handlers);
 
 int registerHandlers(protocolID_t protocol, rx_handler_t *rx_handler, msg_handler_t *msg_handler, handler_t *handlers);
 int deregisterHandlers(protocolID_t protocol, handler_t *handlers);
