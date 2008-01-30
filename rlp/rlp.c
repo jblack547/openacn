@@ -52,7 +52,7 @@ static const char *rcsid __attribute__ ((unused)) =
 #define NUM_PACKET_BUFFERS	16
 #define BUFFER_ROLLOVER_MASK  (NUM_PACKET_BUFFERS - 1)
 
-#ifdef CONFIG_EPI17
+#if CONFIG_EPI17
 
 static const uint8_t rlpPreamble[RLP_PREAMBLE_LENGTH] =
 {
@@ -458,7 +458,7 @@ rlp_open_netsocket(localaddr_t localaddr)
 		rlpm_free_netsock(netsock);	/* UDP open fails */
 		return NULL;
 	}
-  printf("rlp_open_netsocket: port=%d\n", netsock->localport);
+  printf("rlp_open_netsocket: port=%d\n", ntohs(netsock->localport));
 
 	return netsock;
 }
