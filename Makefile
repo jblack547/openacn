@@ -58,4 +58,4 @@ test :
 	@echo ARCH: ${ARCH} 
 
 ts : test/test.o common/netiface.o common/marshal.o rlp/rlp.o rlp/rlpmem.o
-	${CC} -o $@ $^
+	${CC} ${CFLAGS} -luuid -o $@ $^
