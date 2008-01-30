@@ -113,7 +113,7 @@ typedef long long int sint64_t;
 #endif /* #ifdef NEED_INT64 */
 
 #define PACKED __attribute__((__packed__))
-#define UNUSED_ARG(x) (void)x
+#define UNUSED_ARG(x) (void)(x)
 #define bool uint8_t
 
 typedef struct
