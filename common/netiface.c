@@ -270,12 +270,11 @@ neti_change_group(struct netsocket_s *rlpsock, ip4addr_t localGroup, int operati
 int
 neti_send_to(
 	struct netsocket_s *netsock,
-	struct netaddr_s *destaddr,
+	const neti_addr_t *destaddr,
 	uint8_t *data,
 	size_t datalen
 )
 {
-  struct ip_addr addr;
   struct pbuf *pkt;  /* Outgoing packet */
   int    result;
 
@@ -287,8 +286,7 @@ neti_send_to(
   pkt = pbuf_alloc(PBUF_TRANSPORT, datalen, PBUF_POOL);
   memcpy(pkt->payload, data, datalen);
 
-  addr.addr = destaddr->addr;
-  result = udp_sendto((struct udp_pcb*) (netsock->nativesock), pkt, &addr, destaddr->port);
+  result = udp_sendto((struct udp_pcb*) (netsock->nativesock), pkt, (struct ip_addr *)&NETI_INADDR(destaddr), NETI_PORT(destaddr));
   pbuf_free(pkt);
   return (result);
 }
@@ -298,17 +296,12 @@ neti_send_to(
 int
 neti_send_to(
 	struct netsocket_s *netsock,
-	struct netaddr_s *destaddr,
+	const neti_addr_t *destaddr,
 	uint8_t *data,
 	size_t datalen
 )
 {
-	struct sockaddr_in dadr;
-
-	dadr.sin_family = AF_INET;
-	dadr.sin_port = destaddr->port;
-	dadr.sin_addr.s_addr = destaddr->addr;
-	return sendto(netsock->nativesock, data, datalen, 0, (const struct sockaddr *)&dadr, sizeof(dadr));
+	return sendto(netsock->nativesock, data, datalen, 0, (const struct sockaddr *)destaddr, sizeof(neti_addr_t));
 }
 #endif /* CONFIG_STACK_BSD */
 
@@ -317,12 +310,12 @@ neti_send_to(
 int
 neti_send_to(
 	struct netsocket_s *netsock,
-	struct netaddr_s *destaddr,
+	neti_addr_t *destaddr,
 	uint8_t *data,
 	size_t datalen
 )
 {
-	sock_sendto((void*)&(netsock->nativesock), data, datalen, destaddr->addr, destaddr->port);
+	sock_sendto((void*)&(netsock->nativesock), data, datalen, NETI_INADDR(destaddr), NETI_PORT(destaddr));
 }
 #endif	/* CONFIG_STACK_PATHWAY */
 
@@ -370,31 +363,32 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 	for (i = 0; i < numsocks; ++i)
 		if ((pfd[i].revents & POLLIN))
 		{
-			netiHost_t remhost;
 			uint8_t pktinfo[64];
 			struct iovec bufvec[1];
 			struct msghdr hdr;
 			struct cmsghdr *cmp;
-			ip4addr_t destaddr;
+			ip4addr_t dest_inaddr;
 			struct netsocket_s *netsock;
+			neti_addr_t remhost;
 
 			netsock = sockps[i];
 			bufvec->iov_base = buf;
 			bufvec->iov_len = INPACKETSIZE;
 			hdr.msg_name = &remhost;
-			hdr.msg_namelen = sizeof(struct sockaddr_in);
+			hdr.msg_namelen = sizeof(remhost);
 			hdr.msg_iov = bufvec;
 			hdr.msg_iovlen = 1;
 			hdr.msg_control = pktinfo;
 			hdr.msg_controllen = sizeof(pktinfo);
 			hdr.msg_flags = 0;
 
-			destaddr = NETI_GROUP_UNICAST;
+			dest_inaddr = NETI_GROUP_UNICAST;
 
     		rslt = recvmsg(netsock->nativesock, &hdr, 0);
 			if (rslt < 0)
 			{
 				haderr = errno;
+				perror("recvmsg");
 				continue;
 			}
 
@@ -406,10 +400,10 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 
 					pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr;
 					if (is_multicast(pktaddr))
-						destaddr = pktaddr;
+						dest_inaddr = pktaddr;
 				}
 			}
-			rlp_process_packet(netsock, buf, rslt, destaddr, &remhost);
+			rlp_process_packet(netsock, buf, rslt, dest_inaddr, &remhost);
 		}
 
 	neti_freepacket(buf);
@@ -440,14 +434,12 @@ netihandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr
 
   // 
 
-	netiHost_t remhost;
+  neti_addr_t remhost;
 
   UNUSED_ARG(pcb);
-  UNUSED_ARG(addr);
-  UNUSED_ARG(port);
 
-  remhost.sin_addr.s_addr = addr->addr;
-	remhost.sin_port = port;
+  NETI_INADDR(remhost) = addr->addr;
+  NETI_PORT(remhost) = port;
   // arg is contains netsock
   // we don't have destination address so we will force to NULL
   rlp_process_packet(arg, p->payload, p->tot_len, NULL, &remhost);
@@ -461,17 +453,17 @@ netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *h
 {
 	struct netsocket_s *rlpsock;
 	port_t srcPort;
-	netiHost_t remhost;
-	ip4addr_t destaddr;
+	neti_addr_t remhost;
+	ip4addr_t dest_inaddr;
 
 	rlpsock = s->usr_name;
 	if (rlpsock != NULL)
 	{
 /* warning Waterloo stack has not checked multicast destination yet */
-		destaddr = ((in_Header *)hdr)->destination;
-		remhost.addr = s->hisaddr;
-		remhost.port = s->hisport;
-		rlp_process_packet(rlpsock, buf, dataLen, destaddr, &remhost);
+		dest_inaddr = ((in_Header *)hdr)->destination;
+		NETI_INADDR(remhost) = s->hisaddr;
+		NETI_PORT(remhost) = s->hisport;
+		rlp_process_packet(rlpsock, buf, dataLen, dest_inaddr, &remhost);
 	}
 	return dataLen;
 }
@@ -497,7 +489,7 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 
 #if CONFIG_STACK_LWIP
 ip4addr_t
-neti_getmyip(struct netaddr_s *destaddr)
+neti_getmyip(neti_addr_t *destaddr)
 {
 
   UNUSED_ARG(destaddr);
@@ -508,7 +500,7 @@ neti_getmyip(struct netaddr_s *destaddr)
 
 #if CONFIG_STACK_BSD
 ip4addr_t
-neti_getmyip(struct netaddr_s *destaddr)
+neti_getmyip(neti_addr_t *destaddr)
 {
 /*
 FIXME

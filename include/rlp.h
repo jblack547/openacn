@@ -43,7 +43,7 @@ typedef void rlpHandler_t(
 	const uint8_t *data,
 	int datasize,
 	void *ref,
-	const netiHost_t *remhost,
+	const neti_addr_t *remhost,
 	const cid_t remcid
 );
 
@@ -59,12 +59,12 @@ uint8_t  *rlp_add_pdu(struct rlp_txbuf_s *buf, uint8_t *pdudata, int size, proto
 #else
 uint8_t  *rlp_add_pdu(struct rlp_txbuf_s *buf, uint8_t *pdudata, int size, uint8_t **packetdatap);
 #endif
-int       rlp_send_block(struct rlp_txbuf_s *buf, struct netsocket_s *netsock, struct netaddr_s *destaddr);
+int       rlp_send_block(struct rlp_txbuf_s *buf, struct netsocket_s *netsock, neti_addr_t *destaddr);
 struct netsocket_s * rlp_open_netsocket(localaddr_t localaddr);
 void      rlp_close_netsocket(struct netsocket_s *netsock);
 struct    rlp_listener_s * rlp_add_listener(struct netsocket_s *netsock, groupaddr_t groupaddr, protocolID_t protocol, rlpHandler_t *callback, void *ref);
 void      rlp_del_listener(struct netsocket_s *netsock, struct rlp_listener_s *listener);
-void      rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netiHost_t *remhost);
+void      rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const neti_addr_t *remhost);
 
 /*
 struct rlp_txbuf_hdr {

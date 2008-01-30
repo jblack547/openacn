@@ -49,6 +49,9 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "rlpmem.h"
 #include "syslog.h"
 
+#define DEBUGLEVEL 1
+#define DEBUG(level, x) if (level <= DEBUGLEVEL) x
+
 #define NUM_PACKET_BUFFERS	16
 #define BUFFER_ROLLOVER_MASK  (NUM_PACKET_BUFFERS - 1)
 
@@ -427,12 +430,10 @@ int
 rlp_send_block(
 	struct rlp_txbuf_s *buf, 
 	struct netsocket_s *netsock,
-	struct netaddr_s *destaddr
+	neti_addr_t *destaddr
 )
 {
-	//printf("rlp_send_block: start\n");
 	return neti_send_to(netsock, destaddr, bufhdrp(buf)->blockstart, bufhdrp(buf)->blockend - bufhdrp(buf)->blockstart);
-	//printf("rlp_send_block: end\n");
 }
 
 /***********************************************************************************************/
@@ -445,20 +446,20 @@ rlp_open_netsocket(localaddr_t localaddr)
 {
 	struct netsocket_s *netsock;
 
-	printf("rlp_open_netsocket: calling rlpm_find_netsock: %d\n", PORTPART(localaddr));
+	DEBUG(4, printf("rlp_open_netsocket: calling rlpm_find_netsock: %d\n", PORTPART(localaddr)));
 	if (PORTPART(localaddr) != NETI_PORT_EPHEM && (netsock = rlpm_find_netsock(localaddr))) return netsock;	/* found existing matching socket */
 
-	printf("rlp_open_netsocket: calling rlpm_new_netsock\n");
+	DEBUG(4, printf("rlp_open_netsocket: calling rlpm_new_netsock\n"));
 	if ((netsock = rlpm_new_netsock()) == NULL) return NULL;		/* cannot allocate a new one */
 
-	printf("rlp_open_netsocket: calling neti_udp_open\n");
+	DEBUG(4, printf("rlp_open_netsocket: calling neti_udp_open\n"));
 	if (neti_udp_open(netsock, localaddr) != 0)
 	{
-		printf("rlp_open_netsocket: calling rlpm_free_netsock\n");
+		DEBUG(4, printf("rlp_open_netsocket: calling rlpm_free_netsock\n"));
 		rlpm_free_netsock(netsock);	/* UDP open fails */
 		return NULL;
 	}
-  printf("rlp_open_netsocket: port=%d\n", ntohs(netsock->localport));
+  DEBUG(4, printf("rlp_open_netsocket: port=%d\n", ntohs(netsock->localport)));
 
 	return netsock;
 }
@@ -567,11 +568,11 @@ Process a packet - called by network interface layer on receipt of a packet
 */
 
 void
-rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netiHost_t *remhost)
+rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t dest_inaddr, const neti_addr_t *remhost)
 {
 	struct rlp_rxgroup_s *rxgroup;
 	struct rlp_listener_s *listener;
-	const cid_t *srcCidp;
+	const uint8_t *src_cidp;
 	protocolID_t pduProtocol;
 	const uint8_t *pdup, *datap;
 	int datasize;
@@ -591,9 +592,9 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 	pdup += RLP_PREAMBLE_LENGTH;
 	/* Find if we have a handler */
 	
-	if ((rxgroup = rlpm_find_rxgroup(netsock, destaddr)) == NULL) return;	/* No handler for this dest address */
+	if ((rxgroup = rlpm_find_rxgroup(netsock, dest_inaddr)) == NULL) return;	/* No handler for this dest address */
 
-	srcCidp = NULL;
+	src_cidp = NULL;
 	pduProtocol = PROTO_NONE;
 
 	/* first PDU must have all fields */
@@ -624,7 +625,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 		}
 		if (flags & HEADER_bFLAG)
 		{
-			srcCidp = (const cid_t *)pp;
+			src_cidp = pp;
 			pp += sizeof(uuid_t);
 		}
 		if (pp > pdup)
@@ -645,7 +646,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 		)
 		{
 			if (listener->callback)
-				(*listener->callback)(datap, datasize, listener->ref, remhost, srcCidp);
+				(*listener->callback)(datap, datasize, listener->ref, remhost, src_cidp);
 		}
 	}
 }

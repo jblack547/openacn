@@ -50,15 +50,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 typedef uint16_t port_t;	/* net endpoint is a port */
 typedef uint32_t ip4addr_t;	/* net group is a multicast address */
 typedef ip4addr_t groupaddr_t;
-/*
-  netaddr_s represents a UDP level address
-*/
-struct netaddr_s {
-	port_t port;
-	ip4addr_t addr;
-};
-
 #define is_multicast(addr) (((addr) & 0xf0000000) == 0xe0000000)
+
+/*
+  We use the native structure for holding transport layer (UDP) addresses defined
+  to neti_addr_t
+  To unify the API we hide this behind macros which must be defined for each stack
+
+  Access the port and host address parts respectively. These should be lvalues so they
+  can be assigned as well as read:
+
+  #define NETI_PORT(netaddr_s_ptr)
+  #define NETI_INADDR(netaddr_s_ptr)
+
+  Declare a static initialization for a structure
+  #define NETI_DECLARE_ADDR(addr, inaddr, port)
+  Dynamically initialize a structure,  A default version is at the end of this header
+  #define NETI_INIT_ADDR(addrp, inaddr, port)
+ 
+  example - port 80 on the loopback address:
+  NETI_DECLARE_ADDR(loopback80, htonl(0x7f000001), 80);
+
+*/
 
 #endif	/* CONFIG_NET_IPV4 */
 
@@ -68,14 +81,32 @@ struct netaddr_s {
 #include "lwip/netif.h"
 #include "lwip/igmp.h"
 #include "lwip/pbuf.h"
-typedef int neti_nativeSocket_t;
-typedef struct sockaddr_in netiHost_t;
 
 #if CONFIG_NET_IPV4
 #define NETI_FAMILY AF_INET
-#elif CONFIG_NET_IPV6
-#define NETI_FAMILY AF_INET6
 #endif
+
+typedef int neti_nativeSocket_t;
+typedef struct sockaddr_in neti_addr_t;
+/*
+struct sockaddr_in {
+  u8_t sin_len;
+  u8_t sin_family;
+  u16_t sin_port;
+  struct in_addr sin_addr;
+  char sin_zero[8];
+};
+*/
+#define NETI_PORT(addrp) (addrp)->sin_port
+#define NETI_INADDR(addrp) (addrp)->sin_addr.s_addr
+#define NETI_DECLARE_ADDR(addr, inaddr, port) neti_addr_t addr = {sizeof(struct sockaddr_in), NETI_FAMILY, (port), {inaddr}}
+#define NETI_INIT_ADDR(addrp, inaddr, port) ( \
+		(addrp)->sin_len = sizeof(struct sockaddr_in), \
+		(addrp)->sin_family = NETI_FAMILY, \
+		NETI_INADDR(addrp) = (inaddr), \
+		NETI_PORT(addrp) = (port) \
+	)
+
 
 #endif
 
@@ -88,15 +119,24 @@ typedef struct sockaddr_in netiHost_t;
 #include <string.h>
 #include <netdb.h>
 
-typedef int neti_nativeSocket_t;
-typedef struct sockaddr_in netiHost_t;
-
 #if CONFIG_NET_IPV4
 #define NETI_FAMILY AF_INET
 #define NETI_INADDR_ANY INADDR_ANY
-#elif CONFIG_NET_IPV6
-#define NETI_FAMILY AF_INET6
 #endif
+
+typedef int neti_nativeSocket_t;
+typedef struct sockaddr_in neti_addr_t;
+
+#define NETI_PORT(addrp) (addrp)->sin_port
+#define NETI_INADDR(addrp) (addrp)->sin_addr.s_addr
+#define NETI_INADDR_S(addrp) (addrp)->sin_addr
+#define NETI_DECLARE_ADDR(addr, inaddr, port) neti_addr_t addr = {NETI_FAMILY, (port), {inaddr}}
+#define NETI_INIT_ADDR(addrp, addr, port) ( \
+		(addrp)->sin_family = NETI_FAMILY, \
+		NETI_INADDR(addrp) = (addr), \
+		NETI_PORT(addrp) = (port) \
+	)
+
 
 #endif /* CONFIG_STACK_BSD */
 
@@ -106,15 +146,18 @@ typedef struct sockaddr_in netiHost_t;
 
 typedef udp_Socket neti_nativeSocket_t;
 struct netiHost_s;
-typedef struct netiHost_s netiHost_t;
-
-#endif /* CONFIG_STACK_PATHWAY */
+typedef struct netiHost_s neti_addr_t;
 
 /* mainain in network byte order */
 struct PACKED netiHost_s {
 	port_t port;
 	ip4addr_t addr;
 };
+
+#define NETI_PORT(addrp) (addrp)->port
+#define NETI_INADDR(addrp) (addrp)->addr
+#define NETI_DECLARE_ADDR(addr, inaddr, port) neti_addr_t addr = {(port), (inaddr)}
+#endif /* CONFIG_STACK_PATHWAY */
 
 #if CONFIG_LOCALIP_ANY
 struct netsocket_s {
@@ -132,14 +175,14 @@ typedef port_t localaddr_t;
 
 struct netsocket_s {
 	neti_nativeSocket_t nativesock;
-	struct netaddr_s local;
+	neti_addr_t local;
 };
-#define NETSOCKPORT(x) ((x).local.port)
-#define NETSOCKADDR(x) ((x).local.addr)
+#define NETSOCKPORT(x) (NETI_PORT(&(x).local)
+#define NETSOCKADDR(x) (NETI_INADDR(&(x).local)
 
-typedef struct netsocket_s *localaddr_t;
-#define PORTPART(x) ((x)->port)
-#define ADDRPART(x) ((x)->addr)
+typedef neti_addr_t *localaddr_t;
+#define PORTPART(x) (NETI_PORT((x)->port))
+#define ADDRPART(x) (NETI_INADDR((x)->addr))
 
 #endif /* !CONFIG_LOCALIP_ANY */
 
@@ -173,10 +216,10 @@ extern int neti_change_group(struct netsocket_s *netsock, ip4addr_t localGroup, 
 #define NETI_LEAVEGROUP 0
 #endif /* CONFIG_STACK_PATHWAY */
 
-extern int neti_send_to(struct netsocket_s *netsock, struct netaddr_s *destaddr, uint8_t *data, size_t datalen);
+extern int neti_send_to(struct netsocket_s *netsock, const neti_addr_t *destaddr, uint8_t *data, size_t datalen);
 
 #if CONFIG_NET_IPV4
-ip4addr_t neti_getmyip(struct netaddr_s *destaddr);
+ip4addr_t neti_getmyip(neti_addr_t *destaddr);
 #if CONFIG_STACK_PATHWAY
 #define neti_getmyip(destaddr) (my_ip_addr)
 #endif /* CONFIG_STACK_PATHWAY */
@@ -189,8 +232,8 @@ SDT packets use a standard transport address format for address and port which m
 #include "acn_sdt.h"
 
 /* Both native and ACN formats are network byte order */
-extern __inline__ void transportAddrToHost(const uint8_t *transaddr, netiHost_t *hostaddr);
-extern __inline__ void transportAddrToHost(const uint8_t *transaddr, netiHost_t *hostaddr)
+extern __inline__ void transportAddrToHost(const uint8_t *transaddr, neti_addr_t *hostaddr);
+extern __inline__ void transportAddrToHost(const uint8_t *transaddr, neti_addr_t *hostaddr)
 {
 #if CONFIG_STACK_LWIP
 	//hostaddr->sin_family = AF_INET;
@@ -210,8 +253,8 @@ extern __inline__ void transportAddrToHost(const uint8_t *transaddr, netiHost_t 
 }
 
 /* Both native and ACN formats are network byte order */
-extern __inline__ void hostToTransportAddr(const netiHost_t *hostaddr, uint8_t *transaddr);
-extern __inline__ void hostToTransportAddr(const netiHost_t *hostaddr, uint8_t *transaddr)
+extern __inline__ void hostToTransportAddr(const neti_addr_t *hostaddr, uint8_t *transaddr);
+extern __inline__ void hostToTransportAddr(const neti_addr_t *hostaddr, uint8_t *transaddr)
 {
 	*transaddr = SDT_ADDR_IPV4;
 
@@ -244,5 +287,9 @@ extern __inline__ void hostToTransportAddr(const netiHost_t *hostaddr, uint8_t *
 #ifndef NETI_GROUP_UNICAST
 #define NETI_GROUP_UNICAST NETI_INADDR_ANY
 #endif
+#ifndef NETI_INIT_ADDR 
+#define NETI_INIT_ADDR(addrp, addr, port) (NETI_INADDR(addrp) = (addr), NETI_PORT(addrp) = (port))
+#endif
+
 
 #endif	/* #ifndef __netiface_h__ */
