@@ -44,7 +44,7 @@ typedef void rlpHandler_t(
 	int datasize,
 	void *ref,
 	const netiHost_t *remhost,
-	const cid_t *remcid
+	const cid_t remcid
 );
 
 /* must be included after rlpHandler_t */
