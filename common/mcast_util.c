@@ -34,65 +34,102 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 /*--------------------------------------------------------------------*/
-#include "uuid.h"
-#include "acn_config.h"
-#include <string.h>
-#include "wattcp.h"
+#include <strings.h>
+#include "opt.h"
+#include "acn_arch.h"
+#include "netiface.h"
 
-// ACN EPI 10 Constants
-static const uint32_t E1_17_AUTO_SCOPE_ADDRESS = 0xEFC00000;    // 239.192.0.0
-static const uint32_t E1_17_AUTO_SCOPE_MASK = 0xFFFC0000;       // 255.252.0.0
-static const int HOST_PART_BITS = 8;        // # of bits in the host port field
-static const uint32_t HOST_PART_MASK = 0xFF;
-static const uint32_t  SCOPE_PART_MIN_MASK = 0xFFC00000;  // Min allowed scope part
-static const uint32_t SCOPE_PART_MAX_MASK = 0xFFFF0000;  // Max allowed scope part
+#if CONFIG_EPI10
+#include "epi10.h"
 
-static uint32_t dyn_mask = 0;
-static int scope_mask_num_bits = 0;
-static int host_part_shift = 0;
-static uint32_t scope_address = 0;
-static uint32_t scope_mask = 0;
+/************************************************************************/
+/*
+  Prototypes
+*/
+extern int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, local_component_t *comp)
 
-void mcast_alloc_init(int scopeaddr, int scopemask, local_component_t *comp)
+
+
+static ip4addr_t scope_and_host;	/* Network Byte Order */
+static uint16_t dyn_mask;
+
+/************************************************************************/
+/*
+  Initialize the Multicast Address allocation algorithm.
+  Returns -1 for failure (invalid scopemask).
+  If scopeaddr == 0 use the epi10 default address and mask
+  
+  All masks and addresses are passed in Network byte order
+*/
+int mcast_alloc_init(
+	ip4addr_t scopeaddr, 
+	ip4addr_t scopemask, 
+	local_component_t *comp
+)
 {
+	int HostShift;
+	uint32_t HostPart;
+	uint16_t uuidPart;
+
 	// Set the scope part by masking the scope address with the scope mask.
 	// If a scope argument is zero, then set the ACN EPI 10 default.
 	if(scopeaddr == 0)
-		scopeaddr = E1_17_AUTO_SCOPE_ADDRESS;
-	if(scopemask == 0)
-		scopemask = E1_17_AUTO_SCOPE_MASK;
-	// Adjust the scope mask to be within the spec range
-	scopemask |= SCOPE_PART_MIN_MASK;
-	scopemask &= SCOPE_PART_MAX_MASK;
-
-	scope_address = scopeaddr;
-	scope_mask = scopemask;
-	// Determine location of LSBit in scope mask and set host part shift value.
-	scope_mask_num_bits = 32 - ffs(scopemask) + 1;
-	host_part_shift = 32 - scope_mask_num_bits - HOST_PART_BITS;
-	// Host part mask is a constant, fixed by spec.
-
-	// Set dynamic part mask according to location of scope and host parts.
-	// The host part has a fixed size, 8 bits.
-	// dyna_part_mask now has one bit at the location of the LSBit for the scope part.
-	// Shift the mask bit down to the LSBit of the host part, and
-	// subtract one to turn it into a mask for the bits of the dynamic part.
-	
-	int dyn_bits = host_part_shift;
-	
-	while (dyn_bits)
 	{
-		dyn_mask <<= 1;
-		dyn_mask |= 1;
-		dyn_bits--;
+		scopeaddr = E1_17_AUTO_SCOPE_ADDRESS;
+		scopemask = E1_17_AUTO_SCOPE_MASK;
 	}
-	
-	uuid *uuid = (void*)comp->cid;
-	comp->dyn_mcast = (((uint32_t)uuid->time_low) ^ ((uint32_t)uuid->node[2])) & dyn_mask;
+	scopeaddr &= scopemask;	/* discard superfluous bits */
+
+	// Adjust the scope mask to be within the spec range
+	scopemask |= EPI10_SCOPE_MIN_MASK;
+	scopemask &= EPI10_SCOPE_MAX_MASK;
+
+	if ((scopeaddr & scopemask) != scopeaddr)
+	{
+		syslog(LOG_ERR|LOG_LOCAL0,"mcast_alloc_init: Scope-address out of range.");
+		return -1;
+	}
+
+/*
+From epi10 r4:
+	HostPart   = (IPaddress & 0xff) << HostShift
+	HostShift  = 24 - ScopeBits
+	ScopeBits  = bitcount(ScopeMask)
+
+	Library function ffs (in strings.h) finds LS bit set
+	with lsb numbered as 1
+*/
+
+	HostShift = ffs(ntohl(scopemask)) - 9;
+	HostPart = ntohl(neti_getmyip(NULL));
+	HostPart &= EPI10_HOST_PART_MASK;
+	HostPart <<= HostShift;
+
+	dyn_mask = (1 << HostShift) - 1;
+
+	scope_and_host = scopeaddr | htonl(HostPart);
+
+/*
+	Set dynamic part mask according to location of scope and host parts.
+	The host part has a fixed size, 8 bits.
+	dyna_part_mask now has one bit at the location of the LSBit for the scope part.
+	Shift the mask bit down to the LSBit of the host part, and
+	subtract one to turn it into a mask for the bits of the dynamic part.
+*/
+	uuidPart = ntohs(*(uint16_t *)(comp->cid.times.node + 4));
+	uuidPart ^= (uint16_t)ntohl(comp->cid.times.time_low);
+	comp->dyn_mcast = uuidPart & dyn_mask;
 }
 
-int mcast_alloc_new(local_component_t * comp)
+/************************************************************************/
+/*
+  mcast_alloc_new may be defined as a macro
+*/
+#ifndef mcast_alloc_new
+int mcast_alloc_new(local_component_t *comp)
 {
-	comp->dyn_mcast = (comp->dyn_mcast + 1) & dyn_mask;
-	return (scope_address & scope_mask) | ((my_ip_addr & HOST_PART_MASK) << host_part_shift) | comp->dyn_mcast;
+	return scope_and_host | htonl((uint32_t(dyn_mask & comp->dyn_mcast++));
 }
+#endif
+
+#endif	/* CONFIG_EPI10 */
