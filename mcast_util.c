@@ -42,18 +42,33 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if CONFIG_EPI10
 #include "epi10.h"
 
-static uint32_t scope_and_host;
-static uint32_t dyn_mask = 0x3ff;
+/************************************************************************/
+/*
+  Prototypes
+*/
+extern int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, local_component_t *comp)
 
+
+
+static ip4addr_t scope_and_host;	/* Network Byte Order */
+static uint16_t dyn_mask;
+
+/************************************************************************/
+/*
+  Initialize the Multicast Address allocation algorithm.
+  Returns -1 for failure (invalid scopemask).
+  If scopeaddr == 0 use the epi10 default address and mask
+  
+  All masks and addresses are passed in Network byte order
+*/
 int mcast_alloc_init(
-	int scopeaddr, 
-	int scopemask, 
+	ip4addr_t scopeaddr, 
+	ip4addr_t scopemask, 
 	local_component_t *comp
 )
 {
 	int HostShift;
 	uint32_t HostPart;
-	struct uuidStruct_s *uuidp;
 	uint16_t uuidPart;
 
 	// Set the scope part by masking the scope address with the scope mask.
@@ -85,11 +100,14 @@ From epi10 r4:
 	with lsb numbered as 1
 */
 
-	HostShift = ffs(scopemask) - 9;
-	HostPart = (neti_getmyip(NULL) & EPI10_HOST_PART_MASK) << HostShift;
+	HostShift = ffs(ntohl(scopemask)) - 9;
+	HostPart = ntohl(neti_getmyip(NULL));
+	HostPart &= EPI10_HOST_PART_MASK;
+	HostPart <<= HostShift;
 
 	dyn_mask = (1 << HostShift) - 1;
-	scope_and_host = scopeaddr | HostPart;
+
+	scope_and_host = scopeaddr | htonl(HostPart);
 
 /*
 	Set dynamic part mask according to location of scope and host parts.
@@ -98,14 +116,20 @@ From epi10 r4:
 	Shift the mask bit down to the LSBit of the host part, and
 	subtract one to turn it into a mask for the bits of the dynamic part.
 */
-	uuidp = (struct uuidStruct_s *)comp->cid;
-	uuidPart = *(uint16_t *)(uuid->node + 4);
-	uuidPart ^= (uint16_t)uuid->time_low;
+	uuidPart = ntohs(*(uint16_t *)(comp->cid.times.node + 4));
+	uuidPart ^= (uint16_t)ntohl(comp->cid.times.time_low);
 	comp->dyn_mcast = uuidPart & dyn_mask;
 }
 
+/************************************************************************/
+/*
+  mcast_alloc_new may be defined as a macro
+*/
+#ifndef mcast_alloc_new
 int mcast_alloc_new(local_component_t *comp)
 {
-	return scope_and_host | (dyn_mask & comp->dyn_mcast++);
+	return scope_and_host | htonl((uint32_t(dyn_mask & comp->dyn_mcast++));
 }
 #endif
+
+#endif	/* CONFIG_EPI10 */
