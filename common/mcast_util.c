@@ -30,28 +30,20 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+	$Id: mcast_util.c 75 2008-01-31 13:23:15Z philipnye $
 
 */
 /*--------------------------------------------------------------------*/
 #include <strings.h>
 #include "opt.h"
 #include "acn_arch.h"
-#include "netiface.h"
+#include "mcast_util.h"
 
 #if CONFIG_EPI10
 #include "epi10.h"
 
-/************************************************************************/
-/*
-  Prototypes
-*/
-extern int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, local_component_t *comp)
-
-
-
-static ip4addr_t scope_and_host;	/* Network Byte Order */
-static uint16_t dyn_mask;
+ip4addr_t scope_and_host;	/* Network Byte Order */
+uint16_t dyn_mask;
 
 /************************************************************************/
 /*
@@ -86,7 +78,7 @@ int mcast_alloc_init(
 
 	if ((scopeaddr & scopemask) != scopeaddr)
 	{
-		syslog(LOG_ERR|LOG_LOCAL0,"mcast_alloc_init: Scope-address out of range.");
+		//syslog(LOG_ERR|LOG_LOCAL0,"mcast_alloc_init: Scope-address out of range.");
 		return -1;
 	}
 
@@ -110,15 +102,11 @@ From epi10 r4:
 	scope_and_host = scopeaddr | htonl(HostPart);
 
 /*
-	Set dynamic part mask according to location of scope and host parts.
-	The host part has a fixed size, 8 bits.
-	dyna_part_mask now has one bit at the location of the LSBit for the scope part.
-	Shift the mask bit down to the LSBit of the host part, and
-	subtract one to turn it into a mask for the bits of the dynamic part.
 */
-	uuidPart = ntohs(*(uint16_t *)(comp->cid.times.node + 4));
-	uuidPart ^= (uint16_t)ntohl(comp->cid.times.time_low);
+	uuidPart = (UUID_NODE(comp->cid)[4] << 8) | UUID_NODE(comp->cid)[5];
+	uuidPart ^= (uint16_t)UUID_TIME_LOW(comp->cid);
 	comp->dyn_mcast = uuidPart & dyn_mask;
+	return 0;
 }
 
 /************************************************************************/
@@ -128,7 +116,7 @@ From epi10 r4:
 #ifndef mcast_alloc_new
 int mcast_alloc_new(local_component_t *comp)
 {
-	return scope_and_host | htonl((uint32_t(dyn_mask & comp->dyn_mcast++));
+	return scope_and_host | htonl((uint32_t)(dyn_mask & comp->dyn_mcast++));
 }
 #endif
 

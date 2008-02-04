@@ -37,8 +37,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __mcast_util_h__
 #define __mcast_util_h__ 1
 
-#include "acn_config.h"
+/************************************************************************/
+#include "component.h"
+#include "netiface.h"
+/*
+  Prototypes
+*/
+#if CONFIG_EPI10
+extern int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, local_component_t *comp);
+/*
+  mcast_alloc_new can be a macro
+*/
+#define mcast_alloc_new(comp) (scope_and_host | htonl((uint32_t)(dyn_mask & (comp)->dyn_mcast++)))
 
-void mcast_alloc_init(int scopeaddr, int scopemask, local_component_t *comp);
-int mcast_alloc_new(local_component_t * comp);
+#ifdef mcast_alloc_new
+extern ip4addr_t scope_and_host;	/* Network Byte Order */
+extern uint16_t dyn_mask;
+#else
+extern int mcast_alloc_new(local_component_t *comp);
+#endif
+#endif	/* CONFIG_EPI10 */
+
 #endif

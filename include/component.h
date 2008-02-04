@@ -40,7 +40,31 @@ Information structures and handling relating to components
 #ifndef __component_h__
 #define __component_h__ 1
 
-#include <arch/types.h>
+#include "types.h"
 #include "uuid.h"
+
+/************************************************************************/
+/*
+  Local component structure is a rag-bag of information which represents
+  a component within the local host. For efficiency, each layer can
+  include it's own information within the component structure. because
+  it is subject to many config options, other layers cannot rely on
+  information outside their own scope and should leave it alone.
+
+  Comonents must maintain their component structure in a fixed location
+  as pointers to it may be stored and dereferenced at a later time.
+*/
+
+typedef struct local_component_s
+{
+	cid_t cid;
+#if CONFIG_EPI10
+	uint16_t dyn_mcast;
+#endif
+} local_component_t;
+
+#if CONFIG_SINGLE_COMPONENT
+extern local_component_t the_component;
+#endif
 
 #endif
