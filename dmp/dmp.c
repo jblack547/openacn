@@ -278,7 +278,7 @@ static inline int decodeAddressHeader(pdu_header_type *pdu, uint8 *data, dmp_add
 	
 	dmpAddress->isVirtual = (pdu->vector & VIRTUAL_ADDRESS_BIT);
 	
-	if(pdu->vector & RELATIVE_ADDRESS_BIT)
+	if(*pdu->header & RELATIVE_ADDRESS_BIT)
 	{
 		dmpAddress->startAddress += (dmpAddress->isVirtual) ? lastVirtualAddress : lastActualAddress;
 		if(dmpAddress->isVirtual)
