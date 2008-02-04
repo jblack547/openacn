@@ -38,7 +38,7 @@
 #
 
 TOPDIR:=.
-SUBDIRS:=common rlp
+SUBDIRS:=common rlp test
 
 include ${TOPDIR}/common.makefile
 
@@ -51,11 +51,3 @@ all :
 
 clean :
 	for dir in ${SUBDIRS} ; do ${MAKE} -C $$dir clean ; done
-
-.PHONY : test
-
-test :
-	@echo ARCH: ${ARCH} 
-
-ts : test/test.o common/netiface.o common/marshal.o rlp/rlp.o rlp/rlpmem.o
-	${CC} ${CFLAGS} -luuid -o $@ $^

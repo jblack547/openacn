@@ -38,7 +38,7 @@
 #
 
 TOPDIR:=..
-OBJS:=netiface.o uuid.o
+OBJS:=netiface.o uuid.o mcast_util.o
 
 include ${TOPDIR}/common.makefile
 
