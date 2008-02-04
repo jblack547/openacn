@@ -39,11 +39,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __acn_arch_h__ 1
 
 #include "types.h"
+#include "uuid.h"
 
 typedef uint32_t protocolID_t;
 #define PROTO_NONE 0
-
-#include "uuid.h"
 
 typedef uuid_t cid_t;
 
