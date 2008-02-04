@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __uuid_h__
 #define __uuid_h__ 1
 
-#include "types.h"
+#include "opt.h"
 
 /*
 For most purposes a UUID is simply an array of 16 octets
@@ -49,17 +49,15 @@ For most purposes a UUID is simply an array of 16 octets
 typedef uint8_t uuid_t[UUIDSIZE];
 
 /*
-If you need access to the internal structure use
-uuidStruct_t
+  Macros to access the internal structure
+  Fields are in Network byte order
 */
-struct PACKED uuidStruct_s {
-		uint32_t time_low;
-		uint16_t time_mid;
-		uint16_t time_hi_and_version;
-		uint8_t clk_seq_hi_res;
-		uint8_t clk_seq_low;
-		uint8_t node[6];
-} uuidStruct_t;
+#define UUID_TIME_LOW(uuid) ntohl(*(uint32_t *)(uuid))
+#define UUID_TIME_MID(uuid) ntohs(*(uint16_t *)((uuid) + 4))
+#define UUID_TIME_HIV(uuid) ntohs(*(uint16_t *)((uuid) + 6))
+#define UUID_CLKSEQ_HI(uuid) (*((uuid) + 8))
+#define UUID_CLKSEQ_LOW(uuid) (*((uuid) + 9))
+#define UUID_NODE(uuid) ((uuid) + 10)
 
 int textToUuid(const char *uuidText, uuid_t uuidp);
 char *uuidToText(const uuid_t uuidp, char *uuidText);
