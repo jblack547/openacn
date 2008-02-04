@@ -67,12 +67,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "pp_acn_config.h"
 
-typedef uint32_t (*rxhandler_t) (foreign_component_t *srcComp, local_component_t *dstComp, uint8_t *data, uint32_t datalength);
+typedef uint32_t (*rx_handler_t) (foreign_component_t *srcComp, local_component_t *dstComp, uint8_t *data, uint32_t datalength);
 
 /* Message callback 
    TODO decide on a format for messaging to client protocols 
 */
-typedef uint32_t (*msghandler_t)(foreign_component_t *srcComp, local_component_t *dstComp, uint8_t *message);
+typedef uint32_t (*msg_handler_t)(foreign_component_t *srcComp, local_component_t *dstComp, uint8_t *message);
 
 typedef struct handler_t
 {

@@ -64,7 +64,7 @@ typedef struct foreign_member_t
         uint8_t nak:1;
         uint8_t pending:1;
         uint8_t isLocal:1;
-        uint8_t        isConnected:1;
+        uint8_t isConnected:1;
         uint8_t expiryTime;
         
         uint32_t expiresAt;        
@@ -234,7 +234,7 @@ enum
 #define mJOIN_
 
 typedef int sdtMsgDespatcher(
-	const uint8_t_t *data,
+	const uint8_t *data,
 	int datasize,
 	void *ref,
 	const netiHost_t *remhost,
@@ -242,7 +242,7 @@ typedef int sdtMsgDespatcher(
 );
 
 struct msgDespatch_s {
-	uint8_t_t msgCode;
+	uint8_t msgCode;
 	sdtMsgDespatcher *func;
 	void *funcref;
 };
@@ -256,18 +256,18 @@ const struct msgDespatch_s adhocMsgTab[] = {
 
 void
 adhocRxHandler(
-	const uint8_t_t *data,
+	const uint8_t *data,
 	int datasize,
 	void *ref,
 	const netiHost_t *remhost,
 	const cid_t *remcid
 )
 {
-	const uint8_t_t *pdup, *pdudata;
+	const uint8_t *pdup, *pdudata;
 	int pdudatalen;
-	uint8_t_t flags;
-	const uint8_t_t *pp;
-	uint8_t_t msgtype;
+	uint8_t flags;
+	const uint8_t *pp;
+	uint8_t msgtype;
 	struct msgDespatch_s *pdufunc;
 
 	pdup = data;
@@ -856,7 +856,7 @@ static void sdtRxLeave(leader_t *remoteLeader, channel_t *remoteChannel, leader_
 //	syslog(LOG_LOCAL1 | LOG_DEBUG, "rxLeave Not dead yet");
 	local_member_t *member = findMemberByComponent(remoteChannel, localLeader->component);
 	
-	sdtTxLeaving(remoteLeader, remoteChannel, member, SDT_REASON_LEAVE_REQUESTED);
+	sdtTxLeaving(remoteLeader, remoteChannel, member, SDT_REASON_ASKED_TO_LEAVE);
 	member->expiresAt = jiffies; //expire the member
 //	syslog(LOG_LOCAL1 | LOG_DEBUG, "rxLeave I'm feeling better");
 }
@@ -987,16 +987,16 @@ enum
 
 struct PACKED joinMsg_s {
 	cid_t cid;
-	uint16_t_t n_mid;
-	uint16_t_t n_channel;
-	uint16_t_t n_reciprocal;
-	uint32_t_t n_seq
+	uint16_t n_mid;
+	uint16_t n_channel;
+	uint16_t n_reciprocal;
+	uint32_t n_seq
 };
 
 //static uint32_t sdtRxJoin(udp_transport_t *transportAddr, uint8_t srcCID[16], pdu_header_type *header)
 
 static int sdtRxJoin(
-	const uint8_t_t *data,
+	const uint8_t *data,
 	int datasize,
 	void *ref,
 	const netiHost_t *remhost,

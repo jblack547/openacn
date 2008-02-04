@@ -37,37 +37,37 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __pdu_h__
 #define __pdu_h__ 1
 
-#include <arch/types.h>
+#include "types.h"
 
 #define getpdulen(pp) (((pp)[0] << 8 | (pp)[1]) & LENGTH_FIELD)
 
-#define vectorPresent(x) (VECTOR_wFLAG & ((uint16)(x)))
-#define headerPresent(x) (HEADER_wFLAG & ((uint16)(x)))
-#define dataPresent(x) (DATA_wFLAG & ((uint16)(x)))
+#define vectorPresent(x) (VECTOR_FLAG & ((uint16_t)(x)))
+#define headerPresent(x) (HEADER_FLAG & ((uint16_t)(x)))
+#define dataPresent(x) (DATA_FLAG & ((uint16_t)(x)))
 
 typedef struct
 {
-   uint8 *header;
-   uint8 *data;
-	uint8 *location;
-	uint32 vector;
-   uint16 length;	
-	uint8 headerLength;
-	uint8 vectorLength;
-	uint16 dataLength;
-	uint16 flags;	
+	uint8_t *header;
+	uint8_t *data;
+	uint8_t *location;
+	uint32_t vector;
+	uint16_t length;	
+	uint8_t headerLength;
+	uint8_t vectorLength;
+	uint16_t dataLength;
+	uint16_t flags;	
 	
 } pdu_header_type;
 
 typedef struct
 {
-	uint32 packetStart;
-	uint32 sdtStart;
-	uint32 dmpStart;
-	uint32 dmpEnd;
-	uint32 sdtEnd;
-	uint32 packetEnd;
-	uint32 numberofdmpprops;
+	uint32_t packetStart;
+	uint32_t sdtStart;
+	uint32_t dmpStart;
+	uint32_t dmpEnd;
+	uint32_t sdtEnd;
+	uint32_t packetEnd;
+	uint32_t numberofdmpprops;
 } timing_t;
 extern timing_t benchmark;
 
@@ -83,7 +83,7 @@ enum
 #define BROADCAST_MID 0xFFFF
 
 int calculatePduLength(pdu_header_type *header);
-int decodePdu(uint8 *buf, pdu_header_type *pdu, int vectorLen, int headerLen);
-int formatPdu(uint8 *buf, pdu_header_type *pdu);
+int decodePdu(uint8_t *buf, pdu_header_type *pdu, int vectorLen, int headerLen);
+int formatPdu(uint8_t *buf, pdu_header_type *pdu);
 void updatePduLen(pdu_header_type *pdu);
 #endif

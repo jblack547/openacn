@@ -37,7 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __acn_config_h__
 #define __acn_config_h__
 
-#include <arch/types.h>
+#include <types.h>
+#include <acn_arch.h>
 
 #define MAX_NODE_NAME_LEN 64
 #define MAX_REBOOT_LEN    64
@@ -90,26 +91,26 @@ typedef struct local_component_t
 	int offset;
 } local_component_t;
 
-typedef void (*event_callback_t)(local_component_t *localComp, uint32 address, uint8 *value, uint32 valueLength);
+typedef void (*event_callback_t)(local_component_t *localComp, uint32_t address, uint8_t *value, uint32_t valueLength);
 
-foreign_component_t *registerForeignComponent(uint8 *cid);
-local_component_t *registerLocalComponent(uint8 *cid, dcid_t *dcid);
+foreign_component_t *registerForeignComponent(uint8_t *cid);
+local_component_t *registerLocalComponent(uint8_t *cid, dcid_t *dcid);
 
-void unregisterLocalComponent(uint8 *cid);
-void unregisterForeignComponent(uint8 *cid);
+void unregisterLocalComponent(uint8_t *cid);
+void unregisterForeignComponent(uint8_t *cid);
 
-local_component_t *findLocalComponent(uint8 *cid);
-foreign_component_t *findForeignComponent(uint8 *cid);
+local_component_t *findLocalComponent(uint8_t *cid);
+foreign_component_t *findForeignComponent(uint8_t *cid);
 
-int getProperty(local_component_t *dst, uint32 address, uint8 *ptr);
-int setProperty(local_component_t *dst, uint32 address, uint8 *data, uint32 dataLength);
+int getProperty(local_component_t *dst, uint32_t address, uint8_t *ptr);
+int setProperty(local_component_t *dst, uint32_t address, uint8_t *data, uint32_t dataLength);
 
 void registerEventCallback(event_callback_t callback);
 
 void loadConfig(void);
 
-int addSubscription(local_component_t *localComp, uint32 address, foreign_component_t *foreignComp, void *session);
-int removeSubscription(local_component_t *localComp, uint32 address, foreign_component_t *foreignComp, void *session);
+int addSubscription(local_component_t *localComp, uint32_t address, foreign_component_t *foreignComp, void *session);
+int removeSubscription(local_component_t *localComp, uint32_t address, foreign_component_t *foreignComp, void *session);
 int removeAllSubscriptions(foreign_component_t *foreignComp);
 
 
