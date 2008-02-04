@@ -52,7 +52,6 @@ typedef void rlpHandler_t(
 
 /* Prototypes */
 int       rlp_init(void);
-uint8_t  *rlp_create_packet(struct rlp_txbuf_s *txbuf, cid_t cid);
 uint8_t  *rlp_init_block(struct rlp_txbuf_s *buf, uint8_t *datap);
 #if !CONFIG_RLP_SINGLE_CLIENT
 uint8_t  *rlp_add_pdu(struct rlp_txbuf_s *buf, uint8_t *pdudata, int size, protocolID_t protocol, uint8_t **packetdatap);
