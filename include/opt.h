@@ -37,22 +37,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef __opt_h__
 #define __opt_h__ 1
+#include "user_opt.h"
+
+/**************************************************************************/
 /*
   IMPORTANT
   YOU SHOULD NOT NEED TO EDIT THIS HEADER
   
-  If you just want to create your own tailored build of OpenACN you should
-  put all your local configuration options into the header "user_opt.h" where
-  the compiler will find it.
-  
-  This header (opt.h) includes your user_opt.h first and only provides default values if
-  options have not been defined there.
-  
-  You can refer to this header to see which options are available and what 
-  they do.
-*/
+  If you just want to create your own tailored build of OpenACN you
+  should put all your local configuration options into the header
+  "user_opt.h" where the compiler will find it.
 
-#include "user_opt.h"
+  This header (opt.h) includes your user_opt.h first and only provides
+  default values if options have not been defined there.
+
+  You can refer to this header to see which options are available and
+  what  they do.
+*/
+/**************************************************************************/
+
+/**************************************************************************/
 /*
   C Compiler
   
@@ -71,8 +75,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+/************************************************************************/
 /*
-  Basic Architecture
+  Basic CPU Architecture
 
   we can autodetect a lot of this from predefined macros
   but these vary from system to system so use our own macro 
@@ -110,7 +115,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+/************************************************************************/
 /*
+  Networking
+
   Underlying transport selection
   picking more than one makes code more complex
 */
@@ -165,8 +173,11 @@ as required.
 #define	CONFIG_LOCALIP_ANY       1
 #endif
 
+/************************************************************************/
 /*
-  memory management models - pick one
+  Memory management
+  
+  RLP models - pick one
 */
 #ifndef CONFIG_RLPMEM_MALLOC
 #define CONFIG_RLPMEM_MALLOC  0
@@ -185,6 +196,23 @@ as required.
   #ifndef MAX_TXBUFS
   #define MAX_TXBUFS 10
   #endif
+#endif
+
+/************************************************************************/
+/*
+  ACN Protocols
+*/
+/*
+Protocols to build
+*/
+#ifndef CONFIG_SDT
+#define CONFIG_SDT	   1
+#endif
+#ifndef CONFIG_DMP
+#define CONFIG_DMP     0
+#endif
+#ifndef CONFIG_E131
+#define CONFIG_E131    0
 #endif
 
 /*
@@ -221,20 +249,23 @@ as required.
 #define	CONFIG_EPI20   1
 #endif
 
+/************************************************************************/
 /*
-Protocols to build
+  Component Model
+  
+  If there is only ever one component in the host using openACN things
+  get simpler.
 */
-#ifndef CONFIG_SDT
-#define CONFIG_SDT	   1
-#endif
-#ifndef CONFIG_DMP
-#define CONFIG_DMP     0
-#endif
-#ifndef CONFIG_E131
-#define CONFIG_E131    0
+#ifndef CONFIG_SINGLE_COMPONENT
+#define	CONFIG_SINGLE_COMPONENT   1
 #endif
 
+
+/************************************************************************/
 /*
+
+  Root Layer Protocol
+
   The default is to build a generic RLP for multiple client protocols.
   However, efficiency gains can be made if RLP is built for only one,
   in this case set CONFIG_RLP_SINGLE_CLIENT to the protocol ID
@@ -253,26 +284,31 @@ Protocols to build
 #define CONFIG_RLP_OPTIMIZE_PACK 0
 #endif
 
+/************************************************************************/
 /*
+
+  SDT
+
   Set to zero for generic SDT. However, efficiency gains can
   be made if SDT is built for only one client protocol.
   In this case set CONFIG_SDT_SINGLE_CLIENT to the protocol ID
-  of that client e.g.
-  #ifndef CONFIG_SDT_SINGLE_CLIENT
-#define  CONFIG_SDT_SINGLE_CLIENT PROTO_DMP
-#endif
+  of that client e.g:
+    #ifndef CONFIG_SDT_SINGLE_CLIENT
+    #define  CONFIG_SDT_SINGLE_CLIENT PROTO_DMP
+    #endif
 */
 #ifndef CONFIG_SDT_SINGLE_CLIENT
 #define CONFIG_SDT_SINGLE_CLIENT 0
 #endif
 
-/***************************************************************************************/
+/************************************************************************/
 /*
   The following are sanity checks on preceding options and some
   derivative configuration values. They are not user options
 */
-/***************************************************************************************/
+/************************************************************************/
 
+/************************************************************************/
 /* check on transport selection */
 #if (CONFIG_NET_IPV4 + CONFIG_NET_IPV6) <= 0
 #error Need to select at least one transport
@@ -282,6 +318,7 @@ Protocols to build
 #define CONFIG_MULTI_NET 1
 #endif
 
+/************************************************************************/
 /* checks on network stack */
 #if (CONFIG_STACK_BSD + CONFIG_STACK_WINSOCK + CONFIG_STACK_PATHWAY + CONFIG_STACK_LWIP) != 1
 #error Need to select exactly one network stack
@@ -291,12 +328,14 @@ Protocols to build
 #error Pathway stack only supports IPv4
 #endif
 
+/************************************************************************/
 /* Sanity check for CONFIG_RLP_SINGLE_CLIENT */
 #if ((CONFIG_SDT + CONFIG_E131) > 1 && (CONFIG_RLP_SINGLE_CLIENT) != 0)
 #error Cannot support both SDT and E1.31 if CONFIG_RLP_SINGLE_CLIENT is set
 #endif
 
-// Sanity check for memory managment
+/************************************************************************/
+/* Sanity check for memory managment */
 #if (CONFIG_RLPMEM_MALLOC +  CONFIG_RLPMEM_STATIC) != 1
 #error Need to select one memory managment model
 #endif
