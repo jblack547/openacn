@@ -49,14 +49,14 @@ inline uint16_t unmarshalU16(const uint8_t *data);
 inline size_t marshalU32(uint8_t *data, uint32_t u32);
 inline uint32_t unmarshalU32(const uint8_t *data);
 
-#define marshalUUID(data, uuid) memcpy((uint8_t *)(data), (uint8_t *)(uuid), sizeof(uuid_t))
+#define marshalUUID(data, uuid) memcpy((uint8_t *)(data), (uuid), sizeof(uuid_t))
 #define unmarshalUUID(data, uuid) marshalUUID(uuid, data)
 
 #if !defined(marshalUUID)
-inline void marshalUUID(uint8_t *data, const uint8_t *uuid);
+inline void marshalUUID(uint8_t *data, const uuid_t uuid);
 #endif
 #if !defined(unmarshalUUID)
-inline void unmarshalUUID(const uint8_t *data, uint8_t *uuid);
+inline void unmarshalUUID(const uint8_t *data, uuid_t uuid);
 #endif
 
 inline size_t marshal_p_string(uint8_t *data, const p_string_t *str);
