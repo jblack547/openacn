@@ -45,11 +45,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define INPACKETSIZE DEFAULT_MTU
 
-/*--------------------------------------------------------------------*/
+/************************************************************************/
 /* local memory */
 
 
-/*--------------------------------------------------------------------*/
+/************************************************************************/
 /* local prototypes */
 #if CONFIG_STACK_LWIP
 static void  netihandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr, u16_t port);
@@ -60,7 +60,7 @@ static int netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseu
 #endif
 
 
-/*--------------------------------------------------------------------*/
+/************************************************************************/
 /*
   Initialize networking
 */
@@ -71,7 +71,7 @@ void neti_init(void)
 }
 
 
-/*--------------------------------------------------------------------*/
+/************************************************************************/
 /*
   neti_udp_open
 
@@ -91,19 +91,19 @@ neti_udp_open(struct netsocket_s *rlpsock, localaddr_t localaddr)
   rlpsock->nativesock = (int)neti_pcb;
 
   // BIND:sets local_ip and local_port
-  if (!udp_bind(neti_pcb, ADDRPART(localaddr), PORTPART(localaddr)) == ERR_OK)
+  if (!udp_bind(neti_pcb, LCLAD_INADDR(localaddr), LCLAD_PORT(localaddr)) == ERR_OK)
     return -1;
 
-  if (PORTPART(localaddr) != NETI_PORT_EPHEM) {
+  if (LCLAD_PORT(localaddr) != NETI_PORT_EPHEM) {
 // if port was 0, then the stack should have given us a port, so assign it back
-	NETSOCKPORT(*rlpsock) = neti_pcb->local_port;
+	NSK_PORT(*rlpsock) = neti_pcb->local_port;
   }
   else
   {
-	NETSOCKPORT(*rlpsock) = PORTPART(localaddr);
+	NSK_PORT(*rlpsock) = LCLAD_PORT(localaddr);
   }
 #if !CONFIG_LOCALIP_ANY
-	NETSOCKADDR(*rlpsock) = ADDRPART(localaddr);
+	NSK_INADDR(*rlpsock) = LCLAD_INADDR(localaddr);
 #endif
 
   // UDP Callback
@@ -113,6 +113,7 @@ neti_udp_open(struct netsocket_s *rlpsock, localaddr_t localaddr)
 }
 #endif /* CONFIG_STACK_LWIP */
 
+/************************************************************************/
 #if CONFIG_STACK_BSD
 static const int optionOn = 1;
 static const int optionOff = 0;
@@ -122,10 +123,10 @@ neti_udp_open(struct netsocket_s *rlpsock, localaddr_t localaddr)
 {
 	int bsdsock;
 	int rslt;
-	union {
-		struct sockaddr gen;
-		struct sockaddr_in ip4;
-	} nativeaddr;
+#if CONFIG_LOCALIP_ANY
+	neti_addr_t bindaddr;
+#endif
+	neti_addr_t *bindp;
 
 	bsdsock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (bsdsock < 0) return -errno;
@@ -136,36 +137,59 @@ neti_udp_open(struct netsocket_s *rlpsock, localaddr_t localaddr)
     rslt = setsockopt (bsdsock, SOL_SOCKET, SO_REUSEADDR, (void *)&optionOn, sizeof(optionOn));
 	if (rslt < 0) goto fail;
 
-	nativeaddr.gen.sa_family = NETI_FAMILY;
-	nativeaddr.ip4.sin_port = PORTPART(localaddr);
-	nativeaddr.ip4.sin_addr.s_addr = ADDRPART(localaddr);
-	rslt = bind(bsdsock, &nativeaddr.gen, sizeof(struct sockaddr_in));
+#if CONFIG_LOCALIP_ANY
+	bindp = &bindaddr;
+	NETI_INIT_ADDR(bindp, LCLAD_INADDR(localaddr), LCLAD_PORT(localaddr));
+#else
+	bindp = localaddr;
+#endif
+
+	/*
+	FIXME
+	If we simply use INADDR_ANY when binding, then sockets may receive spurious 
+	multicast messages. These will be corrctly rejected but have already made it
+	a long way up the stack.
+	We should enumerate our interfaces and pick the default multicast interface.
+
+	hint: "In determining or selecting outgoing interfaces, the following
+	ioctls might be useful: SIOCGIFADDR (to get an interface's address),
+	SIOCGIFCONF (to get the list of all the interfaces) and SIOCGIFFLAGS
+	(to get an interface's flags and, thus, determine whether the
+	interface is multicast capable or not -the IFF_MULTICAST flag-)."
+	man netdevice for more info.
+	*/
+
+	rslt = bind(bsdsock, (struct sockaddr *)bindp, sizeof(neti_addr_t));
 	if (rslt < 0) goto fail;
 
 	rlpsock->nativesock = bsdsock;
-	if (PORTPART(localaddr) != NETI_PORT_EPHEM)
-	{
-		NETSOCKPORT(*rlpsock) = PORTPART(localaddr);
-#if !CONFIG_LOCALIP_ANY
-		NETSOCKADDR(*rlpsock) = ADDRPART(localaddr);
-#endif
-	}
-	else
+	if (LCLAD_PORT(localaddr) == NETI_PORT_EPHEM)
 	{
 		/* find the ephemeral port which has been assigned */
-		socklen_t socklen;
+		socklen_t addrlen;
 
-		socklen = sizeof(nativeaddr);
-		rslt = getsockname(bsdsock, &nativeaddr.gen, &socklen);
+		addrlen = sizeof(neti_addr_t);
+		rslt = getsockname(bsdsock, (struct sockaddr *)bindp, &addrlen);
 		if (rslt < 0) goto fail;
-		NETSOCKPORT(*rlpsock) = nativeaddr.ip4.sin_port;
-#if !CONFIG_LOCALIP_ANY
-		NETSOCKADDR(*rlpsock) = nativeaddr.ip4.sin_addr.sa_addr;
-#endif
 	}
+#if CONFIG_LOCALIP_ANY
+	NSK_PORT(*rlpsock) = NETI_PORT(bindp);
+#else
+	memcpy(&rlpsock->localaddr, bindp, sizeof(neti_addr_t));
+#endif
 
 	/* we will need information on destination address used */
 	rslt = setsockopt (bsdsock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
+	if (rslt < 0) goto fail;
+
+	/* turn on loop-back of multicast packets */
+	/*
+	FIXME
+	We should dynamically manage IP_MULTICAST_LOOP and only turn it on when
+	we need to (i.e. when a client within the host wants to receive on a group
+	which is also generated within the host).
+	*/
+	rslt = setsockopt (bsdsock, IPPROTO_IP, IP_MULTICAST_LOOP, (void *)&optionOn, sizeof(optionOn));
 	if (rslt < 0) goto fail;
 
 	return 0;
@@ -176,11 +200,12 @@ fail:
 }
 #endif /* CONFIG_STACK_BSD */
 
+/************************************************************************/
 #if CONFIG_STACK_PATHWAY
 int 
 neti_udp_open(struct netsocket_s *rlpsock, struct localaddr_s *localaddr)
 {
-	if (udp_open(&rlpsock->nativesock, localaddr->port, -1, 0, &netihandler) == 0)
+	if (udp_open(&rlpsock->nativesock, LCLAD_PORT(localaddr), -1, 0, &netihandler) == 0)
 		return -1;
 	rlpsock->nativesock.usr_name = char *rlpsock;	/* use usr_name field to store reference pointer **EXPERIMENTAL** */
 	return 0;
@@ -188,7 +213,7 @@ neti_udp_open(struct netsocket_s *rlpsock, struct localaddr_s *localaddr)
 #endif	/* CONFIG_STACK_PATHWAY */
 
 
-/*--------------------------------------------------------------------*/
+/************************************************************************/
 /*
   neti_udp_close
   
@@ -203,7 +228,7 @@ neti_udp_close(struct netsocket_s *netsock)
 #endif /* CONFIG_STACK_LWIP */
 
 
-/*--------------------------------------------------------------------*/
+/************************************************************************/
 /*
   neti_change_group
   Parameter operation specifies NETI_JOINGROUP or NETI_LEAVEGROUP
@@ -225,6 +250,7 @@ neti_change_group(struct netsocket_s *rlpsock, ip4addr_t localGroup, int operati
 }
 #endif
 
+/************************************************************************/
 #if CONFIG_STACK_BSD
 int
 neti_change_group(struct netsocket_s *rlpsock, ip4addr_t localGroup, int operation)
@@ -234,15 +260,25 @@ neti_change_group(struct netsocket_s *rlpsock, ip4addr_t localGroup, int operati
 
 	if (!is_multicast(localGroup)) return 0;
 
+#if CONFIG_LOCALIP_ANY
 	multireq.imr_address.s_addr = INADDR_ANY;
+#else
+	multireq.imr_address.s_addr = NSK_INADDR(*rlpsock);
+#endif
 	multireq.imr_ifindex = 0;
 	multireq.imr_multiaddr.s_addr = localGroup;
 
 	rslt = setsockopt(rlpsock->nativesock, IPPROTO_IP, operation, (void *)&multireq, sizeof(multireq));
+	printf("setsockopt %s returns %d\n", 
+		(operation == NETI_JOINGROUP) ? "join group" : (operation == NETI_LEAVEGROUP) ? "leave group" : "unknown",
+		rslt);
+/*
+*/
 	return rslt;
 }
 #endif /* CONFIG_STACK_BSD */
 
+/************************************************************************/
 #if CONFIG_STACK_PATHWAY
 int
 neti_change_group(struct netsocket_s *rlpsock, ip4addr_t localGroup, int operation)
@@ -260,7 +296,7 @@ neti_change_group(struct netsocket_s *rlpsock, ip4addr_t localGroup, int operati
 #endif	/* CONFIG_STACK_PATHWAY */
 
 
-/*--------------------------------------------------------------------*/
+/************************************************************************/
 /*
   neti_send_to
 
@@ -292,6 +328,7 @@ neti_send_to(
 }
 #endif
 
+/************************************************************************/
 #if CONFIG_STACK_BSD
 int
 neti_send_to(
@@ -305,6 +342,7 @@ neti_send_to(
 }
 #endif /* CONFIG_STACK_BSD */
 
+/************************************************************************/
 #if CONFIG_STACK_PATHWAY
 
 int
@@ -320,14 +358,16 @@ neti_send_to(
 #endif	/* CONFIG_STACK_PATHWAY */
 
 
-/*--------------------------------------------------------------------*/
+/************************************************************************/
 /*
+  Poll for input
 */
 
 #if CONFIG_STACK_LWIP
 
 #endif
 
+/************************************************************************/
 #if CONFIG_STACK_BSD
 #include <poll.h>
 #include <stdlib.h>
@@ -341,17 +381,34 @@ int
 neti_poll(struct netsocket_s **sockps, int numsocks)
 {
 	struct pollfd pfd[MAX_RLP_SOCKETS];
+	struct netsocket_s *nsocks[MAX_RLP_SOCKETS];
 	int i;
 	int rslt;
 	uint8_t *buf;
 	int haderr;
 
-	if (numsocks > MAX_RLP_SOCKETS) return -1;
+	UNUSED_ARG(sockps);
 
-	for (i = 0; i < numsocks; ++i)
+	if (sockps == NULL)
 	{
-		pfd[i].fd = sockps[i]->nativesock;
-		pfd[i].events = POLLIN;
+		struct netsocket_s *sockp;
+
+		for (sockp = rlpm_first_netsock(), i = 0; sockp != NULL; sockp = rlpm_next_netsock(sockp), ++i)
+		{
+			nsocks[i] = sockp;
+			pfd[i].fd = sockp->nativesock;
+			pfd[i].events = POLLIN;
+		}
+		numsocks = i;
+		sockps = nsocks;
+	}
+	else
+	{
+		for (i = 0; i < numsocks; ++i)
+		{
+			pfd[i].fd = sockps[i]->nativesock;
+			pfd[i].events = POLLIN;
+		}
 	}
 
 	rslt = poll(pfd, numsocks, 0);
@@ -400,19 +457,33 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 
 					pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr;
 					if (is_multicast(pktaddr))
+					{
 						dest_inaddr = pktaddr;
+					}
+					printf("Socket %d: packet for %8x:%u\n", netsock->nativesock, ntohl(pktaddr), ntohs(NSK_PORT(*netsock)));
 				}
 			}
 			rlp_process_packet(netsock, buf, rslt, dest_inaddr, &remhost);
 		}
 
 	neti_freepacket(buf);
-	return 0;
+	return haderr;
 }
 #endif /* CONFIG_STACK_BSD */
 
+/************************************************************************/
+#if CONFIG_STACK_PATHWAY
+int
+neti_poll(struct netsocket_s **sockps, int numsocks)
+{
+	for (i = 0; i < numsocks; ++i)
+	{
+		tcp_tick(&sockps[i]->nativesock);
+	}
+}
+#endif	/* CONFIG_STACK_PATHWAY */
 
-/*--------------------------------------------------------------------*/
+/************************************************************************/
 /* 
   netihandler
   
@@ -447,6 +518,7 @@ netihandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr
 }
 #endif /* CONFIG_STACK_LWIP */
 
+/************************************************************************/
 #if CONFIG_STACK_PATHWAY
 static int
 netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *hdr)
@@ -467,19 +539,10 @@ netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *h
 	}
 	return dataLen;
 }
-
-int
-neti_poll(struct netsocket_s **sockps, int numsocks)
-{
-	for (i = 0; i < numsocks; ++i)
-	{
-		tcp_tick(&sockps[i]->nativesock);
-	}
-}
 #endif	/* CONFIG_STACK_PATHWAY */
 
 
-/*--------------------------------------------------------------------*/
+/************************************************************************/
 /*
   neti_getmyip
 
@@ -498,6 +561,7 @@ neti_getmyip(neti_addr_t *destaddr)
 #endif /* CONFIG_STACK_LWIP */
 
 
+/************************************************************************/
 #if CONFIG_STACK_BSD
 ip4addr_t
 neti_getmyip(neti_addr_t *destaddr)
@@ -531,13 +595,4 @@ the given remote address. For now we just get the first address
 #endif	/* CONFIG_STACK_BSD */
 
 #endif	/* CONFIG_NET_IPV4 */
-
-
-/*--------------------------------------------------------------------*/
-/*
-*/
-
-/*--------------------------------------------------------------------*/
-/*
-*/
-
+/************************************************************************/
