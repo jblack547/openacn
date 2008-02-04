@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opt.h"
 #include "acn_arch.h"
+#include "component.h"
 
 typedef int usage_t;
 
@@ -63,7 +64,7 @@ struct rlp_txbuf_s {
 	uint8_t *blockstart;
 	uint8_t *blockend;
 	protocolID_t protocol;
-	cid_t ownerCID;
+	local_component_t *owner;
 	uint8_t data[MAX_MTU];
 };
 
@@ -92,6 +93,8 @@ extern void rlpm_listeners_init(void);
 
 extern struct netsocket_s *rlpm_new_netsock(void);
 extern struct netsocket_s *rlpm_find_netsock(localaddr_t localaddr);
+extern struct netsocket_s *rlpm_next_netsock(struct netsocket_s *sockp);
+extern struct netsocket_s *rlpm_first_netsock(void);
 extern void rlpm_free_netsock(struct netsocket_s *sockp);
 
 extern struct rlp_listener_s *rlpm_new_listener(struct rlp_rxgroup_s *rxgroup);
@@ -108,7 +111,7 @@ extern int rlpm_rxgroup_has_listeners(struct rlp_rxgroup_s *rxgroup);
 extern struct rlp_rxgroup_s *rlpm_get_rxgroup(struct rlp_listener_s *listener);
 extern struct netsocket_s *rlpm_get_netsock(struct rlp_rxgroup_s *rxgroup);
 
-extern struct rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner);
+extern struct rlp_txbuf_s *rlpm_newtxbuf(int size, local_component_t *owner);
 extern void rlp_freetxbuf(struct rlp_txbuf_s *buf);
 
 #define bufhdrp(buf) ((struct rlp_txbuf_s *)(buf))
@@ -117,6 +120,8 @@ extern void rlp_freetxbuf(struct rlp_txbuf_s *buf);
 #if CONFIG_RLPMEM_STATIC
 #define rlpm_get_rxgroup(listener) rlpm_find_rxgroup(sockets + (listener)->socketNum, (listener)->groupaddr)
 #define rlpm_get_netsock(rxgroup) (sockets + (rxgroup)->socketNum)
+
+
 #endif
 
 

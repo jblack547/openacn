@@ -116,9 +116,9 @@ rlpm_find_netsock(localaddr_t localaddr)
 
 	sockp = sockets;
 #if CONFIG_LOCALIP_ANY
-	while (NETSOCKPORT(*sockp) != PORTPART(localaddr))
+	while (NSK_PORT(*sockp) != LCLAD_PORT(localaddr))
 #else
-	while (NETSOCKPORT(*sockp) != PORTPART(localaddr) || NETSOCKADDR(*sockp) != ADDRPART(localaddr))
+	while (NSK_PORT(*sockp) != LCLAD_PORT(localaddr) || NSK_INADDR(*sockp) != LCLAD_INADDR(localaddr))
 #endif
 		if (++sockp >= sockets + MAX_RLP_SOCKETS) return NULL;
 	return sockp;
@@ -131,7 +131,7 @@ rlpm_new_netsock(void)
 	struct netsocket_s *sockp;
 
 	sockp = sockets;
-	while (NETSOCKPORT(*sockp) != NETI_PORT_NONE)
+	while (NSK_PORT(*sockp) != NETI_PORT_NONE)
 		if (++sockp >= sockets + MAX_RLP_SOCKETS) return NULL;
 	return sockp;
 }
@@ -140,7 +140,7 @@ rlpm_new_netsock(void)
 void 
 rlpm_free_netsock(struct netsocket_s *sockp)
 {
-	NETSOCKPORT(*sockp) = NETI_PORT_NONE;
+	NSK_PORT(*sockp) = NETI_PORT_NONE;
 }
 
 /***********************************************************************************************/
@@ -150,7 +150,23 @@ rlpm_netsocks_init(void)
 	struct netsocket_s *sockp;
 
 	for (sockp = sockets; sockp < sockets + MAX_RLP_SOCKETS; ++sockp)
-		NETSOCKPORT(*sockp) = NETI_PORT_NONE;
+		NSK_PORT(*sockp) = NETI_PORT_NONE;
+}
+
+/***********************************************************************************************/
+struct netsocket_s *
+rlpm_next_netsock(struct netsocket_s *sockp)
+{
+	while (++sockp < sockets + MAX_RLP_SOCKETS)
+		if (NSK_PORT(*sockp) != NETI_PORT_NONE) return sockp;
+	return NULL;
+}
+
+/***********************************************************************************************/
+struct netsocket_s *
+rlpm_first_netsock(void)
+{
+	return rlpm_next_netsock(sockets - 1);
 }
 
 /***********************************************************************************************/
@@ -171,8 +187,16 @@ rlpm_find_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 			rxgroup->socketNum == sockix
 			&& rxgroup->groupaddr == groupaddr
 			)
+		{
+/*
+			printf("rlpm_find_rxgroup: found %lu\n", (unsigned long)rxgroup);
+*/
 			return rxgroup;	// return first matching listener
+		}
 	}
+/*
+	printf("rlpm_find_rxgroup: not found\n");
+*/
 	return NULL;
 }
 
@@ -386,7 +410,7 @@ rlp_freetxbuf will only actually free the buffer if usage is zero.
 static int bufnum = 0;
 
 struct 
-rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
+rlp_txbuf_s *rlpm_newtxbuf(int size, local_component_t *owner)
 {
 	int i;
 	UNUSED_ARG(size);
@@ -400,7 +424,7 @@ rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
 	}
 
 	txbufs[i].usage = 1;
-	memcpy(txbufs[i].ownerCID, owner, sizeof(cid_t));
+	txbufs[i].owner = owner;
 	bufnum = i;
 	return txbufs + i;
 }
@@ -427,7 +451,7 @@ rlp_freetxbuf(struct rlp_txbuf_s *buf)
 #elif CONFIG_RLPMEM_MALLOC
 
 /***********************************************************************************************/
-struct rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
+struct rlp_txbuf_s *rlpm_newtxbuf(int size, local_component_t *owner)
 {
 	uint8_t *buf;
 	
@@ -447,7 +471,7 @@ struct rlp_txbuf_s *rlpm_newtxbuf(int size, cid_t owner)
 				+ sizeof(cid_t)
 				+ size
 				+ RLP_POSTAMBLE_LENGTH;
-		((struct rlp_txbuf_s *)buf)->ownerCID = owner;
+		((struct rlp_txbuf_s *)buf)->owner = owner;
 	}
 
 	return buf;
