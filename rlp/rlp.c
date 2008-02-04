@@ -47,7 +47,8 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "acn_rlp.h"
 
 #include "rlpmem.h"
-#include "syslog.h"
+//#include "syslog.h"
+#define syslog(x, m) printf(m)
 
 #define DEBUGLEVEL 1
 #define DEBUG(level, x) if (level <= DEBUGLEVEL) x
@@ -153,7 +154,7 @@ items which it requires to keep.
 
 */
 
-/***********************************************************************************************/
+/************************************************************************/
 /*
 
 Management of structures in memory
@@ -170,9 +171,9 @@ The implementation of these calls is in rlpmem.c where alternative
 static and dynamic implementations are provided.
 
 */
-/***********************************************************************************************/
+/************************************************************************/
 
-/***********************************************************************************************/
+/************************************************************************/
 /*
 Initialize RLP (if not already done)
 */
@@ -191,19 +192,7 @@ rlp_init(void)
 	return 0;
 }
 
-#if 0
-/***********************************************************************************************/
-uint8_t *
-rlp_create_packet(struct rlp_txbuf_s **txbuf, cid_t cid)
-{
-  if (!*txbuf) {
-    *txbuf = rlpm_newtxbuf(DEFAULT_MTU,cid);
-  }
-  return rlp_init_block(*txbuf, NULL);
-}
-#endif
-
-/***********************************************************************************************/
+/************************************************************************/
 /*
   To send PDUs via the root layer, the client must fill in a RLP PDU
   block in an RLP txbuffer. It must first initialise the buffer by
@@ -230,7 +219,7 @@ for example.
 	rlp_send_block(mybuf);
 
 */
-/***********************************************************************************************/
+/************************************************************************/
 /*
 Start an RLP PDU block
 
@@ -275,7 +264,7 @@ rlp_init_block(struct rlp_txbuf_s *buf, uint8_t *datap)
 	return datap;
 }
 
-/***********************************************************************************************/
+/************************************************************************/
 /*
   Pack a PDU into a RLP block
 
@@ -396,7 +385,7 @@ rlp_add_pdu(
 		memcpy(pdup, rlpPreamble, RLP_PREAMBLE_LENGTH);
 		pdup += RLP_PREAMBLE_LENGTH;
 		/* add the source CID */
-		marshalUUID(pdup + 2 + sizeof(protocolID_t), bufhdrp(buf)->ownerCID);
+		marshalUUID(pdup + 2 + sizeof(protocolID_t), bufhdrp(buf)->owner->cid);
 	}
 
 	/* PDU length and flags */
@@ -421,7 +410,7 @@ rlp_add_pdu(
 #endif
 }
 
-/***********************************************************************************************/
+/************************************************************************/
 /*
   Send a formatted PDU block
 */
@@ -436,7 +425,7 @@ rlp_send_block(
 	return neti_send_to(netsock, destaddr, bufhdrp(buf)->blockstart, bufhdrp(buf)->blockend - bufhdrp(buf)->blockstart);
 }
 
-/***********************************************************************************************/
+/************************************************************************/
 /*
 Find a matching netsocket or create a new one if necessary
 */
@@ -446,8 +435,8 @@ rlp_open_netsocket(localaddr_t localaddr)
 {
 	struct netsocket_s *netsock;
 
-	DEBUG(4, printf("rlp_open_netsocket: calling rlpm_find_netsock: %d\n", PORTPART(localaddr)));
-	if (PORTPART(localaddr) != NETI_PORT_EPHEM && (netsock = rlpm_find_netsock(localaddr))) return netsock;	/* found existing matching socket */
+	DEBUG(4, printf("rlp_open_netsocket: calling rlpm_find_netsock: %d\n", LCLAD_PORT(localaddr)));
+	if (LCLAD_PORT(localaddr) != NETI_PORT_EPHEM && (netsock = rlpm_find_netsock(localaddr))) return netsock;	/* found existing matching socket */
 
 	DEBUG(4, printf("rlp_open_netsocket: calling rlpm_new_netsock\n"));
 	if ((netsock = rlpm_new_netsock()) == NULL) return NULL;		/* cannot allocate a new one */
@@ -459,12 +448,12 @@ rlp_open_netsocket(localaddr_t localaddr)
 		rlpm_free_netsock(netsock);	/* UDP open fails */
 		return NULL;
 	}
-  DEBUG(4, printf("rlp_open_netsocket: port=%d\n", ntohs(netsock->localport)));
+  DEBUG(4, printf("rlp_open_netsocket: port=%d\n", ntohs(NSK_PORT(*netsock))));
 
 	return netsock;
 }
 
-/***********************************************************************************************/
+/************************************************************************/
 void 
 rlp_close_netsocket(struct netsocket_s *netsock)
 {
@@ -474,7 +463,7 @@ rlp_close_netsocket(struct netsocket_s *netsock)
 	rlpm_free_netsock(netsock);
 }
 
-/***********************************************************************************************/
+/************************************************************************/
 /*
 Find a matching rxgroup or create a new one if necessary
 */
@@ -513,7 +502,7 @@ rlp_open_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 }
 
 
-/***********************************************************************************************/
+/************************************************************************/
 static
 void 
 rlp_close_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup)
@@ -524,7 +513,7 @@ rlp_close_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup)
 	rlpm_free_rxgroup(netsock, rxgroup);
 }
 
-/***********************************************************************************************/
+/************************************************************************/
 /*
 Add a new listener
 */
@@ -551,7 +540,7 @@ rlp_add_listener(struct netsocket_s *netsock, groupaddr_t groupaddr, protocolID_
 	return listener;
 }
 
-/***********************************************************************************************/
+/************************************************************************/
 void 
 rlp_del_listener(struct netsocket_s *netsock, struct rlp_listener_s *listener)
 {
@@ -562,7 +551,7 @@ rlp_del_listener(struct netsocket_s *netsock, struct rlp_listener_s *listener)
 	rlp_close_rxgroup(netsock, rxgroup);
 }
 
-/***********************************************************************************************/
+/************************************************************************/
 /*
 Process a packet - called by network interface layer on receipt of a packet
 */
@@ -626,7 +615,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 		if (flags & HEADER_bFLAG)
 		{
 			src_cidp = pp;
-			pp += sizeof(uuid_t);
+			pp += sizeof(cid_t);
 		}
 		if (pp > pdup)
 		{
