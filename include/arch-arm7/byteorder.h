@@ -2,6 +2,8 @@
 /*
 
 Copyright (c) 2007, Pathway Connectivity Inc.
+Copyright (c) 2008, Pathway Electronic Theatre Controls, Inc.
+
 
 All rights reserved.
 
@@ -30,60 +32,24 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+	$Id: byteorder.h $
 
 */
 /*--------------------------------------------------------------------*/
-#ifndef __pdu_h__
-#define __pdu_h__ 1
+#ifndef __byteorder_h__
+#define __byteorder_h__
 
-#include "types.h"
+//TODO: not used at this time so commented out for now as to not to cause 
+//      confusion
 
-#define getpdulen(pp) (((pp)[0] << 8 | (pp)[1]) & LENGTH_FIELD)
+/*
+uint16_t swap16(uint16_t n);
+uint32_t swap32(uint32_t n);
 
-#define vectorPresent(x) (VECTOR_FLAG & ((uint16_t)(x)))
-#define headerPresent(x) (HEADER_FLAG & ((uint16_t)(x)))
-#define dataPresent(x) (DATA_FLAG & ((uint16_t)(x)))
+#define htons(n) swap16(n)
+#define ntohs(n) swap16(n)
+#define htonl(n) swap32(n)
+#define ntohl(n) swap32(n)
+*/
 
-typedef struct
-{
-	uint8_t *header;
-	uint8_t *data;
-	uint8_t *location;
-	uint32_t vector;
-	uint16_t length;	
-	uint8_t headerLength;
-	uint8_t vectorLength;
-	uint16_t dataLength;
-	uint16_t flags;	
-	
-} pdu_header_type;
-
-typedef struct
-{
-	uint32_t packetStart;
-	uint32_t sdtStart;
-	uint32_t dmpStart;
-	uint32_t dmpEnd;
-	uint32_t sdtEnd;
-	uint32_t packetEnd;
-	uint32_t numberofdmpprops;
-} timing_t;
-extern timing_t benchmark;
-
-
-enum
-{
-   ACN_ADDRESS_NOT_PRESENT = 0,
-   ACN_ADDRESS_16_BIT = 1,
-   ACN_ADDRESS_128_BIT = 2,
-   ACN_ADDRESS_ALL = 3,
-};
-
-#define BROADCAST_MID 0xFFFF
-
-int calculatePduLength(pdu_header_type *header);
-int decodePdu(uint8_t *buf, pdu_header_type *pdu, int vectorLen, int headerLen);
-int formatPdu(uint8_t *buf, pdu_header_type *pdu);
-void updatePduLen(pdu_header_type *pdu);
-#endif
+#endif /* __byteorder_h__ */

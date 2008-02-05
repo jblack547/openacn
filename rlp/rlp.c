@@ -51,7 +51,7 @@ static const char *rcsid __attribute__ ((unused)) =
 #define syslog(x, m) printf(m)
 
 #define DEBUGLEVEL 1
-#define DEBUG(level, x) if (level <= DEBUGLEVEL) x
+#define ACN_DEBUG(level, x) if (level <= DEBUGLEVEL) x
 
 #define NUM_PACKET_BUFFERS	16
 #define BUFFER_ROLLOVER_MASK  (NUM_PACKET_BUFFERS - 1)
@@ -184,7 +184,7 @@ rlp_init(void)
 
 	if (!initialized)
 	{
-		rlpmem_init();
+		rlpm_init();
 		neti_init();
 
 		initialized = 1;
@@ -435,20 +435,20 @@ rlp_open_netsocket(localaddr_t localaddr)
 {
 	struct netsocket_s *netsock;
 
-	DEBUG(4, printf("rlp_open_netsocket: calling rlpm_find_netsock: %d\n", LCLAD_PORT(localaddr)));
+	ACN_DEBUG(4, printf("rlp_open_netsocket: calling rlpm_find_netsock: %d\n", LCLAD_PORT(localaddr)));
 	if (LCLAD_PORT(localaddr) != NETI_PORT_EPHEM && (netsock = rlpm_find_netsock(localaddr))) return netsock;	/* found existing matching socket */
 
-	DEBUG(4, printf("rlp_open_netsocket: calling rlpm_new_netsock\n"));
+	ACN_DEBUG(4, printf("rlp_open_netsocket: calling rlpm_new_netsock\n"));
 	if ((netsock = rlpm_new_netsock()) == NULL) return NULL;		/* cannot allocate a new one */
 
-	DEBUG(4, printf("rlp_open_netsocket: calling neti_udp_open\n"));
+	ACN_DEBUG(4, printf("rlp_open_netsocket: calling neti_udp_open\n"));
 	if (neti_udp_open(netsock, localaddr) != 0)
 	{
-		DEBUG(4, printf("rlp_open_netsocket: calling rlpm_free_netsock\n"));
+		ACN_DEBUG(4, printf("rlp_open_netsocket: calling rlpm_free_netsock\n"));
 		rlpm_free_netsock(netsock);	/* UDP open fails */
 		return NULL;
 	}
-  DEBUG(4, printf("rlp_open_netsocket: port=%d\n", ntohs(NSK_PORT(*netsock))));
+  ACN_DEBUG(4, printf("rlp_open_netsocket: port=%d\n", ntohs(NSK_PORT(*netsock))));
 
 	return netsock;
 }

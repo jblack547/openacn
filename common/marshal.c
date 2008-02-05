@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include "opt.h"
 #include "acn_arch.h"
+#include "marshal.h"
 
 inline size_t marshalU8(uint8_t *data, uint8_t u8)
 {
@@ -83,16 +84,17 @@ inline uint32_t unmarshalU32(const uint8_t *data)
 }
 
 #if !defined(marshalUUID)
-void marshalUUID(uint8_t *data, const uuid_t uuid)
+size_t marshalUUID(uint8_t *data, const uuid_t uuid)
 {
 	memcpy(data, uuid, sizeof(uuid_t));
+  return sizeof(uuid_t);
 }
 #endif
 
 #if !defined(unmarshalUUID)
-void unmarshalUUID(const uint8_t *data, uint8_t uuid)
+uint8_t *unmarshalUUID(const uint8_t *data, uuid_t uuid)
 {
-	memcpy(uuid, data, sizeof(uuid_t));
+	return memcpy(uuid, data, sizeof(uuid_t));
 }
 #endif
 

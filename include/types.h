@@ -52,6 +52,14 @@ Work out what we can automatically
 #include <limits.h>
 #include <stddef.h>
 
+#ifndef true
+#define true -1
+#endif
+
+#ifndef false
+#define false 0
+#endif
+
 /* 8-bit types */
 #if (UCHAR_MAX == 255)
 typedef unsigned char uint8_t;

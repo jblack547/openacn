@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __uuid_h__ 1
 
 #include "opt.h"
+#include "types.h"
 
 /*
 For most purposes a UUID is simply an array of 16 octets
@@ -59,8 +60,27 @@ typedef uint8_t uuid_t[UUIDSIZE];
 #define UUID_CLKSEQ_LOW(uuid) (*((uuid) + 9))
 #define UUID_NODE(uuid) ((uuid) + 10)
 
+//const uuid_t null_uuid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
 int textToUuid(const char *uuidText, uuid_t uuidp);
 char *uuidToText(const uuid_t uuidp, char *uuidText);
-int uuidEqual(uuid_t uuid1, uuid_t uuid2);
+
+#define uuidIsEqual(uuid1, uuid2) (memcmp(uuid1, uuid2, sizeof(uuid_t)) == 0)
+#define uuidNull(uuid) (memset(uuid, 0, sizeof(uuid_t)))
+#define uuidIsNull(uuid) (memcmp(uuid, (uuid_t){0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, sizeof(uuid_t)) == 0)
+#define uuidCopy(uuid1, uuid2) (memcpy(uuid1, uuid2, sizeof(uuid_t)))
+
+#if !defined(uuidIsEqual)
+int uuidIsEqual(const uuid_t uuid1, const uuid_t uuid2);
+#endif
+#if !defined(uuidNull)
+void uuidNull(uuid_t uuid);
+#endif
+#if !defined(uuidIsNull)
+int  uuidIsNull(const uuid_t uuid);
+#endif
+#if !defined(uuidCopy)
+void uuidCopy(uuid_t uuid1, const uuid_t uuid2);
+#endif
 
 #endif /* __uuid_h__ */

@@ -293,13 +293,44 @@ Protocols to build
   be made if SDT is built for only one client protocol.
   In this case set CONFIG_SDT_SINGLE_CLIENT to the protocol ID
   of that client e.g:
-    #ifndef CONFIG_SDT_SINGLE_CLIENT
-    #define  CONFIG_SDT_SINGLE_CLIENT PROTO_DMP
-    #endif
+  #ifndef CONFIG_SDT_SINGLE_CLIENT
+#define  CONFIG_SDT_SINGLE_CLIENT PROTO_DMP
+#endif
 */
 #ifndef CONFIG_SDT_SINGLE_CLIENT
 #define CONFIG_SDT_SINGLE_CLIENT 0
 #endif
+
+#ifndef CONFIG_SDTMEM_MALLOC
+#define CONFIG_SDTMEM_MALLOC  0
+#endif
+#ifndef CONFIG_SDTMEM_STATIC
+#define	CONFIG_SDTMEM_STATIC   1
+#endif
+
+/* Configures the limit to for SDT  */
+#ifndef SDT_MAX_COMPONENTS
+#define SDT_MAX_COMPONENTS          4
+#endif
+
+#ifndef SDT_MAX_CHANNELS
+#define SDT_MAX_CHANNELS            4
+#endif
+
+#ifndef SDT_MAX_MEMBERS
+#define SDT_MAX_MEMBERS             4
+#endif
+
+#ifndef SDT_MAX_HANDLERS
+#define SDT_MAX_HANDLERS            4
+#endif
+
+#ifndef SDT_MAX_SESSIONS
+#define SDT_MAX_SESSIONS            4
+#endif
+
+
+
 
 /************************************************************************/
 /*
@@ -335,9 +366,14 @@ Protocols to build
 #endif
 
 /************************************************************************/
-/* Sanity check for memory managment */
-#if (CONFIG_RLPMEM_MALLOC +  CONFIG_RLPMEM_STATIC) != 1
-#error Need to select one memory managment model
+//TODO: wrf combine these into one define?
+// Sanity check for memory RLP managment
+#if (CONFIG_RLPMEM_MALLOC + CONFIG_RLPMEM_STATIC) != 1
+#error Need to select one RLP memory managment model
+#endif
+// Sanity check for memory SDT managment
+#if (CONFIG_SDTMEM_MALLOC + CONFIG_SDTMEM_STATIC) != 1
+#error Need to select one SDT memory managment model
 #endif
 
 

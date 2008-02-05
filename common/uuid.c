@@ -104,13 +104,47 @@ char *uuidToText(const uuid_t uuidp, char *uuidText)
 	return uuidText;
 }
 
-/*
-we cannot compare using U32s because there is no guarantee that the uuids are aligned
-*/
-int uuidEqual(uuid_t uuid1, uuid_t uuid2)
+/* Also see MACROS defined in header */
+#if !defined(uuidIsEqual)
+/*****************************************************************************/
+int uuidIsEqual(const uuid_t uuid1, const uuid_t uuid2)
 {
 	int count = 16;
 
 	while (*uuid1++ == *uuid2++) if (--count == 0) return 1;
 	return 0;
 }
+#endif
+
+#if !defined(uuidNull)
+/*****************************************************************************/
+void uuidNull(uuid_t uuid)
+{
+  int count = 16;
+
+	while (count--) {
+    *uuid = 0;;
+  }
+}
+#endif
+
+#if !defined(uuidIsNull)
+/*****************************************************************************/
+int uuidIsNull(const uuid_t uuid)
+{
+  return uuidIsEqual(uuid, (uuid_t){0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
+}
+#endif
+
+#if !defined(uuidCopy)
+/*****************************************************************************/
+void uuidCopy(uuid_t uuid1, const uuid_t uuid2)
+{
+	int count = 16;
+
+	while (count--) {
+    *uuid1++ = *uuid2++;
+  }
+}
+#endif
+

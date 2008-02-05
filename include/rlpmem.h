@@ -64,7 +64,7 @@ struct rlp_txbuf_s {
 	uint8_t *blockstart;
 	uint8_t *blockend;
 	protocolID_t protocol;
-	local_component_t *owner;
+	component_t *owner;
 	uint8_t data[MAX_MTU];
 };
 
@@ -87,7 +87,7 @@ struct rlp_txbuf_s {
 
 #endif
 
-extern void rlpmem_init(void);
+extern void rlpm_init(void);
 extern void rlpm_netsocks_init(void);
 extern void rlpm_listeners_init(void);
 
@@ -111,8 +111,8 @@ extern int rlpm_rxgroup_has_listeners(struct rlp_rxgroup_s *rxgroup);
 extern struct rlp_rxgroup_s *rlpm_get_rxgroup(struct rlp_listener_s *listener);
 extern struct netsocket_s *rlpm_get_netsock(struct rlp_rxgroup_s *rxgroup);
 
-extern struct rlp_txbuf_s *rlpm_newtxbuf(int size, local_component_t *owner);
-extern void rlp_freetxbuf(struct rlp_txbuf_s *buf);
+extern struct rlp_txbuf_s *rlpm_newtxbuf(int size, component_t *owner);
+extern void rlpm_freetxbuf(struct rlp_txbuf_s *buf);
 
 #define bufhdrp(buf) ((struct rlp_txbuf_s *)(buf))
 #define bufdatap(buf) (((struct rlp_txbuf_s *)(buf))->data)

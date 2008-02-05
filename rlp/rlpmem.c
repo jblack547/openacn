@@ -379,7 +379,7 @@ Get the netSocket containing a given group
 
 /***********************************************************************************************/
 void 
-rlpmem_init(void)
+rlpm_init(void)
 {
 	rlpm_netsocks_init();
 	rlpm_listeners_init();
@@ -390,7 +390,7 @@ rlpmem_init(void)
 Transmit network buffer API
 (note receive buffers may be the same thing internally but are not externally treated the same)
 Network buffers are struct rlp_txbuf_s {...};
-Client protocols obtain network buffers using rlpm_newtxbuf() and rlp_freetxbuf()
+Client protocols obtain network buffers using rlpm_newtxbuf() and rlpm_freetxbuf()
 The can obtain a pointer to the data area of the buffer using a macro:
 
   rlpItsData(buf)
@@ -403,14 +403,14 @@ However, in this case, the content of the data area before that passed may be ov
 To track usage the protocol can use rlp_incuse(buf) and rlp_decuse(buf). Also rlp_getuse(buf)
 which will be non zero if the buffer is used. These can generally be implemented as macros.
 
-rlp_freetxbuf will only actually free the buffer if usage is zero.
+rlpm_freetxbuf will only actually free the buffer if usage is zero.
 
 */
 /***********************************************************************************************/
 static int bufnum = 0;
 
 struct 
-rlp_txbuf_s *rlpm_newtxbuf(int size, local_component_t *owner)
+rlp_txbuf_s *rlpm_newtxbuf(int size, component_t *owner)
 {
 	int i;
 	UNUSED_ARG(size);
@@ -431,7 +431,7 @@ rlp_txbuf_s *rlpm_newtxbuf(int size, local_component_t *owner)
 
 /***********************************************************************************************/
 void 
-rlp_freetxbuf(struct rlp_txbuf_s *buf)
+rlpm_freetxbuf(struct rlp_txbuf_s *buf)
 {
 	--(buf->usage);
 }
@@ -451,7 +451,7 @@ rlp_freetxbuf(struct rlp_txbuf_s *buf)
 #elif CONFIG_RLPMEM_MALLOC
 
 /***********************************************************************************************/
-struct rlp_txbuf_s *rlpm_newtxbuf(int size, local_component_t *owner)
+struct rlp_txbuf_s *rlpm_newtxbuf(int size, component_t *owner)
 {
 	uint8_t *buf;
 	
@@ -478,7 +478,7 @@ struct rlp_txbuf_s *rlpm_newtxbuf(int size, local_component_t *owner)
 }
 
 /***********************************************************************************************/
-void rlp_freetxbuf(struct rlp_txbuf_s *buf)
+void rlpm_freetxbuf(struct rlp_txbuf_s *buf)
 {
 	if (!rlp_getuse(buf)) free(buf);
 }

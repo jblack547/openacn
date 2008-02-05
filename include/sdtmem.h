@@ -1,7 +1,7 @@
 /*--------------------------------------------------------------------*/
 /*
 
-Copyright (c) 2007, Pathway Connectivity Inc.
+Copyright (c) 2008, Electronic Theatre Controls, Inc
 
 All rights reserved.
 
@@ -14,7 +14,7 @@ met:
  * Redistributions in binary form must reproduce the above copyright
    notice, this list of conditions and the following disclaimer in the
    documentation and/or other materials provided with the distribution.
- * Neither the name of Pathway Connectivity Inc. nor the names of its
+ * Neither the name of Engineering Arts nor the names of its
    contributors may be used to endorse or promote products derived from
    this software without specific prior written permission.
 
@@ -30,49 +30,33 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id: acn_config.h 2 2007-09-17 09:31:30Z philipnye $
+	$Id: sdtmem.h  $
 
 */
 /*--------------------------------------------------------------------*/
-/*
-Information structures and handling relating to components
-*/
-#ifndef __component_h__
-#define __component_h__ 1
 
-#include "types.h"
-#include "uuid.h"
+#ifndef __sdtmem_h__
+#define __sdtmem_h__ 1
 
-/************************************************************************/
-/*
-  Local component structure is a rag-bag of information which represents
-  a component within the local host. For efficiency, each layer can
-  include it's own information within the component structure. because
-  it is subject to many config options, other layers cannot rely on
-  information outside their own scope and should leave it alone.
+#include "opt.h"
+#include "acn_arch.h"
 
-  Comonents must maintain their component structure in a fixed location
-  as pointers to it may be stored and dereferenced at a later time.
-*/
+extern void sdtm_init(void);
 
-typedef struct component_s
-{
-	cid_t cid;
-	cid_t dcid;
-#if CONFIG_EPI10
-	uint16_t dyn_mcast;
-#endif
-#if CONFIG_SDT
-  neti_addr_t   adhoc_addr;
-	int           adhoc_expires_at;
-  bool          is_local;
-  struct sdt_channel_s *tx_channel;
-	struct component_s   *next;
-#endif
-} component_t;
+extern sdt_channel_t *sdtm_add_channel(component_t *leader, uint16_t channel_number, bool is_local);
+extern void           sdtm_remove_channel(component_t *leader);
 
-#if CONFIG_SINGLE_COMPONENT
-extern component_t the_component;
-#endif
+extern sdt_member_t  *sdtm_find_member_by_mid(sdt_channel_t *channel, uint16_t mid);
+extern sdt_member_t  *sdtm_find_member_by_component(sdt_channel_t *channel, component_t *component);
+extern sdt_member_t  *sdtm_add_member(sdt_channel_t *channel, component_t *component);
+extern sdt_member_t  *sdtm_remove_member(sdt_channel_t *channel, sdt_member_t *member);
+extern uint16_t       sdtm_next_member(sdt_channel_t *channel);
+
+
+extern component_t *sdtm_find_component(cid_t cid);
+extern component_t *sdtm_add_component(cid_t cid, cid_t dcid, bool is_local);
+extern component_t *sdtm_first_component(void);
+
+extern component_t *sdtm_remove_component(component_t *component);
 
 #endif

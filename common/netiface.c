@@ -94,7 +94,7 @@ neti_udp_open(struct netsocket_s *rlpsock, localaddr_t localaddr)
   if (!udp_bind(neti_pcb, LCLAD_INADDR(localaddr), LCLAD_PORT(localaddr)) == ERR_OK)
     return -1;
 
-  if (LCLAD_PORT(localaddr) != NETI_PORT_EPHEM) {
+  if (LCLAD_PORT(localaddr) == NETI_PORT_EPHEM) {
 // if port was 0, then the stack should have given us a port, so assign it back
 	NSK_PORT(*rlpsock) = neti_pcb->local_port;
   }
@@ -509,8 +509,8 @@ netihandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr
 
   UNUSED_ARG(pcb);
 
-  NETI_INADDR(remhost) = addr->addr;
-  NETI_PORT(remhost) = port;
+  NETI_INADDR(&remhost) = addr->addr;
+  NETI_PORT(&remhost) = port;
   // arg is contains netsock
   // we don't have destination address so we will force to NULL
   rlp_process_packet(arg, p->payload, p->tot_len, NULL, &remhost);

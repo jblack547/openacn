@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id: sdt.h 2 2007-09-17 09:31:30Z philipnye $
+  $Id: sdt.h 2 2007-09-17 09:31:30Z philipnye $
 
 */
 /*--------------------------------------------------------------------*/
@@ -43,82 +43,16 @@ Code which sits on top of SDT should not really have to use this header
 #ifndef __acn_sdt_h__
 #define __acn_sdt_h__ 1
 
-#include <types.h>
+#include "opt.h"
+#include "acn_arch.h"
 
-/* ESTA registered protocol code */
-#define PROTO_SDT  1
+// TODO: Move these to opt.h
+#define SDT_NUM_PACKET_BUFFERS      5   // number of past buffers we are archiving
 
-/* PDU vector codes [SDT spec Table 3] */
-enum
-{
-	SDT_REL_WRAPPER		= 1,
-	SDT_UNREL_WRAPPER	= 2,
-	SDT_CHANNEL_PARAMS	= 3,
-	SDT_JOIN			= 4,
-	SDT_JOIN_REFUSE		= 5,
-	SDT_JOIN_ACCEPT		= 6,
-	SDT_LEAVE			= 7,
-	SDT_LEAVING			= 8,
-	SDT_CONNECT			= 9,
-	SDT_CONNECT_ACCEPT	= 10,
-	SDT_CONNECT_REFUSE	= 11,
-	SDT_DISCONNECT		= 12,
-	SDT_DISCONNECTING	= 13,
-	SDT_ACK				= 14,
-	SDT_NAK				= 15,
-	SDT_GET_SESSIONS	= 16,
-	SDT_SESSIONS		= 17, 
-};
-
-/* Reason codes [SDT spec Table 6] */
-enum 
-{
-	SDT_REASON_NONSPEC			= 1,
-	SDT_REASON_PARAMETERS		= 2,
-	SDT_REASON_RESOURCES		= 3,
-	SDT_REASON_ALREADY_MEMBER	= 4,
-	SDT_REASON_BAD_ADDR			= 5,
-	SDT_REASON_NO_RECIPROCAL	= 6,
-	SDT_REASON_CHANNEL_EXPIRED	= 7,
-	SDT_REASON_LOST_SEQUENCE	= 8,
-	SDT_REASON_SATURATED		= 9,
-	SDT_REASON_TRANSPORT_CHANGING = 10,
-	SDT_REASON_ASKED_TO_LEAVE	= 11,
-	SDT_REASON_NO_RECIPIENT 	= 12,
-	SDT_REASON_ONLY_UNICAST 	= 13
-};
-
-/* Address specification types [SDT spec Table 7] */
-enum
-{
-	SDT_ADDR_NULL = 0,
-	SDT_ADDR_IPV4 = 1,
-	SDT_ADDR_IPV6 = 2,
-};
-
-/* transport layer addresses */
-#if CONFIG_MULTI_NET
-#error Multiple networks not yet supported
-#else
-
-#if CONFIG_NET_IPV4
-
-struct PACKED transportLayerAddress_s {
-	uint8_t type;	//must be SDT_ADDR_IPV4
-	uint16_t n_port;
-	ip4addr_t n_addr;
-};
-
-#elif CONFIG_NET_IPV6
-struct PACKED transportLayerAddress_s {
-	uint8_t type;	//must be SDT_ADDR_IPV6
-	uint16_t n_port;
-	ip6addr_t n_addr;
-};
-
-#endif
-#endif
-
+#define FOREIGN_MEMBER_EXPIRY_TIME  5   // if we haven't heard from a member in this time, we will send a MAK
+#define FOREIGN_MEMBER_NAK_HOLDOFF  2
+#define FOREIGN_MEMBER_NAK_MODULUS  50
+#define FOREIGN_MEMBER_NAK_MAX_WAIT 20
 
 #if CONFIG_EPI18
 #include "epi18.h"

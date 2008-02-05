@@ -104,9 +104,7 @@ struct sockaddr_in {
 		NETI_INADDR(addrp) = (inaddr), \
 		NETI_PORT(addrp) = (port) \
 	)
-
-
-#endif
+#endif  /* of CONFIG_STACK_LWIP*/
 
 #if CONFIG_STACK_BSD
 #include <sys/socket.h>
@@ -236,6 +234,9 @@ extern __inline__ void transportAddrToHost(const uint8_t *transaddr, neti_addr_t
 extern __inline__ void transportAddrToHost(const uint8_t *transaddr, neti_addr_t *hostaddr)
 {
 #if CONFIG_STACK_LWIP
+  UNUSED_ARG(transaddr);
+  UNUSED_ARG(hostaddr);
+
 	//hostaddr->sin_family = AF_INET;
 	//memcpy(&hostaddr->sin_port, transaddr+1, 2);
 	//memcpy(&hostaddr->sin_addr, transaddr+3, 4);
@@ -252,13 +253,16 @@ extern __inline__ void transportAddrToHost(const uint8_t *transaddr, neti_addr_t
 #endif	/* CONFIG_STACK_PATHWAY */
 }
 
+// TODO wrf These are not used, delete?
 /* Both native and ACN formats are network byte order */
 extern __inline__ void hostToTransportAddr(const neti_addr_t *hostaddr, uint8_t *transaddr);
 extern __inline__ void hostToTransportAddr(const neti_addr_t *hostaddr, uint8_t *transaddr)
 {
-	*transaddr = SDT_ADDR_IPV4;
+  //TODO: this make netiface dependent on SDT...
+	//*transaddr = SDT_ADDR_IPV4;
 
 #if CONFIG_STACK_LWIP
+  UNUSED_ARG(hostaddr);
 	//memcpy(transaddr+1, &hostaddr->sin_port, 2);
 	//memcpy(transaddr+3, &hostaddr->sin_addr, 4);
 #endif /* CONFIG_STACK_LWIP */
