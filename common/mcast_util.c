@@ -114,8 +114,9 @@ From epi10 r4:
   mcast_alloc_new may be defined as a macro
 */
 #ifndef mcast_alloc_new
-int mcast_alloc_new(local_component_t *comp)
+groupaddr_t mcast_alloc_new(local_component_t *comp)
 {
+	
 	return scope_and_host | htonl((uint32_t)(dyn_mask & comp->dyn_mcast++));
 }
 #endif

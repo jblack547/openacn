@@ -81,6 +81,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOG_INFO        6       /* informational */
 #define LOG_DEBUG       7       /* debug-level messages */
 
+#define LOG_RLP LOG_LOCAL0
+#define LOG_SDT LOG_LOCAL1
+#define LOG_NETI LOG_LOCAL2
+#define LOG_SLP LOG_LOCAL3
+#define LOG_DMP LOG_LOCAL4
+#define LOG_MISC LOG_LOCAL5
+
 #define ACNLOG_NONE 0
 #define ACNLOG_SYSLOG 1
 #define ACNLOG_STDOUT 2

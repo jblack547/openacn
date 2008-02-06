@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*--------------------------------------------------------------------*/
 static const char *rcsid __attribute__ ((unused)) =
    "$Id$";
-// DMP uses LOG_LOCAL4
+// DMP uses LOG_DMP
 #include "opt.h"
 #include "dmp.h"
 #include "acn_dmp.h"

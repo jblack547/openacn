@@ -187,15 +187,9 @@ rlpm_find_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 			&& rxgroup->groupaddr == groupaddr
 			)
 		{
-/*
-			printf("rlpm_find_rxgroup: found %lu\n", (unsigned long)rxgroup);
-*/
 			return rxgroup;	// return first matching listener
 		}
 	}
-/*
-	printf("rlpm_find_rxgroup: not found\n");
-*/
 	return NULL;
 }
 

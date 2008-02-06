@@ -54,7 +54,7 @@ extern int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, local_comp
 extern ip4addr_t scope_and_host;	/* Network Byte Order */
 extern uint16_t dyn_mask;
 #else
-extern int mcast_alloc_new(local_component_t *comp);
+extern groupaddr_t mcast_alloc_new(local_component_t *comp);
 #endif
 #endif	/* CONFIG_EPI10 */
 
