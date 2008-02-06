@@ -389,8 +389,7 @@ rlp_add_pdu(
 	}
 
 	/* PDU length and flags */
-	marshalU16(pdup, (uint16_t)(pduend - pdup) | flags);
-	pdup += 2;
+	pdup = marshalU16(pdup, (uint16_t)(pduend - pdup) | flags);
 
 	if ((flags & VECTOR_FLAG))
 	{

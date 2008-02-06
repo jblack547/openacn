@@ -75,6 +75,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+/*
+  Inline functions for marshaling data are efficient and typecheck
+  the code. If the compiler supports inline code then they are
+  preferable.
+  
+  If you do not want to compile inline, then setting this false
+  uses macros instead, but these eveluate their arguments multiple times
+  and do not check their types so beware.
+*/
+#ifndef CONFIG_MARSHAL_INLINE
+#define CONFIG_MARSHAL_INLINE 1
+#endif
+
 /************************************************************************/
 /*
   Basic CPU Architecture

@@ -52,9 +52,13 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "acn_sdt.h"
 #include "rlp.h"
 #include "syslog.h"
-#include "slp.h"
+//#include "slp.h"
 #include "marshal.h"
 #include "netiface.h"
+
+#if !CONFIG_RLP_SINGLE_CLIENT
+#define rlp_add_pdu(buf, pdudata, size, packetdatap) rlp_add_pdu(buf, pdudata, size, PROTO_SDT, packetdatap)
+#endif
 
 struct netsocket_s *sdt_adhoc_socket = NULL;
 
@@ -113,8 +117,8 @@ static void     sdt_rx_connect_accept(component_t *local_component, component_t 
 /* UTILITY FUNCTIONS */
 
 
-static int      pack_channel_param_block(uint8_t *paramBlock);
-static int      unpack_channel_param_block(sdt_member_t *member, uint8_t *param_block);
+static uint8_t *pack_channel_param_block(uint8_t *paramBlock);
+static uint8_t *unpack_channel_param_block(sdt_member_t *member, uint8_t *param_block);
 
 static int      pack_transport_address(uint8_t *data, neti_addr_t *transport_addr, int type);
 static int      unpack_transport_address(uint8_t *data, neti_addr_t *transport_addr, neti_addr_t *packet_addr, uint8_t *type);
@@ -284,17 +288,17 @@ sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_chan
   local_channel->total_seq++;
 
   /* wrawpper type */
-  wrapper += marshalU8(wrapper, (is_reliable) ? SDT_REL_WRAPPER : SDT_UNREL_WRAPPER);
+  wrapper = marshalU8(wrapper, (is_reliable) ? SDT_REL_WRAPPER : SDT_UNREL_WRAPPER);
   /* channel number */
-  wrapper += marshalU16(wrapper, local_channel->number);
-  wrapper += marshalU32(wrapper, local_channel->total_seq);
-  wrapper += marshalU32(wrapper, local_channel->reliable_seq);
+  wrapper = marshalU16(wrapper, local_channel->number);
+  wrapper = marshalU32(wrapper, local_channel->total_seq);
+  wrapper = marshalU32(wrapper, local_channel->reliable_seq);
 
   //FIXME - Change to oldest available when buffering support added
-  wrapper += marshalU32(wrapper, local_channel->oldest_avail); 
-  wrapper += marshalU16(wrapper, first_mid);
-  wrapper += marshalU16(wrapper, last_mid);
-  wrapper += marshalU16(wrapper, mak_threshold);
+  wrapper = marshalU32(wrapper, local_channel->oldest_avail); 
+  wrapper = marshalU16(wrapper, first_mid);
+  wrapper = marshalU16(wrapper, last_mid);
+  wrapper = marshalU16(wrapper, mak_threshold);
 
   /* return pointer to client block */
   return wrapper;
@@ -534,24 +538,24 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
   buffer = buf_start;
 
   // TODO: add unicast/multicast support
-//  buffer += marshalU16(buffer, 49 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-  buffer += marshalU16(buffer, 43 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-  buffer += marshalU8(buffer, SDT_JOIN);
-  buffer += marshalUUID(buffer, foreign_component->cid);
-  buffer += marshalU16(buffer, foreign_member->mid);
-  buffer += marshalU16(buffer, local_channel->number);
+//  buffer = marshalU16(buffer, 49 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  buffer = marshalU16(buffer, 43 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  buffer = marshalU8(buffer, SDT_JOIN);
+  buffer = marshalUUID(buffer, foreign_component->cid);
+  buffer = marshalU16(buffer, foreign_member->mid);
+  buffer = marshalU16(buffer, local_channel->number);
   if (foreign_component->tx_channel)
-    buffer += marshalU16(buffer, foreign_component->tx_channel->number); /* Reciprocal Channel */
+    buffer = marshalU16(buffer, foreign_component->tx_channel->number); /* Reciprocal Channel */
   else
-    buffer += marshalU16(buffer, 0);                      /* Reciprocal Channel */
-  buffer += marshalU32(buffer, local_channel->total_seq);
-  buffer += marshalU32(buffer, local_channel->reliable_seq);
+    buffer = marshalU16(buffer, 0);                      /* Reciprocal Channel */
+  buffer = marshalU32(buffer, local_channel->total_seq);
+  buffer = marshalU32(buffer, local_channel->reliable_seq);
   
   // TODO: add unicast/multicast support. 0 is UNICAST
-  buffer += marshalU8(buffer, 0);
+  buffer = marshalU8(buffer, 0);
 //  buffer += pack_transport_address(buffer, lChannel->downstreamPort, lChannel->downstreamIP, SDT_ADDR_IPV4);
-  buffer += pack_channel_param_block(buffer);
-  buffer += marshalU8(buffer, 255); //My Adhoc Port does not change
+  buffer = pack_channel_param_block(buffer);
+  buffer = marshalU8(buffer, 255); //My Adhoc Port does not change
 
   /* JOINS are always sent to foreign compoents adhoc address */
   /* and from a adhoc address                                 */
@@ -588,15 +592,15 @@ sdt_tx_join_accept(sdt_member_t *local_member, component_t *local_component, com
   buffer = buf_start;
 
   /* length and flags */
-  buffer += marshalU16(buffer, 29 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  buffer = marshalU16(buffer, 29 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
   /* vector */
-  buffer += marshalU8(buffer, SDT_JOIN_ACCEPT);
+  buffer = marshalU8(buffer, SDT_JOIN_ACCEPT);
   /* data */
-  buffer += marshalUUID(buffer, foreign_component->cid);
-  buffer += marshalU16(buffer, foreign_component->tx_channel->number);
-  buffer += marshalU16(buffer, local_member->mid);
-  buffer += marshalU32(buffer, foreign_component->tx_channel->reliable_seq);
-  buffer += marshalU16(buffer, local_component->tx_channel->number);
+  buffer = marshalUUID(buffer, foreign_component->cid);
+  buffer = marshalU16(buffer, foreign_component->tx_channel->number);
+  buffer = marshalU16(buffer, local_member->mid);
+  buffer = marshalU32(buffer, foreign_component->tx_channel->reliable_seq);
+  buffer = marshalU16(buffer, local_component->tx_channel->number);
 
   /* add our PDU */
   rlp_add_pdu(tx_buffer, buf_start, 29, NULL);
@@ -633,15 +637,15 @@ sdt_tx_join_refuse(cid_t foreign_cid, component_t *local_component, neti_addr_t 
   buffer = buf_start;
 
   /* length and flags */
-  buffer += marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  buffer = marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
   /* vector */
-  buffer += marshalU8(buffer, SDT_JOIN_REFUSE);
+  buffer = marshalU8(buffer, SDT_JOIN_REFUSE);
   /* data */
-  buffer += marshalUUID(buffer, foreign_cid);
-  buffer += marshalU16(buffer, unmarshalU16(join + 18)); /* leader's channel # */
-  buffer += marshalU16(buffer, unmarshalU16(join + 16)); /* mid that the leader was assigning to me */
-  buffer += marshalU32(buffer, unmarshalU32(join + 26)); /* leader's channel rel seq # */
-  buffer += marshalU8(buffer, reason);
+  buffer = marshalUUID(buffer, foreign_cid);
+  buffer = marshalU16(buffer, unmarshalU16(join + 18)); /* leader's channel # */
+  buffer = marshalU16(buffer, unmarshalU16(join + 16)); /* mid that the leader was assigning to me */
+  buffer = marshalU32(buffer, unmarshalU32(join + 26)); /* leader's channel rel seq # */
+  buffer = marshalU8(buffer, reason);
   
   /* add our PDU */
   rlp_add_pdu(txBuffer, buf_start, 28, NULL);
@@ -685,13 +689,13 @@ sdt_tx_leaving(component_t *foreign_component, component_t *local_component, uin
   buf_start = rlp_init_block(txBuffer, NULL);
   buffer = buf_start;
 
-  buffer += marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-  buffer += marshalU8(buffer, SDT_LEAVING);
-  buffer += marshalUUID(buffer, foreign_component->cid);
-  buffer += marshalU16(buffer, foreign_channel->number);
-  buffer += marshalU16(buffer, local_member->mid);
-  buffer += marshalU32(buffer, foreign_channel->reliable_seq);
-  buffer += marshalU8(buffer, reason);
+  buffer = marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  buffer = marshalU8(buffer, SDT_LEAVING);
+  buffer = marshalUUID(buffer, foreign_component->cid);
+  buffer = marshalU16(buffer, foreign_channel->number);
+  buffer = marshalU16(buffer, local_member->mid);
+  buffer = marshalU32(buffer, foreign_channel->reliable_seq);
+  buffer = marshalU8(buffer, reason);
 
   /* add our PDU */
   rlp_add_pdu(txBuffer, buf_start, 28, NULL);
@@ -737,14 +741,14 @@ sdt_tx_nak(component_t *foreign_component, component_t *local_component, uint32_
 
   //FIXME -  add proper nak storm suppression
   
-  buffer += marshalU16(buffer, 35 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-  buffer += marshalU8(buffer, SDT_NAK);
-  buffer += marshalUUID(buffer, foreign_component->cid);
-  buffer += marshalU16(buffer, foreign_channel->number);
-  buffer += marshalU16(buffer, local_member->mid);
-  buffer += marshalU32(buffer, foreign_channel->reliable_seq);       /* last known good one */
-  buffer += marshalU32(buffer, foreign_channel->reliable_seq + 1);   /* then the next must be the first I missed */
-  buffer += marshalU32(buffer, last_missed);
+  buffer = marshalU16(buffer, 35 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  buffer = marshalU8(buffer, SDT_NAK);
+  buffer = marshalUUID(buffer, foreign_component->cid);
+  buffer = marshalU16(buffer, foreign_channel->number);
+  buffer = marshalU16(buffer, local_member->mid);
+  buffer = marshalU32(buffer, foreign_channel->reliable_seq);		/* last known good one */
+  buffer = marshalU32(buffer, foreign_channel->reliable_seq + 1);	/* then the next must be the first I missed */
+  buffer = marshalU32(buffer, last_missed);
 
   /* add our PDU */
   rlp_add_pdu(txBuffer, buf_start, 35, NULL);
@@ -892,7 +896,7 @@ sdt_rx_join(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *join, uint3
   local_member->expiry_time = 0;//TIMEOUT;
 
   /* fill in the member structure */
-  joinp += unpack_channel_param_block(local_member, joinp);
+  joinp = unpack_channel_param_block(local_member, joinp);
   
   //if (allocations & ALLOCATED_FOREIGN_CHANNEL)   {
   //  foreignChannel->sock = rlp_open_netsocket(foreignChannel->downstream.port);
@@ -1493,9 +1497,9 @@ sdt_tx_ack(component_t *local_component, component_t *foreign_component)
   datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, foreign_channel->number);
 
   /* add datagram (ACK message) */
-  datagram += marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-  datagram += marshalU8(datagram, SDT_ACK);
-  datagram += marshalU32(datagram, foreign_channel->reliable_seq);
+  datagram = marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  datagram = marshalU8(datagram, SDT_ACK);
+  datagram = marshalU32(datagram, foreign_channel->reliable_seq);
 
   /* add length to client block pdu */
   marshalU16(client_block, (10+7) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
@@ -1552,8 +1556,8 @@ sdt_tx_leave(component_t *local_component, component_t *foreign_component)
   datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, foreign_channel->number);
 
   /* add datagram (LEAVE message) */
-  datagram += marshalU16(datagram, 3 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-  datagram += marshalU8(datagram, SDT_LEAVE);
+  datagram = marshalU16(datagram, 3 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  datagram = marshalU8(datagram, SDT_LEAVE);
 
   /* add length to client block pdu */
   marshalU16(client_block, (10+3) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
@@ -1609,9 +1613,9 @@ sdt_tx_connect(component_t *local_component, component_t *foreign_component, uin
   datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, foreign_channel->number);
 
   /* add datagram CONNECT message) */
-  datagram += marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-  datagram += marshalU8(datagram, SDT_CONNECT);
-  datagram += marshalU32(datagram, protocol);
+  datagram = marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  datagram = marshalU8(datagram, SDT_CONNECT);
+  datagram = marshalU32(datagram, protocol);
 
   /* add length to client block pdu */
   marshalU16(client_block, (10+7) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
@@ -1667,9 +1671,9 @@ sdt_tx_connect_accept(component_t *local_component, component_t *foreign_compone
   datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, foreign_channel->number);
 
   /* add datagram (CONNECT_ACCEPT message) */
-  datagram += marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-  datagram += marshalU8(datagram, SDT_CONNECT_ACCEPT);
-  datagram += marshalU32(datagram, protocol);
+  datagram = marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  datagram = marshalU8(datagram, SDT_CONNECT_ACCEPT);
+  datagram = marshalU32(datagram, protocol);
 
   /* add length to client block pdu */
   marshalU16(client_block, (10+7) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
@@ -1727,9 +1731,9 @@ sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, 
   datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, foreign_channel->number);
 
   /* add datagram (DISCONNECT message) */
-  datagram += marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-  datagram += marshalU8(datagram, SDT_DISCONNECT);
-  datagram += marshalU32(datagram, protocol);
+  datagram = marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  datagram = marshalU8(datagram, SDT_DISCONNECT);
+  datagram = marshalU32(datagram, protocol);
 
   /* add length to client block pdu */
   marshalU16(client_block, (10+7) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
@@ -1901,9 +1905,9 @@ sdt_format_client_block(uint8_t *client_block, uint16_t foreign_mid, uint32_t pr
   /* skip flags and length for now */
   client_block += 2; 
   
-  client_block += marshalU16(client_block, foreign_mid);     /* Vector */
-  client_block += marshalU32(client_block, protocol);        /* Header, Client protocol */
-  client_block += marshalU16(client_block, association);     /* Header, Association */
+  client_block = marshalU16(client_block, foreign_mid); 	/* Vector */
+  client_block = marshalU32(client_block, protocol);		/* Header, Client protocol */
+  client_block = marshalU16(client_block, association); 	/* Header, Association */
   
   /* returns pointer to opaque datagram */
   return client_block; 
@@ -1918,18 +1922,16 @@ sdt_format_client_block(uint8_t *client_block, uint16_t foreign_mid, uint32_t pr
 
   Currently these parameters are hard coded - if this changes this function will need more arguments
 */
-static int
+uint8_t *
 pack_channel_param_block(uint8_t *paramBlock)
 {
-  int offset = 0;
+  paramBlock = marshalU8(paramBlock, FOREIGN_MEMBER_EXPIRY_TIME);
+  paramBlock = marshalU8(paramBlock, 0); /* suppress OUTBOUND NAKs from foreign members */
+  paramBlock = marshalU16(paramBlock, FOREIGN_MEMBER_NAK_HOLDOFF);
+  paramBlock = marshalU16(paramBlock, FOREIGN_MEMBER_NAK_MODULUS);
+  paramBlock = marshalU16(paramBlock, FOREIGN_MEMBER_NAK_MAX_WAIT);
   
-  offset += marshalU8(paramBlock + offset, FOREIGN_MEMBER_EXPIRY_TIME);
-  offset += marshalU8(paramBlock + offset, 0); /* suppress OUTBOUND NAKs from foreign members */
-  offset += marshalU16(paramBlock + offset, FOREIGN_MEMBER_NAK_HOLDOFF);
-  offset += marshalU16(paramBlock + offset, FOREIGN_MEMBER_NAK_MODULUS);
-  offset += marshalU16(paramBlock + offset, FOREIGN_MEMBER_NAK_MAX_WAIT);
-  
-  return offset;
+  return paramBlock;
 }
 
 /*****************************************************************************/
@@ -1940,7 +1942,7 @@ pack_channel_param_block(uint8_t *paramBlock)
 
   returns number of bytes marshaled.
 */
-static int 
+uint8_t * 
 unpack_channel_param_block(sdt_member_t *member, uint8_t *param_block)
 {
   member->expiry_time = *param_block;
@@ -1954,7 +1956,7 @@ unpack_channel_param_block(sdt_member_t *member, uint8_t *param_block)
   param_block += sizeof(uint16_t);
   member->nak_max_wait = unmarshalU16(param_block);
   param_block += sizeof(uint16_t);
-  return 8; /* length of the ParamaterBlock */
+  return param_block; /* length of the ParamaterBlock */
 }
 
 /*****************************************************************************/
@@ -1967,13 +1969,13 @@ pack_transport_address(uint8_t *data, neti_addr_t *transport_addr, int type)
 
   switch(type) {
     case SDT_ADDR_NULL :
-      datap += marshalU8(datap, SDT_ADDR_NULL);
+      datap = marshalU8(datap, SDT_ADDR_NULL);
       return datap - data;
       break;
     case SDT_ADDR_IPV4 :
-      datap += marshalU8(datap, SDT_ADDR_IPV4);
-      datap += marshalU16(datap, NETI_PORT(transport_addr));
-      datap += marshalU32(datap, htonl(NETI_INADDR(transport_addr)));
+      datap = marshalU8(datap, SDT_ADDR_IPV4);
+      datap = marshalU16(datap, NETI_PORT(transport_addr));
+      datap = marshalU32(datap, htonl(NETI_INADDR(transport_addr)));
       return datap - data;
       break;
     default :
@@ -2135,7 +2137,7 @@ struct localComponent_s {
 int 
 sdt_register(struct localComponent_s comp)
 {
-  sdtm_add_component(comp, NULL, ??);
+  sdtm_add_component(comp, NULL, what?);
 }
 #endif
 
@@ -2147,7 +2149,7 @@ sdt_startup(bool acceptAdHoc)
   {
     /* Open ad hoc channel on ephemerql port */
     if (!sdt_adhoc_socket) {
-      sdt_adhoc_socket = rlp_open_netsocket(NETI_PORT_NONE);
+      sdt_adhoc_socket = rlp_open_netsocket(NETI_PORT_EPHEM);
     }
     /* now need to register with SLP passing port getLocalPort(adhoc) */
     //rlp_add_listener(sdt_adhoc_socket, NETI_GROUP_UNICAST, PROTO_SDT, sdt_rx_handler, NULL);

@@ -40,26 +40,140 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "types.h"
 #include "uuid.h"
 
-inline size_t marshalU8(uint8_t *data, uint8_t u8);
-inline uint8_t unmarshalU8(const uint8_t *data);
+/************************************************************************/
+/*
+WARNING
+Many of the marshal/unmarshal macros evaluate their arguments multiple times
+*/
 
-inline size_t marshalU16(uint8_t *data, uint16_t u16);
-inline uint16_t unmarshalU16(const uint8_t *data);
+#if CONFIG_MARSHAL_INLINE
 
-inline size_t marshalU32(uint8_t *data, uint32_t u32);
-inline uint32_t unmarshalU32(const uint8_t *data);
+static inline uint8_t *marshalU8(uint8_t *data, uint8_t u8)
+{
+	*data++ = u8;
+	return data;
+}
 
-#define marshalUUID(data, uuid) ((uint8_t*)memcpy((uint8_t *)(data), (uint8_t *)(uuid), sizeof(uuid_t))?sizeof(uuid_t):0)
-#define unmarshalUUID(data, uuid) memcpy((uint8_t *)(uuid), (uint8_t *)(data), sizeof(uuid_t))
+static inline uint8_t *marshalU16(uint8_t *data, uint16_t u16)
+{
+	data[0] = u16 >> 8;
+	data[1] = u16;
+	return data + 2;
+}
 
-#if !defined(marshalUUID)
-inline size_t marshalUUID(uint8_t *data, const uint8_t *uuid);
+static inline uint8_t *marshalU32(uint8_t *data, uint32_t u32)
+{
+	data[0] = u32 >> 24;
+	data[1] = u32 >> 16;
+	data[2] = u32 >> 8;
+	data[3] = u32;
+	return data + 4;
+}
+
+static inline uint8_t *marshalUUID(uint8_t *data, const uint8_t *uuid)
+{
+	return memcpy(data, uuid, sizeof(uuid_t)) + sizeof(uuid_t);
+}
+
+static inline uint8_t *marshalVar(uint8_t *data, const uint8_t *src, uint16_t size)
+{
+	memcpy( marshalU16(data, size + 2), src, size);
+	return data + size + 2;	
+}
+
+static inline uint8_t *marshal_p_string(uint8_t *data, const p_string_t *str)
+{
+	return marshalVar(data, str->value, str->length);
+}
+
+static inline uint8_t unmarshalU8(const uint8_t *data)
+{
+	return *data;
+}
+
+static inline uint16_t unmarshalU16(const uint8_t *data)
+{
+	return (data[0] << 8) | data[1];
+}
+
+static inline uint32_t unmarshalU32(const uint8_t *data)
+{
+	return (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[0];
+}
+
+static inline uint8_t *unmarshalUUID(const uint8_t *data, uint8_t *uuid)
+{
+	return memcpy(uuid, data, sizeof(uuid_t));
+}
+
+static inline uint16_t unpackVar(const uint8_t *data, uint8_t *dest)
+{
+	uint16_t len = unmarshalU16(data) - 2;
+	memcpy(dest, data + 2, len);
+	return len;
+}
+
+static inline p_string_t *unmarshal_p_string(const uint8_t *data, p_string_t *str)
+{
+	str->length = unpackVar(data, str->value);
+	return str;
+}
+
+#else
+
+#define marshalU8(datap, u8) (*(uint8_t *)(datap) = (uint8_t)(u8), (uint8_t *)(datap) + 1)
+#define unmarshalU8(datap) (*(uint8_t *)(datap))
+
+#define marshalU16(datap, u16) (\
+					((uint8_t *)(datap))[0] = (uint8_t)((u16) >> 8), \
+					((uint8_t *)(datap))[1] = (uint8_t)((u16) >> 0), \
+					(uint8_t *)(datap) + 2)
+
+#define unmarshalU16(datap) (uint16_t)(\
+					((uint8_t *)(datap))[0] << 8 \
+					| ((uint8_t *)(datap))[1])
+
+#define marshalU32(datap, u32) (\
+					((uint8_t *)(datap))[0] = (uint8_t)((u32) >> 24), \
+					((uint8_t *)(datap))[1] = (uint8_t)((u32) >> 16), \
+					((uint8_t *)(datap))[2] = (uint8_t)((u32) >> 8), \
+					((uint8_t *)(datap))[3] = (uint8_t)((u32) >> 0), \
+					(uint8_t *)(datap) + 4)
+
+#define unmarshalU32(datap)  (uint32_t)(\
+					((uint8_t *)(datap))[0] << 24 \
+					| ((uint8_t *)(datap))[1] << 16 \
+					| ((uint8_t *)(datap))[2] << 8 \
+					| ((uint8_t *)(datap))[3])
+
+#define marshalUUID(data, uuid) ((uint8_t*)memcpy((uint8_t *)(data), (uint8_t *)(uuid), sizeof(uuid_t)) + sizeof(uuid_t))
+#define unmarshalUUID(data, uuid) ((uint8_t*)memcpy((uint8_t *)(uuid), (uint8_t *)(data), sizeof(uuid_t)))
+
+#define marshalVar(datap, srcp, len) \
+					( \
+						memcpy( \
+							marshalU16(((uint8_t *)(datap)), ((uint16_t)(len)) + 2), \
+							((uint8_t *)(srcp)), \
+							((uint16_t)(len)) \
+						) + ((uint16_t)(len)) \
+					) 
+
+static inline uint16_t unpackVar(uint8_t *data, uint8_t *dest)
+{
+	uint16_t len = unmarshalU16(data) - 2;
+	memcpy(dest, data + sizeof(uint16_t), len;
+	return len;
+}
+
+#define marshal_p_string(datap, str) marshalVar((datap), ((p_string_t *)(str))->value, ((p_string_t *)(str))->length)
+#define unmarshal_p_string(datap, str) \
+					( \
+						memcpy( \
+							((p_string_t *)(str))->value, \
+							((uint8_t *)(datap)) + sizeof(uint16_t), \
+							((p_string_t *)(str))->length = unmarshalU16((uint8_t *)(datap)) - sizeof(uint16_t) \
+						), ((p_string_t *)(str)) \
+					)
 #endif
-#if !defined(unmarshalUUID)
-inline uint8_t *unmarshalUUID(const uint8_t *data, uint8_t *uuid);
-#endif
-
-inline size_t marshal_p_string(uint8_t *data, const p_string_t *str);
-inline size_t unmarshal_p_string(const uint8_t *data, p_string_t *str);
 
 #endif	/* __marshal_h__ */

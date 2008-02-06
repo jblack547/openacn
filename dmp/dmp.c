@@ -50,6 +50,14 @@ static const char *rcsid __attribute__ ((unused)) =
 #include <datatypes.h>
 //wrf #include	<ppmalloc.h>
 
+/*
+FIXME
+
+Marshal functions have been updated and return a different type.
+This source file has not.
+
+*/
+
 typedef struct
 {
 	uint32_t startAddress;
