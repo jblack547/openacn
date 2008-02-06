@@ -86,7 +86,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOG_DEBUG       7       /* debug-level messages */
 
 // wrf - place holders..
-#define syslog(code,msg) printf("%s\n",msg);  
+#define syslog(code,...) printf(__VA_ARGS__)
+// #define syslog(code,msg) printf("%s\n",msg);  
 #define openlog(ident, option, facility)
 #define closelog()
 /* void  openlog (const char *ident, int option, int facility) */
