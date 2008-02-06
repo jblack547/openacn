@@ -37,24 +37,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 static const char *rcsid __attribute__ ((unused)) =
    "$Id$";
 // DMP uses LOG_LOCAL4
+#include "opt.h"
 #include "dmp.h"
+#include "acn_dmp.h"
 #include "sdt.h"
 #include "pdu.h"
 #include <string.h>
-#include <swap.h>
+//wrf #include <swap.h>
 #include <syslog.h>
-#include <rtclock.h>
+//wrf #include <rtclock.h>
 #include <marshal.h>
 #include <datatypes.h>
-#include	<ppmalloc.h>
+//wrf #include	<ppmalloc.h>
 
 typedef struct
 {
-	uint32 startAddress;
-	uint32 addressInc;
-	uint32 numProps;
-	uint32 isSingleValue;
-	uint32 isVirtual;
+	uint32_t startAddress;
+	uint32_t addressInc;
+	uint32_t numProps;
+	uint32_t isSingleValue;
+	uint32_t isVirtual;
 } dmp_address_t;
 
 typedef struct event_t
@@ -62,7 +64,7 @@ typedef struct event_t
 	struct event_t *next;
 	local_component_t *comp;
 	int address;
-	uint8* value;
+	uint8_t* value;
 	int length;
 } event_t;
 #define MAX_QUEUED_EVENTS 24
@@ -71,32 +73,32 @@ static event_t *event_queue = 0;
 static int set_active = 0;
 static event_t event_memory[MAX_QUEUED_EVENTS];
 
-static uint32 lastActualAddress = 0;
-static uint32 lastVirtualAddress = 0;
-static uint8 propReplyBuf[1400];
+static uint32_t lastActualAddress = 0;
+static uint32_t lastVirtualAddress = 0;
+static uint8_t propReplyBuf[1400];
 
 static inline void encodeAddressHeader(pdu_header_type *pdu, dmp_address_t dmpAddress);
-static inline int decodeAddressHeader(pdu_header_type *pdu, uint8 *data, dmp_address_t *dmpAddress);
+static inline int decodeAddressHeader(pdu_header_type *pdu, uint8_t *data, dmp_address_t *dmpAddress);
 
-static uint32 dmpGetProp(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static void dmpTxGetPropReply(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8 *reply, uint32 replyLength);
-static void dmpTxGetPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8 reasonCode);
+static uint32_t dmpGetProp(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
+static void dmpTxGetPropReply(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t *reply, uint32_t replyLength);
+static void dmpTxGetPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
 static int dmpSetProp(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static void dmpTxSetPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8 reasonCode);
+static void dmpTxSetPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
 
 static int dmpRxAllocateMap(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static uint32 dmpRxDeallocateMap(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static uint32 dmpRxMapProperty(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static void dmpTxAllocateMapReply(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, uint8 reasonCode);
-static void dmpTxMapPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8 reasonCode);
+static uint32_t dmpRxDeallocateMap(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
+static uint32_t dmpRxMapProperty(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
+static void dmpTxAllocateMapReply(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, uint8_t reasonCode);
+static void dmpTxMapPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
 
 
-static uint32 dmpRxSubscribe(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static uint32 dmpRxUnsubscribe(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
+static uint32_t dmpRxSubscribe(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
+static uint32_t dmpRxUnsubscribe(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu);
 static void dmpTxSubscribeAccept(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address);
-static void dmpTxSubscribeFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8 reasonCode);
+static void dmpTxSubscribeFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
 
-static void dmpEventCallback(local_component_t *localComp, uint32 address, uint8 *value, uint32 valueLength);
+static void dmpEventCallback(local_component_t *localComp, uint32_t address, uint8_t *value, uint32_t valueLength);
 
 void initDmp(void)
 {
@@ -104,12 +106,12 @@ void initDmp(void)
 	registerEventCallback(dmpEventCallback);
 }
 
-uint32 dmpRxHandler(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, uint8 *data, uint32 dataLen)
+uint32_t dmpRxHandler(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, uint8_t *data, uint32_t dataLen)
 {
-	uint32 processed = 0;
+	uint32_t processed = 0;
 	pdu_header_type pdu;
 	
-	benchmark.dmpStart = ticks;
+	//wrf benchmark.dmpStart = ticks;
 	memset(&pdu, 0, sizeof(pdu_header_type));
 	lastActualAddress = 0;
 	lastVirtualAddress = 0;
@@ -178,7 +180,7 @@ uint32 dmpRxHandler(foreign_component_t *srcComp, local_component_t *dstComp, vo
 	}
 	
 //	syslog(LOG_DEBUG |LOG_LOCAL4,"dmpRxHandler:END");
-	benchmark.dmpEnd = ticks;
+	//wrf benchmark.dmpEnd = ticks;
 	return dataLen;
 }
 
@@ -204,10 +206,10 @@ static inline void encodeAddressHeader(pdu_header_type *pdu, dmp_address_t dmpAd
 	pdu->dataLength += length;
 }
 
-static inline int decodeAddressHeader(pdu_header_type *pdu, uint8 *data, dmp_address_t *dmpAddress)
+static inline int decodeAddressHeader(pdu_header_type *pdu, uint8_t *data, dmp_address_t *dmpAddress)
 {
 	//this could be made more efficient by caching the header and detecting an inherited header
-	uint8 *top = data;
+	uint8_t *top = data;
 	int size = 0;
 	
 	switch((*(pdu->header)) & ADDRESS_SIZE_MASK)  //Could be done as 2 ^ (pdu->header & ADDRESS_SIZE_MASK)
@@ -278,7 +280,7 @@ static inline int decodeAddressHeader(pdu_header_type *pdu, uint8 *data, dmp_add
 	
 	dmpAddress->isVirtual = (pdu->vector & VIRTUAL_ADDRESS_BIT);
 	
-	if(*pdu->header & RELATIVE_ADDRESS_BIT)
+	if(pdu->vector & RELATIVE_ADDRESS_BIT)
 	{
 		dmpAddress->startAddress += (dmpAddress->isVirtual) ? lastVirtualAddress : lastActualAddress;
 		if(dmpAddress->isVirtual)
@@ -297,14 +299,14 @@ static inline int decodeAddressHeader(pdu_header_type *pdu, uint8 *data, dmp_add
 }
 
 
-static uint32 dmpGetProp(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu)
+static uint32_t dmpGetProp(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu)
 {
 	dmp_address_t dmpAddress;
 	dmp_address_t replyAddress;
 	
-	uint32 processed = 0;
+	uint32_t processed = 0;
 	int result;
-	uint8 *curPos;
+	uint8_t *curPos;
 	int lastResult;
 
 	curPos = propReplyBuf;
@@ -439,7 +441,7 @@ static int dmpSetProp(foreign_component_t *srcComp, local_component_t *dstComp, 
 		replyAddress.isSingleValue = 0;
 		replyAddress.addressInc = dmpAddress.addressInc;
 		replyAddress.numProps = 0;
-		benchmark.numberofdmpprops +=dmpAddress.numProps;
+		//wrf benchmark.numberofdmpprops +=dmpAddress.numProps;
 	
 		while(dmpAddress.numProps)
 		{
@@ -496,10 +498,10 @@ failure:
 	return 1;
 }
 
-static void dmpTxGetPropReply(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8 *reply, uint32 replyLength)
+static void dmpTxGetPropReply(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t *reply, uint32_t replyLength)
 {
 	pdu_header_type replyHeader;
-	uint8 *buffer;
+	uint8_t *buffer;
 	
 	buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
 	
@@ -520,10 +522,10 @@ static void dmpTxGetPropReply(local_component_t *localComp, foreign_component_t 
 
 
 
-static void dmpTxGetPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8 reasonCode)
+static void dmpTxGetPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
 {
 	pdu_header_type replyHeader;
-	uint8 *buffer;
+	uint8_t *buffer;
 	int i;
 
 	buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
@@ -544,10 +546,10 @@ static void dmpTxGetPropFail(local_component_t *localComp, foreign_component_t *
 	enqueueClientBlock(replyHeader.length);
 }
 
-static void dmpTxSetPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8 reasonCode)
+static void dmpTxSetPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
 {
 	pdu_header_type reply;
-	uint8 *buffer;
+	uint8_t *buffer;
 	int i;
 
 	buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
@@ -574,15 +576,15 @@ static int dmpRxAllocateMap(foreign_component_t *srcComp, local_component_t *dst
 	return 0;
 }
 
-static uint32 dmpRxDeallocateMap(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu)
+static uint32_t dmpRxDeallocateMap(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu)
 {
 	return 0;
 }
 
-static void dmpTxAllocateMapReply(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, uint8 reasonCode)
+static void dmpTxAllocateMapReply(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, uint8_t reasonCode)
 {
 	pdu_header_type reply;
-	uint8 *buffer;
+	uint8_t *buffer;
 	
 	buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
 	
@@ -597,11 +599,11 @@ static void dmpTxAllocateMapReply(local_component_t *localComp, foreign_componen
 	enqueueClientBlock(reply.length);
 }
 
-static uint32 dmpRxMapProperty(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu)
+static uint32_t dmpRxMapProperty(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu)
 {
 	dmp_address_t dmpAddress;
 	
-	uint32 processed = 0;
+	uint32_t processed = 0;
 	
 	processed += decodeAddressHeader(pdu, pdu->data, &dmpAddress);
 		
@@ -610,10 +612,10 @@ static uint32 dmpRxMapProperty(foreign_component_t *srcComp, local_component_t *
 	return processed;
 }
 
-static void dmpTxMapPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8 reasonCode)
+static void dmpTxMapPropFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
 {
 	pdu_header_type reply;
-	uint8 header[6];
+	uint8_t header[6];
 	
 	reply.header = header;
 	encodeAddressHeader(&reply, address);
@@ -623,12 +625,12 @@ static void dmpTxMapPropFail(local_component_t *localComp, foreign_component_t *
 //	enqueueClientBlock(localComp, foreignComp, &reply);
 }
 
-static uint32 dmpRxSubscribe(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu)
+static uint32_t dmpRxSubscribe(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu)
 {
 	dmp_address_t dmpAddress;
 	dmp_address_t replyAddress;
 	
-	uint32 processed = 0;
+	uint32_t processed = 0;
 	int result = 0;
 	int previousResult = 1;
 	
@@ -684,12 +686,12 @@ static uint32 dmpRxSubscribe(foreign_component_t *srcComp, local_component_t *ds
 	return processed;
 }
 
-static uint32 dmpRxUnsubscribe(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu)
+static uint32_t dmpRxUnsubscribe(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, pdu_header_type *pdu)
 {
 	dmp_address_t dmpAddress;
 	dmp_address_t replyAddress;
 	
-	uint32 processed = 0;
+	uint32_t processed = 0;
 	int result;
 	int previousResult = 1;
 	
@@ -730,7 +732,7 @@ static uint32 dmpRxUnsubscribe(foreign_component_t *srcComp, local_component_t *
 
 static void dmpTxSubscribeAccept(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address)
 {
-	uint8 *buffer;
+	uint8_t *buffer;
 	pdu_header_type replyHeader;
 		
 	buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
@@ -747,10 +749,10 @@ static void dmpTxSubscribeAccept(local_component_t *localComp, foreign_component
 //	syslog(LOG_DEBUG |LOG_LOCAL4,"dmpTxSubscribeAccept : Queued Accept");
 }
 
-static void dmpTxSubscribeFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8 reasonCode)
+static void dmpTxSubscribeFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
 {
 	int i;
-	uint8 *buffer;
+	uint8_t *buffer;
 	pdu_header_type replyHeader;
 		
 	buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
@@ -769,7 +771,7 @@ static void dmpTxSubscribeFail(local_component_t *localComp, foreign_component_t
 	enqueueClientBlock(replyHeader.length);
 }
 
-static void dmpEventCallback(local_component_t *localComp, uint32 address, uint8 *value, uint32 valueLength)
+static void dmpEventCallback(local_component_t *localComp, uint32_t address, uint8_t *value, uint32_t valueLength)
 {
 	if(set_active)
 	{
@@ -786,7 +788,7 @@ static void dmpEventCallback(local_component_t *localComp, uint32 address, uint8
 		return;
 	}
 	pdu_header_type replyHeader;
-	uint8 *buffer;
+	uint8_t *buffer;
 	dmp_address_t dmpAddress;
 
 	dmpAddress.startAddress = address;
@@ -812,10 +814,10 @@ static void dmpEventCallback(local_component_t *localComp, uint32 address, uint8
 		switch(valueLength)
 		{
 			case 4 :
-				replyHeader.dataLength += marshalU32(replyHeader.data + replyHeader.dataLength, *(uint32*)value);
+				replyHeader.dataLength += marshalU32(replyHeader.data + replyHeader.dataLength, *(uint32_t*)value);
 				break;
 			case 2 :
-				replyHeader.dataLength += marshalU16(replyHeader.data + replyHeader.dataLength, *(uint16*)value);
+				replyHeader.dataLength += marshalU16(replyHeader.data + replyHeader.dataLength, *(uint16_t*)value);
 				break;
 			case 1 :
 				replyHeader.dataLength += marshalU8(replyHeader.data + replyHeader.dataLength, *value);

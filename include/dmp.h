@@ -37,10 +37,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __dmp_h__
 #define __dmp_h__ 1
 
-#include <arch/types.h>
-#include <acn_config.h>
-
-
+// wrf #include <arch/types.h>
+#include "types.h"
+//??#include "acn_config.h"
 
 #define ADDRESS_TYPE_MASK				0x30
 #define VIRTUAL_ADDRESS_BIT			0x80
@@ -89,6 +88,6 @@ enum
 };
 
 void initDmp(void);
-uint32 dmpRxHandler(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, uint8 *data, uint32 dataLen);
+uint32_t dmpRxHandler(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, uint8_t *data, uint32_t dataLen);
 void dmpCompOfflineNotify(foreign_component_t *remoteComp);
 #endif
