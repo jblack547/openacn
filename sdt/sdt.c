@@ -57,6 +57,10 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "netiface.h"
 
 #if !CONFIG_RLP_SINGLE_CLIENT
+/*
+if your compiler does not conform to ANSI macro expansions it may
+recurse infinitely on this definition.
+*/
 #define rlp_add_pdu(buf, pdudata, size, packetdatap) rlp_add_pdu(buf, pdudata, size, PROTO_SDT, packetdatap)
 #endif
 
