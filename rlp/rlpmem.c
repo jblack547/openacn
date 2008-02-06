@@ -51,7 +51,6 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "rlp.h"
 #include "rlpmem.h"
 #include "marshal.h"
-#include "syslog.h"
 
 #if CONFIG_RLPMEM_MALLOC
 #include <stdlib.h>

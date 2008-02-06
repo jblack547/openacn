@@ -44,7 +44,7 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "pdu.h"
 #include <string.h>
 //wrf #include <swap.h>
-#include <syslog.h>
+#include <acnlog.h>
 //wrf #include <rtclock.h>
 #include <marshal.h>
 #include <datatypes.h>
@@ -171,7 +171,7 @@ uint32_t dmpRxHandler(foreign_component_t *srcComp, local_component_t *dstComp, 
 				;//(LOG_WARNING|LOG_LOCAL4,"dmpRxHandler: Unknown Vector (protocol) - skipping");
 				
 		}
-//		syslog(LOG_DEBUG |LOG_LOCAL4,"dmpRxHandler: Processed V:%d, L:%d", pdu.vector, processed);
+//		acnlog(LOG_DEBUG |LOG_LOCAL4,"dmpRxHandler: Processed V:%d, L:%d", pdu.vector, processed);
 	}
 	if(event_queue)
 		sdtFlush();
@@ -184,10 +184,10 @@ uint32_t dmpRxHandler(foreign_component_t *srcComp, local_component_t *dstComp, 
 	}
 	if(processed != dataLen)
 	{
-		syslog(LOG_ERR|LOG_LOCAL4,"dmpRxHandler: processed an incorrect number of bytes");
+		acnlog(LOG_ERR|LOG_LOCAL4,"dmpRxHandler: processed an incorrect number of bytes");
 	}
 	
-//	syslog(LOG_DEBUG |LOG_LOCAL4,"dmpRxHandler:END");
+//	acnlog(LOG_DEBUG |LOG_LOCAL4,"dmpRxHandler:END");
 	//wrf benchmark.dmpEnd = ticks;
 	return dataLen;
 }
@@ -232,7 +232,7 @@ static inline int decodeAddressHeader(pdu_header_type *pdu, uint8_t *data, dmp_a
 			size = 4;
 			break;
 		default :
-			syslog(LOG_LOCAL4 | LOG_ERR, "ERROR Controller sent RESERVED address Length");
+			acnlog(LOG_LOCAL4 | LOG_ERR, "ERROR Controller sent RESERVED address Length");
 	}
 	
 	switch(size)
@@ -346,12 +346,12 @@ static uint32_t dmpGetProp(foreign_component_t *srcComp, local_component_t *dstC
 			{
 				if(lastResult < 0)
 				{
-//					syslog(LOG_DEBUG|LOG_LOCAL4,"dmpGetProp: fail within loop");
+//					acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpGetProp: fail within loop");
 					dmpTxGetPropFail(dstComp, srcComp, srcSession, replyAddress, (result * -1));
 				}
 				else
 				{
-//					syslog(LOG_DEBUG|LOG_LOCAL4,"dmpGetProp: success within loop");
+//					acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpGetProp: success within loop");
 					dmpTxGetPropReply(dstComp, srcComp, srcSession, replyAddress, propReplyBuf, curPos - propReplyBuf);
 				}
 				
@@ -365,12 +365,12 @@ static uint32_t dmpGetProp(foreign_component_t *srcComp, local_component_t *dstC
 		}
 		if(lastResult < 0)
 		{
-//			syslog(LOG_DEBUG|LOG_LOCAL4,"dmpGetProp: fail at end");
+//			acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpGetProp: fail at end");
 			dmpTxGetPropFail(dstComp, srcComp, srcSession, replyAddress, (result * -1));
 		}
 		else
 		{
-//			syslog(LOG_DEBUG|LOG_LOCAL4,"dmpGetProp: success at end");
+//			acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpGetProp: success at end");
 			dmpTxGetPropReply(dstComp, srcComp, srcSession, replyAddress, propReplyBuf, curPos - propReplyBuf);
 		}
 	}
@@ -655,7 +655,7 @@ static uint32_t dmpRxSubscribe(foreign_component_t *srcComp, local_component_t *
 	replyAddress.addressInc = dmpAddress.addressInc;
 	replyAddress.numProps = 0;
 	replyAddress.startAddress = dmpAddress.startAddress;
-//	syslog(LOG_DEBUG |LOG_LOCAL4,"dmpRxSubscribe : SA:0x%08x, AI:%d C:%d",
+//	acnlog(LOG_DEBUG |LOG_LOCAL4,"dmpRxSubscribe : SA:0x%08x, AI:%d C:%d",
 //		dmpAddress.startAddress, dmpAddress.addressInc, dmpAddress.numProps);
 	while(dmpAddress.numProps)
 	{
@@ -663,7 +663,7 @@ static uint32_t dmpRxSubscribe(foreign_component_t *srcComp, local_component_t *
 			result = addSubscription(dstComp, dmpAddress.startAddress, srcComp, srcSession);
 		else
 			result = SUB_NOT_SUPPORTED;
-//syslog(LOG_DEBUG |LOG_LOCAL4,"dmpRxSubscribe : A:0x%08x, R:%d", dmpAddress.startAddress, result);
+//acnlog(LOG_DEBUG |LOG_LOCAL4,"dmpRxSubscribe : A:0x%08x, R:%d", dmpAddress.startAddress, result);
 					
 		if(previousResult == 1) //unset			
 			previousResult = result;
@@ -683,7 +683,7 @@ static uint32_t dmpRxSubscribe(foreign_component_t *srcComp, local_component_t *
 		dmpAddress.startAddress += dmpAddress.addressInc;
 		dmpAddress.numProps--;
 	}
-//	syslog(LOG_DEBUG |LOG_LOCAL4,"dmpRxSubscribe : Completed While");
+//	acnlog(LOG_DEBUG |LOG_LOCAL4,"dmpRxSubscribe : Completed While");
 	if(replyAddress.numProps)
 	{
 		if(previousResult < 0) //failure
@@ -725,7 +725,7 @@ static uint32_t dmpRxUnsubscribe(foreign_component_t *srcComp, local_component_t
 		if(result != previousResult)
 		{
 			if(previousResult < 0) //failure
-				syslog(LOG_ERR|LOG_LOCAL4,"dmpRxUnsubscribe: Attempted to unsubscribe something not subscribed to");
+				acnlog(LOG_ERR|LOG_LOCAL4,"dmpRxUnsubscribe: Attempted to unsubscribe something not subscribed to");
 			replyAddress.startAddress = dmpAddress.startAddress;
 			replyAddress.numProps = 1;
 			previousResult = result;			
@@ -754,7 +754,7 @@ static void dmpTxSubscribeAccept(local_component_t *localComp, foreign_component
 	encodeAddressHeader(&replyHeader, address);
 	updatePduLen(&replyHeader);
 	enqueueClientBlock(replyHeader.length);
-//	syslog(LOG_DEBUG |LOG_LOCAL4,"dmpTxSubscribeAccept : Queued Accept");
+//	acnlog(LOG_DEBUG |LOG_LOCAL4,"dmpTxSubscribeAccept : Queued Accept");
 }
 
 static void dmpTxSubscribeFail(local_component_t *localComp, foreign_component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
@@ -810,7 +810,7 @@ static void dmpEventCallback(local_component_t *localComp, uint32_t address, uin
 	replyHeader.dataLength = 0;
 	formatPdu(buffer, &replyHeader);
 	encodeAddressHeader(&replyHeader, dmpAddress);
-	//syslog(LOG_LOCAL4 | LOG_DEBUG, "dmpEventCallback");
+	//acnlog(LOG_LOCAL4 | LOG_DEBUG, "dmpEventCallback");
 	if(!(address & PROP_FIXED_LEN_BIT)) //variable Length data
 	{
 		replyHeader.dataLength += marshalU16(replyHeader.data + replyHeader.dataLength, valueLength + 2);

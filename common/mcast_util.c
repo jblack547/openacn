@@ -78,7 +78,7 @@ int mcast_alloc_init(
 
 	if ((scopeaddr & scopemask) != scopeaddr)
 	{
-		//syslog(LOG_ERR|LOG_LOCAL0,"mcast_alloc_init: Scope-address out of range.");
+		//acnlog(LOG_ERR|LOG_LOCAL0,"mcast_alloc_init: Scope-address out of range.");
 		return -1;
 	}
 

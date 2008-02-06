@@ -35,12 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 
-// TODO: wrf this is just a place holder to simulate syslog...
-
-#ifndef __syslog_h
-#define __syslog_h
-
-
+#ifndef __acnlog_h
+#define __acnlog_h
 
 #include <string.h>
 #include <stdio.h>
@@ -52,7 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOG_MAIL        (2<<3)  /* mail system */
 #define LOG_DAEMON      (3<<3)  /* system daemons */
 #define LOG_AUTH        (4<<3)  /* authorization messages */
-#define LOG_SYSLOG      (5<<3)  /* messages generated internally by syslogd */
+#define LOG_SYSLOG      (5<<3)  /* messages generated internally by syslog */
 #define LOG_LPR         (6<<3)  /* line printer subsystem */
 #define LOG_NEWS        (7<<3)  /* network news subsystem */
 #define LOG_UUCP        (8<<3)  /* UUCP subsystem */
@@ -85,12 +81,38 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOG_INFO        6       /* informational */
 #define LOG_DEBUG       7       /* debug-level messages */
 
-// wrf - place holders..
-#define syslog(code,...) printf(__VA_ARGS__)
-// #define syslog(code,msg) printf("%s\n",msg);  
-#define openlog(ident, option, facility)
-#define closelog()
+#define ACNLOG_NONE 0
+#define ACNLOG_SYSLOG 1
+#define ACNLOG_STDOUT 2
+#define ACNLOG_STDERR 3
+
+#if CONFIG_ACNLOG == ACNLOG_SYSLOG
+
+#define acnopenlog(ident, option, facility) openlog(ident, option, facility)
+#define acncloselog() closelog()
+#define acnlog(priority, ...) syslog(priority, __VA_ARGS__)
 /* void  openlog (const char *ident, int option, int facility) */
-/* void  syslog (int lprty, const char *msg,...) */
+/* void  syslog (int priority, const char *format, ...) */
 /* void  closelog (void) */
+
+#elif CONFIG_ACNLOG == ACNLOG_STDOUT
+
+#define acnopenlog(ident, option, facility)
+#define acncloselog()
+#define acnlog(priority, ...) if (((priority) & 7) < CONFIG_LOGLEVEL) printf(__VA_ARGS__)
+
+#elif CONFIG_ACNLOG == ACNLOG_STDERR
+
+#define acnopenlog(ident, option, facility)
+#define acncloselog()
+#define acnlog(priority, ...) if (((priority) & 7) < CONFIG_LOGLEVEL) fprintf(stderr, __VA_ARGS__)
+
+#else /* CONFIG_ACNLOG == ACNLOG_NONE */
+
+#define acnopenlog(ident, option, facility)
+#define acncloselog()
+#define acnlog(priority, ...)
+
+#endif
+
 #endif

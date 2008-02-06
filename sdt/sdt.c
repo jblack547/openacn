@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*--------------------------------------------------------------------*/
 static const char *rcsid __attribute__ ((unused)) =
    "$Id$";
-//;//syslog facility LOG_LOCAL1 is used for ACN:SDT
+//;//acnlog facility LOG_LOCAL1 is used for ACN:SDT
 
 
 #include <string.h>
@@ -51,7 +51,7 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "sdtmem.h"
 #include "acn_sdt.h"
 #include "rlp.h"
-#include "syslog.h"
+#include "acnlog.h"
 //#include "slp.h"
 #include "marshal.h"
 #include "netiface.h"
@@ -176,7 +176,7 @@ sdt_rx_handler(uint8_t *data, int data_len, void *ref, neti_addr_t *remhost, cid
 
   /* verify min data length */
   if (data_len < 3) {
-		syslog(LOG_ERR | LOG_LOCAL1,"sdt_rx_handler: Packet too short to be valid");
+		acnlog(LOG_ERR | LOG_LOCAL1,"sdt_rx_handler: Packet too short to be valid");
     return;
   }
   data_end = data + data_len;
@@ -184,7 +184,7 @@ sdt_rx_handler(uint8_t *data, int data_len, void *ref, neti_addr_t *remhost, cid
   /* On first packet, flags should all be set */
   // TODO: support for long packets?
 	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
-		syslog(LOG_ERR | LOG_LOCAL1,"sdt_rx_handler: illegal first PDU flags");
+		acnlog(LOG_ERR | LOG_LOCAL1,"sdt_rx_handler: illegal first PDU flags");
 		return;
 	}
 
@@ -203,7 +203,7 @@ sdt_rx_handler(uint8_t *data, int data_len, void *ref, neti_addr_t *remhost, cid
     pdup += getpdulen(pdup);
     /* fail if outside our packet */
 		if (pdup >= data_end) {
-			syslog(LOG_ERR | LOG_LOCAL1,"sdt_rx_handler: packet length error");
+			acnlog(LOG_ERR | LOG_LOCAL1,"sdt_rx_handler: packet length error");
 			return;
 		}
 
@@ -225,41 +225,41 @@ sdt_rx_handler(uint8_t *data, int data_len, void *ref, neti_addr_t *remhost, cid
     /* At the sdt root layer vectors are commands or wrappers */
     switch(vector) {
       case SDT_JOIN :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_join");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_join");
         sdt_rx_join(foreign_cid, remhost, datap, data_size);
         break;
       case SDT_JOIN_ACCEPT :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_join_accept");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_join_accept");
         sdt_rx_join_accept(foreign_cid, datap, data_size);
         break;
       case SDT_JOIN_REFUSE :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_join_refuse");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_join_refuse");
         sdt_rx_join_refuse(foreign_cid, datap, data_size);
         break;
       case SDT_LEAVING :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_leaving");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_leaving");
         sdt_rx_leaving(foreign_cid, datap, data_size);
         break;
       case SDT_NAK :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_nak");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_nak");
         sdt_rx_nak(foreign_cid, datap, data_size);
         break;
       case SDT_REL_WRAPPER :
       case SDT_UNREL_WRAPPER :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_wrapper");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Dispatch to sdt_rx_wrapper");
         sdt_rx_wrapper(foreign_cid, remhost, datap, data_size);
         break;
       case SDT_GET_SESSIONS :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Get Sessions unsupported");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Get Sessions unsupported");
         break;
       case SDT_SESSIONS :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Sessions??? I don't want any of that !");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdtRxHandler: Sessions??? I don't want any of that !");
         break;
       default:
-        syslog(LOG_WARNING | LOG_LOCAL1,"sdtRxHandler: Unknown Vector (protocol) - skipping");
+        acnlog(LOG_WARNING | LOG_LOCAL1,"sdtRxHandler: Unknown Vector (protocol) - skipping");
     } /* switch */
   } /* while() */
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_handler: End");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_handler: End");
   return;
 }
 
@@ -278,7 +278,7 @@ sdt_rx_handler(uint8_t *data, int data_len, void *ref, neti_addr_t *remhost, cid
 /*static*/ uint8_t *
 sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_channel, uint16_t first_mid, uint16_t last_mid, uint16_t mak_threshold)
 {
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_format_wrapper");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_format_wrapper");
 
   /* Skip flags/length fields for now*/
   wrapper += sizeof(uint16_t);
@@ -318,11 +318,11 @@ sdt_client_rx_handler(component_t *local_component, component_t *foreign_compone
 	uint32_t    data_size = 0;
 	uint8_t    *pdup, *datap;
             
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler");
 
   /* verify min data length */
   if (data_len < 3) {
-		syslog(LOG_ERR | LOG_LOCAL1,"sdt_rx_handler: Packet too short to be valid");
+		acnlog(LOG_ERR | LOG_LOCAL1,"sdt_rx_handler: Packet too short to be valid");
     return;
   }
   data_end = data + data_len;
@@ -331,7 +331,7 @@ sdt_client_rx_handler(component_t *local_component, component_t *foreign_compone
   pdup = data;
 
 	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
-		syslog(LOG_ERR | LOG_LOCAL1,"sdt_client_rx_handler: illegal first PDU flags");
+		acnlog(LOG_ERR | LOG_LOCAL1,"sdt_client_rx_handler: illegal first PDU flags");
 		return;
 	}
 
@@ -349,7 +349,7 @@ sdt_client_rx_handler(component_t *local_component, component_t *foreign_compone
     pdup += getpdulen(pdup);
     
 		if (pdup >= data_end) {
-			syslog(LOG_ERR | LOG_LOCAL1,"sdt_client_rx_handler: packet length error");
+			acnlog(LOG_ERR | LOG_LOCAL1,"sdt_client_rx_handler: packet length error");
 			return;
 		}
 
@@ -372,7 +372,7 @@ sdt_client_rx_handler(component_t *local_component, component_t *foreign_compone
       case SDT_ACK :
         //remoteMember = sdtm_find_member_by_component(localChannel, remoteLeader->component);
         //if (!remoteMember) {
-        //  syslog(LOG_ERR | LOG_LOCAL1,"sdt_client_rx_handler: Can't find remoteMember");
+        //  acnlog(LOG_ERR | LOG_LOCAL1,"sdt_client_rx_handler: Can't find remoteMember");
         //  return;
         //}
         sdt_rx_ack(local_component, foreign_component, pdup, data_size);
@@ -388,25 +388,25 @@ sdt_client_rx_handler(component_t *local_component, component_t *foreign_compone
       case SDT_CONNECT_ACCEPT :
         //remoteMember = sdtm_find_member_by_component(localChannel, remoteLeader->component);
         //if (!remoteMember) {
-        //  syslog(LOG_ERR | LOG_LOCAL1,"sdt_client_rx_handler: Can't find remoteMember");
+        //  acnlog(LOG_ERR | LOG_LOCAL1,"sdt_client_rx_handler: Can't find remoteMember");
         //  return;
         //}
         sdt_rx_connect_accept(local_component, foreign_component, pdup, data_size);
         break;
       case SDT_CONNECT_REFUSE :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler: Our Connect was Refused ??? ");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler: Our Connect was Refused ??? ");
         break;
       case SDT_DISCONNECT :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler: rx sdt DISCONNECT (NOP)");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler: rx sdt DISCONNECT (NOP)");
         break;
       case SDT_DISCONNECTING :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler: rx sdt DISCONNECTING (isn't that special)");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler: rx sdt DISCONNECTING (isn't that special)");
         break;
       default :
-        syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler: Unknown Vector -- Skipping");
+        acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler: Unknown Vector -- Skipping");
     }
   }
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler End");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_client_rx_handler End");
 }
 
 /*****************************************************************************/
@@ -417,12 +417,12 @@ check_sequence(sdt_channel_t *channel, bool is_reliable, uint32_t total_seq, uin
   int diff;
   
   diff = total_seq - channel->total_seq;
-//  syslog(LOG_WARNING | LOG_LOCAL1, "sdtCheckSequence: Rel?=%d, channel->tot=%d, channel->rel=%d, rxTot=%d, rxRel=%d, oldest_avail=%d",
+//  acnlog(LOG_WARNING | LOG_LOCAL1, "sdtCheckSequence: Rel?=%d, channel->tot=%d, channel->rel=%d, rxTot=%d, rxRel=%d, oldest_avail=%d",
 //        is_reliable, channel->total_seq, channel->reliable_seq, total_seq, reliable_seq, oldest_avail);
 
   if (diff == 1) { 
     /* normal seq */
-    syslog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: ok"); 
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: ok"); 
     /* update channel object */
     channel->total_seq = total_seq;
     channel->reliable_seq = reliable_seq;
@@ -432,7 +432,7 @@ check_sequence(sdt_channel_t *channel, bool is_reliable, uint32_t total_seq, uin
       /* missing packet(s) check reliable */
       diff = reliable_seq - channel->reliable_seq;
       if ((is_reliable) && (diff == 1))  {
-        syslog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: missing unreliable");
+        acnlog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: missing unreliable");
         /* update channel object */
         channel->total_seq = total_seq;
         channel->reliable_seq = reliable_seq;
@@ -442,10 +442,10 @@ check_sequence(sdt_channel_t *channel, bool is_reliable, uint32_t total_seq, uin
           /* missed reliable packets */
           diff = oldest_avail - channel->reliable_seq;
           if (diff > 1) {
-            syslog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: sequence lost");
+            acnlog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: sequence lost");
             return SEQ_LOST; 
           } else {
-            syslog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: sequence nak");            
+            acnlog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: sequence nak");            
             return SEQ_NAK;/* activate nak system */
           }
         } else {  
@@ -459,10 +459,10 @@ check_sequence(sdt_channel_t *channel, bool is_reliable, uint32_t total_seq, uin
     } else {
       if (diff == 0) 
         /* old packet or duplicate - discard */
-        syslog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: duplicate");
+        acnlog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: duplicate");
         return SEQ_DUPLICATE;
       /* else diff < 0 */
-      syslog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: old packet");
+      acnlog(LOG_DEBUG | LOG_LOCAL1, "check_sequence: old packet");
       return SEQ_OLD_PACKET;
     }
   } 
@@ -488,7 +488,7 @@ sdt_local_init(void)
 {
   my_component = sdtm_add_component(my_xcid, my_xdcid, true);
   if (!my_component) {
-    syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_local_init : failed to get new component");
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_local_init : failed to get new component");
   return;
   }
 
@@ -510,7 +510,7 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
 
   rlp_txbuf_t *tx_buffer;
 
-  syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_tx_join");
+  acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_tx_join");
 
   /* just to make it easier */
   local_channel = local_component->tx_channel;
@@ -518,14 +518,14 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
   /* Sanity check  */
   foreign_member = sdtm_find_member_by_component(local_channel, foreign_component);
   if (foreign_member) {
-    syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_tx_join : already a member -- suppressing join");
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_tx_join : already a member -- suppressing join");
     return; /* Dont add them twice. */
   }  
 
   /* put foreign component in our channel list */
   foreign_member = sdtm_add_member(local_channel, foreign_component);
   if (!foreign_member) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_join : failed to allocate foreign member");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_join : failed to allocate foreign member");
     return;
   }
   foreign_member->mid = sdtm_next_member(local_channel);
@@ -535,7 +535,7 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
   /* Create packet buffer*/
   tx_buffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!tx_buffer) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_join : failed to get new txbuf");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_join : failed to get new txbuf");
     return;
   } 
   buf_start = rlp_init_block(tx_buffer, NULL);
@@ -584,12 +584,12 @@ sdt_tx_join_accept(sdt_member_t *local_member, component_t *local_component, com
   uint8_t *buffer;
   rlp_txbuf_t *tx_buffer;
 
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_join_accept");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_join_accept");
 
   /* Create packet buffer */
   tx_buffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!tx_buffer) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_join_accept : failed to get new txbuf");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_join_accept : failed to get new txbuf");
     return;
   } 
   buf_start = rlp_init_block(tx_buffer, NULL);
@@ -629,12 +629,12 @@ sdt_tx_join_refuse(cid_t foreign_cid, component_t *local_component, neti_addr_t 
   uint8_t *buffer;
   rlp_txbuf_t *txBuffer;
 
-  syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_tx_join_refuse");
+  acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_tx_join_refuse");
 
   /* Create packet buffer */
   txBuffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!txBuffer) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_join_refuse : failed to get new txbuf");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_join_refuse : failed to get new txbuf");
     return;
   } 
   buf_start = rlp_init_block(txBuffer, NULL);
@@ -671,23 +671,23 @@ sdt_tx_leaving(component_t *foreign_component, component_t *local_component, uin
   sdt_member_t  *local_member;
   sdt_channel_t *foreign_channel;
 
-  syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_tx_leaving");
+  acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_tx_leaving");
 
   if (!foreign_component->tx_channel) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_leaving : foreign component without channel");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_leaving : foreign component without channel");
     return;
   }
   foreign_channel = foreign_component->tx_channel;
 
   local_member = sdtm_find_member_by_component(foreign_channel, local_component);
   if (!local_member) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_leaving : failed to find local_member");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_leaving : failed to find local_member");
   }
 
   /* Create packet buffer */
   txBuffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!txBuffer) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_leaving : failed to get new txbuf");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_leaving : failed to get new txbuf");
     return;
   } 
   buf_start = rlp_init_block(txBuffer, NULL);
@@ -721,23 +721,23 @@ sdt_tx_nak(component_t *foreign_component, component_t *local_component, uint32_
   sdt_member_t  *local_member;
   sdt_channel_t *foreign_channel;
   
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_nak");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_nak");
 
   if (!foreign_component->tx_channel) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_nak : foreign component without channel");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_nak : foreign component without channel");
     return;
   }
   foreign_channel = foreign_component->tx_channel;
 
   local_member = sdtm_find_member_by_component(foreign_channel, local_component);
   if (!local_member) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_nak : failed to find local_member");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_nak : failed to find local_member");
   }
 
   /* Create packet buffer */
   txBuffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!txBuffer) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_nak : failed to get new txbuf");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_nak : failed to get new txbuf");
     return;
   } 
   buf_start = rlp_init_block(txBuffer, NULL);
@@ -791,11 +791,11 @@ sdt_rx_join(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *join, uint3
   uint8_t     address_type;
 //  int       allocations = 0;    /*  flags so we can undo */
 
-  syslog(LOG_DEBUG |LOG_LOCAL1, "sdt_rx_join");
+  acnlog(LOG_DEBUG |LOG_LOCAL1, "sdt_rx_join");
 
   /* verify data length */  
   if (data_len < 40) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join: pdu too short");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join: pdu too short");
     return;
   }
 
@@ -809,7 +809,7 @@ sdt_rx_join(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *join, uint3
   /* see if this is for one of our components */
   local_component = sdtm_find_component(local_cid);
   if (!local_component) {
-    syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join: Not addressed to me");
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join: Not addressed to me");
     return; /* not addressed to any local component */
   }
 
@@ -828,12 +828,12 @@ sdt_rx_join(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *join, uint3
   /* if we have reciprocal, then in theory, the channel on this end should have been created */
   if (local_channel_number) {
     if (!local_component->tx_channel) {
-      syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join: local component without channel");
+      acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join: local component without channel");
       sdt_tx_join_refuse(foreign_cid, local_component, transport_addr, join, SDT_REASON_NONSPEC);
       return;
     }
     if (local_component->tx_channel->number != local_channel_number) {
-      syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join: invalid reciprocal channel number");
+      acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join: invalid reciprocal channel number");
       sdt_tx_join_refuse(foreign_cid, local_component, transport_addr, join, SDT_REASON_NO_RECIPROCAL);
       return;
     }
@@ -846,7 +846,7 @@ sdt_rx_join(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *join, uint3
   if (!foreign_component) {
     foreign_component = sdtm_add_component(foreign_cid, NULL, false);
     if (!foreign_component) { /* allocation failure */
-      syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join: failed to add foreign_component");
+      acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join: failed to add foreign_component");
       sdt_tx_join_refuse(foreign_cid, local_component, transport_addr, join, SDT_REASON_RESOURCES);
       return;
 //    } else {
@@ -857,7 +857,7 @@ sdt_rx_join(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *join, uint3
   
   /* foreign channel should not exist yet! */
   if (foreign_component->tx_channel) {
-      syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join: pre-existing foreign channel");
+      acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join: pre-existing foreign channel");
   }
 
   /* add foreign channel */
@@ -876,7 +876,7 @@ sdt_rx_join(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *join, uint3
   joinp += unpack_transport_address(joinp, transport_addr, foreign_channel->downstream, &address_type);
 
   if (address_type == SDT_ADDR_IPV6) {
-    syslog(LOG_WARNING | LOG_LOCAL1, "sdt_rx_join: Unsupported downstream Address Type");
+    acnlog(LOG_WARNING | LOG_LOCAL1, "sdt_rx_join: Unsupported downstream Address Type");
     return;
     //send refuse -- reason ADDR_TYPE - txRefuse
     //FIXME --handle error - txRefuse
@@ -891,7 +891,7 @@ sdt_rx_join(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *join, uint3
   /* add local component to foreign channel */
   local_member = sdtm_add_member(foreign_channel, local_component);
   if (!local_member) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join: failed to add local member");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join: failed to add local member");
     sdt_tx_join_refuse(foreign_cid, local_component, transport_addr, join, SDT_REASON_RESOURCES);
     return;
   }
@@ -936,18 +936,18 @@ sdt_rx_join_accept(cid_t foreign_cid, uint8_t *join_accept, uint32_t data_len)
   uint16_t         local_channel_number;
   uint32_t         rel_seq_number;
   
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_join_accept");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_join_accept");
 
   /* verify data length */
   if (data_len != 26) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_accept: invalid data_len");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_accept: invalid data_len");
     return;
   }
 
   /* verify we are tracking this component */
   foreign_component = sdtm_find_component(foreign_cid);
   if (!foreign_component) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_accept: foreign_component not found");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_accept: foreign_component not found");
     return;
   }
 
@@ -956,13 +956,13 @@ sdt_rx_join_accept(cid_t foreign_cid, uint8_t *join_accept, uint32_t data_len)
   join_accept += UUIDSIZE;
   local_component = sdtm_find_component(local_cid);
   if (!local_component) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_accept: not for me");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_accept: not for me");
     return;
   }
 
   /* sanity check - local component should always have a channel */
   //if (!local_component->tx_channel) {
-  //  syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join_accept: local component without channel");
+  //  acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join_accept: local component without channel");
   //  return;
   //}
 
@@ -970,7 +970,7 @@ sdt_rx_join_accept(cid_t foreign_cid, uint8_t *join_accept, uint32_t data_len)
   local_channel_number = unmarshalU8(join_accept);
   join_accept += sizeof(uint16_t);
   if (local_component->tx_channel->number != local_channel_number) {
-    syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join_accept: local channel number mismatch");
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join_accept: local channel number mismatch");
     return;
   }
 
@@ -978,7 +978,7 @@ sdt_rx_join_accept(cid_t foreign_cid, uint8_t *join_accept, uint32_t data_len)
   foreign_mid = unmarshalU16(join_accept);
   join_accept += sizeof(uint16_t);
   if (!sdtm_find_member_by_mid(local_component->tx_channel, foreign_mid)) {
-    syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join_accept: MID not found");
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join_accept: MID not found");
     return;
   }
 
@@ -991,7 +991,7 @@ sdt_rx_join_accept(cid_t foreign_cid, uint8_t *join_accept, uint32_t data_len)
   join_accept += sizeof(uint16_t);
   if (foreign_component->tx_channel) {
     if (foreign_component->tx_channel->number != foreign_channel_number) {
-      syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join_accept: foreign channel number mismatch");
+      acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_join_accept: foreign channel number mismatch");
       return;
     }
   }
@@ -1017,18 +1017,18 @@ sdt_rx_join_refuse(cid_t foreign_cid, uint8_t *join_refuse, uint32_t data_len)
   uint32_t          rel_seq_num;
   uint8_t           reason_code;
 
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_join_refuse");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_join_refuse");
 
   /* verify data length */
   if (data_len != 23) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_refuse: Invalid data_len");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_refuse: Invalid data_len");
     return;
   }
 
   /* verify we are tracking this component */
   foreign_component = sdtm_find_component(foreign_cid);
   if (!foreign_component) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_refuse: foreign_component not found");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_refuse: foreign_component not found");
     return;
   }
 
@@ -1037,7 +1037,7 @@ sdt_rx_join_refuse(cid_t foreign_cid, uint8_t *join_refuse, uint32_t data_len)
   join_refuse += UUIDSIZE;
   local_component = sdtm_find_component(local_cid);
   if (!local_component) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_refuse: Not for me");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_refuse: Not for me");
   }
 
   /* get channel */
@@ -1057,7 +1057,7 @@ sdt_rx_join_refuse(cid_t foreign_cid, uint8_t *join_refuse, uint32_t data_len)
   join_refuse += sizeof(uint8_t);
 
   //TODO: add reason to text
-  syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_refuse: reason.xxx");
+  acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_join_refuse: reason.xxx");
 
   //TODO: inform application>
   //      cleanup open channels and such?
@@ -1082,18 +1082,18 @@ sdt_rx_leaving(cid_t foreign_cid, uint8_t *leaving, uint32_t data_len)
   sdt_member_t    *foreign_member;
 
 
-  syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_leaving");
+  acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_leaving");
 
   /* verify data length */
   if (data_len != 25) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_leaving: Invalid data_len");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_leaving: Invalid data_len");
     return;
   }
 
   /* verify we are tracking this component */
   foreign_component = sdtm_find_component(foreign_cid);
   if (!foreign_component) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_leaving: foreign_component not found");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_leaving: foreign_component not found");
     return;
   }
 
@@ -1102,7 +1102,7 @@ sdt_rx_leaving(cid_t foreign_cid, uint8_t *leaving, uint32_t data_len)
   leaving += UUIDSIZE;
   local_component = sdtm_find_component(local_cid);
   if (!local_component) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_leaving: local_component not found");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_leaving: local_component not found");
     return;
   }
 
@@ -1110,11 +1110,11 @@ sdt_rx_leaving(cid_t foreign_cid, uint8_t *leaving, uint32_t data_len)
   local_channel_number = unmarshalU16(leaving);
   leaving += sizeof(uint16_t);
   if (!local_component->tx_channel) {
-      syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_leaving: local component without channel");
+      acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_leaving: local component without channel");
       return;
   }
   if (local_component->tx_channel->number != local_channel_number) {
-    syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_leaving: local channel number mismatch");
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_leaving: local channel number mismatch");
     return;
   }
 
@@ -1122,7 +1122,7 @@ sdt_rx_leaving(cid_t foreign_cid, uint8_t *leaving, uint32_t data_len)
   leaving += sizeof(uint16_t);
   foreign_member = sdtm_find_member_by_mid(local_component->tx_channel, foreign_mid);
   if (!foreign_member)  {
-    syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_leaving: member not found");
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_leaving: member not found");
     return;
   }
 
@@ -1153,18 +1153,18 @@ sdt_rx_nak(cid_t foreign_cid, uint8_t *nak, uint32_t data_len)
   uint32_t        last_missed;
   int             num_back;
   
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_nak");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_nak");
 
   /* verify data length */
   if (data_len != 32) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_nak: Invalid data_len");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_nak: Invalid data_len");
     return;
   }
 
   /* verify we are tracking this component */
   foreign_component = sdtm_find_component(foreign_cid);
   if (!foreign_component) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_nak: foreign_component not found");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_nak: foreign_component not found");
     return;
   }
  
@@ -1173,18 +1173,18 @@ sdt_rx_nak(cid_t foreign_cid, uint8_t *nak, uint32_t data_len)
   nak += UUIDSIZE;
   local_component = sdtm_find_component(local_cid);
   if (!local_component) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_nak: local_component not found");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_nak: local_component not found");
     return;
   }
   
   local_channel_number = unmarshalU16(nak);
   nak += sizeof(uint16_t);
   if (!local_component->tx_channel) {
-      syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_nak: local component without channel");
+      acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_nak: local component without channel");
       return;
   }
   if (local_component->tx_channel->number != local_channel_number) {
-    syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_nak: local channel number mismatch");
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_nak: local channel number mismatch");
     return;
   }
 
@@ -1199,7 +1199,7 @@ sdt_rx_nak(cid_t foreign_cid, uint8_t *nak, uint32_t data_len)
 
   num_back = local_component->tx_channel->reliable_seq - first_missed;
   if (first_missed < local_component->tx_channel->oldest_avail)  {
-    syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_nak: Requested Wrappers not avail");
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_nak: Requested Wrappers not avail");
     return;
   }
   
@@ -1264,11 +1264,11 @@ sdt_rx_wrapper(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *wrapper,
 
   UNUSED_ARG(transport_addr);
 
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_wrapper");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_wrapper");
 
   /* verify length */
   if (data_len < 23) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_wrapper: Invalid data_len");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_wrapper: Invalid data_len");
     return;
   }
   data_end = wrapper + data_len;
@@ -1276,12 +1276,12 @@ sdt_rx_wrapper(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *wrapper,
   /* verify we are tracking this component */
   foreign_component = sdtm_find_component(foreign_cid);
   if (!foreign_component)  {
-    syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_wrapper: Not tracking this component");
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_wrapper: Not tracking this component");
     return;
   }
 
   if (!foreign_component->tx_channel) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_wrapper : foreign component without channel");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_wrapper : foreign component without channel");
     return;
   }
 
@@ -1328,11 +1328,11 @@ sdt_rx_wrapper(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *wrapper,
   /* check the sequencing */
   switch(check_sequence(foreign_channel, is_reliable, total_seq, reliable_seq, oldest_avail)) {
     case SEQ_VALID :
-      syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_wrapper: Sequence correct");
+      acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_wrapper: Sequence correct");
       break; /* continue on with this packet */
     case SEQ_NAK :
       /* initiate nak processing */
-      syslog(LOG_WARNING | LOG_LOCAL1, "sdt_rx_wrapper: Missing wrapper(s) detected - Sending NAK");
+      acnlog(LOG_WARNING | LOG_LOCAL1, "sdt_rx_wrapper: Missing wrapper(s) detected - Sending NAK");
       local_member = foreign_channel->member_list;
       while (local_member) {
         sdt_tx_nak(foreign_component, local_member->component, reliable_seq);
@@ -1341,17 +1341,17 @@ sdt_rx_wrapper(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *wrapper,
       return;
       break;
     case SEQ_OLD_PACKET :
-      syslog(LOG_INFO | LOG_LOCAL1, "sdt_rx_wrapper: Old (Out of sequence) wrapper detected - Discarding");
+      acnlog(LOG_INFO | LOG_LOCAL1, "sdt_rx_wrapper: Old (Out of sequence) wrapper detected - Discarding");
       /* Discard */
       return;
       break;
     case SEQ_DUPLICATE :
-      syslog(LOG_INFO | LOG_LOCAL1, "sdt_rx_wrapper: Duplicate wrapper detected - Discarding");
+      acnlog(LOG_INFO | LOG_LOCAL1, "sdt_rx_wrapper: Duplicate wrapper detected - Discarding");
       /* Discard */
       return;      
       break;
     case SEQ_LOST : 
-      syslog(LOG_INFO | LOG_LOCAL1, "sdt_rx_wrapper: Lost Reliable Wrappers not available - LOST SEQUENCE");
+      acnlog(LOG_INFO | LOG_LOCAL1, "sdt_rx_wrapper: Lost Reliable Wrappers not available - LOST SEQUENCE");
       /* Discard and send sequence lost message to leader */
       local_member = foreign_channel->member_list;
       while (local_member) {
@@ -1380,7 +1380,7 @@ sdt_rx_wrapper(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *wrapper,
   pdup = wrapperp;
 
 	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
-		syslog(LOG_ERR | LOG_LOCAL1,"sdt_rx_wrapper: illegal first PDU flags");
+		acnlog(LOG_ERR | LOG_LOCAL1,"sdt_rx_wrapper: illegal first PDU flags");
 		return;
 	}
 
@@ -1398,7 +1398,7 @@ sdt_rx_wrapper(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *wrapper,
     pdup += getpdulen(pdup);
     /* fail if outside our packet */
 		if (pdup >= data_end) {
-			syslog(LOG_ERR | LOG_LOCAL1,"sdt_rx_wrapper: packet length error");
+			acnlog(LOG_ERR | LOG_LOCAL1,"sdt_rx_wrapper: packet length error");
 			return;
 		}
 
@@ -1430,7 +1430,7 @@ sdt_rx_wrapper(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *wrapper,
       if ((local_mid == 0xFFF) || (local_member->mid == local_mid)) {
         if (association) {
           if (local_member->component->tx_channel->number != association) {
-            syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_wrapper: association channel not found");
+            acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_wrapper: association channel not found");
             return;
           }
         }
@@ -1439,7 +1439,7 @@ sdt_rx_wrapper(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *wrapper,
         } //else {
 //        rx_handler = sdt_get_rx_handler(clientProtocol,ref)    
 //        if(!rx_handler) {
-//          syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_wrapper: Unknown Vector - skip");
+//          acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_wrapper: Unknown Vector - skip");
 //        } else {
 //          rx_handler(remoteLeader->component,member->component,
 //          remoteChannel, clientPdu.data, clientPdu.dataLength, ref);
@@ -1450,7 +1450,7 @@ sdt_rx_wrapper(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *wrapper,
     }
   }
 
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_wrapper: Complete");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_wrapper: Complete");
   return;
 }
 
@@ -1475,19 +1475,19 @@ sdt_tx_ack(component_t *local_component, component_t *foreign_component)
   rlp_txbuf_t   *tx_buffer;
   sdt_channel_t *foreign_channel;
 
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_ack");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_ack");
 
   /* get local member in foreign channel */
   foreign_member = sdtm_find_member_by_component(local_component->tx_channel, foreign_component);
   if (!foreign_member) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_ack : failed to get foreign_member");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_ack : failed to get foreign_member");
     return;
   }
     
   /* Create packet buffer */
   tx_buffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!tx_buffer) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_ack : failed to get new txbuf");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_ack : failed to get new txbuf");
     return;
   } 
   wrapper = rlp_init_block(tx_buffer, NULL);
@@ -1534,19 +1534,19 @@ sdt_tx_leave(component_t *local_component, component_t *foreign_component)
   rlp_txbuf_t   *tx_buffer;
   sdt_channel_t *foreign_channel;
 
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_leave");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_leave");
 
   /* get local member in foreign channel */
   foreign_member = sdtm_find_member_by_component(local_component->tx_channel, foreign_component);
   if (!foreign_member) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_leave : failed to get foreign_member");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_leave : failed to get foreign_member");
     return;
   }
     
   /* Create packet buffer */
   tx_buffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!tx_buffer) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_leave : failed to get new txbuf");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_leave : failed to get new txbuf");
     return;
   } 
   wrapper = rlp_init_block(tx_buffer, NULL);
@@ -1591,19 +1591,19 @@ sdt_tx_connect(component_t *local_component, component_t *foreign_component, uin
   rlp_txbuf_t   *tx_buffer;
   sdt_channel_t *foreign_channel;
 
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_connect");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_connect");
 
   /* get local member in foreign channel */
   foreign_member = sdtm_find_member_by_component(local_component->tx_channel, foreign_component);
   if (!foreign_member) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_connect : failed to get foreign_member");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_connect : failed to get foreign_member");
     return;
   }
     
   /* Create packet buffer */
   tx_buffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!tx_buffer) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_connect : failed to get new txbuf");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_connect : failed to get new txbuf");
     return;
   } 
   wrapper = rlp_init_block(tx_buffer, NULL);
@@ -1649,19 +1649,19 @@ sdt_tx_connect_accept(component_t *local_component, component_t *foreign_compone
   rlp_txbuf_t   *tx_buffer;
   sdt_channel_t *foreign_channel;
 
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_connect_accept");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_connect_accept");
 
   /* get local member in foreign channel */
   foreign_member = sdtm_find_member_by_component(local_component->tx_channel, foreign_component);
   if (!foreign_member) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_connect_accept : failed to get foreign_member");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_connect_accept : failed to get foreign_member");
     return;
   }
     
   /* Create packet buffer */
   tx_buffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!tx_buffer) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_connect_accept : failed to get new txbuf");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_connect_accept : failed to get new txbuf");
     return;
   } 
   wrapper = rlp_init_block(tx_buffer, NULL);
@@ -1709,19 +1709,19 @@ sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, 
   rlp_txbuf_t   *tx_buffer;
   sdt_channel_t *foreign_channel;
 
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_disconnect");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_tx_disconnect");
 
   /* get local member in foreign channel */
   foreign_member = sdtm_find_member_by_component(local_component->tx_channel, foreign_component);
   if (!foreign_member) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_disconnect : failed to get foreign_member");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_disconnect : failed to get foreign_member");
     return;
   }
     
   /* Create packet buffer */
   tx_buffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!tx_buffer) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_tx_disconnect : failed to get new txbuf");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_tx_disconnect : failed to get new txbuf");
     return;
   } 
   wrapper = rlp_init_block(tx_buffer, NULL);
@@ -1767,11 +1767,11 @@ sdt_rx_ack(component_t *local_component, component_t *foreign_component, uint8_t
   UNUSED_ARG(local_component);
   UNUSED_ARG(foreign_component);
   
-  syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_ack");
+  acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_ack");
 
   /* verify data length */
   if (data_len != 4) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_ack: Invalid data_len");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_ack: Invalid data_len");
     return;
   }
 
@@ -1800,11 +1800,11 @@ sdt_rx_leave(component_t *local_component, component_t *foreign_component, uint8
   UNUSED_ARG(foreign_component);
   UNUSED_ARG(data);
 
-  syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_leave");
+  acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_leave");
 
   /* verify data length */  
   if (data_len != 0) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_leave: Invalid data_len");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_leave: Invalid data_len");
     return;
   }
 
@@ -1813,7 +1813,7 @@ sdt_rx_leave(component_t *local_component, component_t *foreign_component, uint8
   //sdt_tx_leaving(remoteLeader, remoteChannel, member, SDT_REASON_ASKED_TO_LEAVE);
   // wrf - add support for jiffies?
   //member->expiresAt = 0;//jiffies; //expire the member
-  //syslog(LOG_DEBUG | LOG_LOCAL1, "rxLeave I'm feeling better");
+  //acnlog(LOG_DEBUG | LOG_LOCAL1, "rxLeave I'm feeling better");
 }
 
 /*****************************************************************************/
@@ -1833,11 +1833,11 @@ sdt_rx_connect(component_t *local_component, component_t *foreign_component, uin
   UNUSED_ARG(foreign_component);
   UNUSED_ARG(data);
   
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_connect");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_connect");
 
   /* verify data length */  
   if (data_len != 4) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_connect: Invalid data_len");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_connect: Invalid data_len");
     return;
   }
 
@@ -1870,11 +1870,11 @@ sdt_rx_connect_accept(component_t *local_component, component_t *foreign_compone
   UNUSED_ARG(foreign_component);
   UNUSED_ARG(data);
 
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_connect_accept");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_rx_connect_accept");
 
   /* verify data length */  
   if (data_len != 4) {
-    syslog(LOG_ERR | LOG_LOCAL1, "sdt_rx_connect_accept: Invalid data_len");
+    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_rx_connect_accept: Invalid data_len");
     return;
   }
 
@@ -1884,7 +1884,7 @@ sdt_rx_connect_accept(component_t *local_component, component_t *foreign_compone
   //TODO wrf implment DMB
   /*
   if (protocol == PROTO_DMP) {
-    syslog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_connect_accept: WooHoo pointless Session established");
+    acnlog(LOG_DEBUG | LOG_LOCAL1, "sdt_rx_connect_accept: WooHoo pointless Session established");
     member->isConnected = 1;
   }
   */
@@ -1904,7 +1904,7 @@ sdt_rx_connect_accept(component_t *local_component, component_t *foreign_compone
 uint8_t *
 sdt_format_client_block(uint8_t *client_block, uint16_t foreign_mid, uint32_t protocol, uint16_t association)
 {
-  syslog(LOG_DEBUG | LOG_LOCAL1,"sdt_format_client_block");
+  acnlog(LOG_DEBUG | LOG_LOCAL1,"sdt_format_client_block");
 
   /* skip flags and length for now */
   client_block += 2; 
@@ -1983,7 +1983,7 @@ pack_transport_address(uint8_t *data, neti_addr_t *transport_addr, int type)
       return datap - data;
       break;
     default :
-      syslog(LOG_DEBUG | LOG_LOCAL1,"pack_transport_address: upsupported address type");
+      acnlog(LOG_DEBUG | LOG_LOCAL1,"pack_transport_address: upsupported address type");
   }
   return 0;
 }
@@ -2013,10 +2013,10 @@ unpack_transport_address(uint8_t *data, neti_addr_t *transport_addr, neti_addr_t
       datap += sizeof(uint32_t);
       break;
     case SDT_ADDR_IPV6 :
-      syslog(LOG_DEBUG | LOG_LOCAL1,"unpack_transport_address: IPV6 not supported");
+      acnlog(LOG_DEBUG | LOG_LOCAL1,"unpack_transport_address: IPV6 not supported");
       break;
     default :
-      syslog(LOG_DEBUG | LOG_LOCAL1,"unpack_transport_address: upsupported address type");
+      acnlog(LOG_DEBUG | LOG_LOCAL1,"unpack_transport_address: upsupported address type");
   }
   
   return datap - data;
@@ -2051,7 +2051,7 @@ sdt_tick(void)
 //  /* Create packet buffer */
 //  currentWrapper.txBuffer = rlpm_newtxbuf(DEFAULT_MTU, localComp->cid);
 //  if (!currentWrapper.txBuffer) {
-//    syslog(LOG_ERR | LOG_LOCAL1, "sdt_format_wrapper : failed to get new txbuf");
+//    acnlog(LOG_ERR | LOG_LOCAL1, "sdt_format_wrapper : failed to get new txbuf");
 //    return 3;
 //  } 
 

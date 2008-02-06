@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "netiface.h"
 #include "rlp.h"
 #include "rlpmem.h"
-#include "syslog.h"
+#include "acnlog.h"
 
 //extern uint8_t *neti_newPacket(int size);
 

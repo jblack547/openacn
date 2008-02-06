@@ -213,6 +213,43 @@ as required.
 
 /************************************************************************/
 /*
+  Logging
+  
+  Set CONFIG_ACNLOG to determine how messages are logged.
+  Set CONFIG_LOGLEVEL to determine what level of messages are logged.
+  
+  CONFIG_ACNLOG options are:
+  
+  ACNLOG_NONE		//Logging is compiled out
+  ACNLOG_SYSLOG		//Log using POSIX Syslog
+  ACNLOG_STDOUT		//Log to standard output (default)
+  ACNLOG_STDERR		//Log to standard error
+  
+  Syslog handles logging levels itself and CONFIG_LOGLEVEL is ignored.
+  For other options Messages up to CONFIG_LOGLEVEL are logged & levels 
+  beyond this are ignored. Possible values are (in increasing order). 
+
+  LOG_EMERG   
+  LOG_ALERT   
+  LOG_CRIT    
+  LOG_ERR     
+  LOG_WARNING 
+  LOG_NOTICE  
+  LOG_INFO    
+  LOG_DEBUG  
+ 
+*/
+#ifndef CONFIG_ACNLOG
+#define CONFIG_ACNLOG ACNLOG_STDOUT
+#endif
+
+#ifndef CONFIG_LOGLEVEL
+#define CONFIG_LOGLEVEL LOG_CRIT
+#endif
+
+
+/************************************************************************/
+/*
   ACN Protocols
 */
 /*

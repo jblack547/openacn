@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 static const char *rcsid __attribute__ ((unused)) =
    "$Id$";
 
-/* syslog facility LOG_LOCAL0 is used for ACN:RLP */
+/* acnlog facility LOG_LOCAL0 is used for ACN:RLP */
 
 #include <string.h>
 #include "opt.h"
@@ -47,8 +47,8 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "acn_rlp.h"
 
 #include "rlpmem.h"
-//#include "syslog.h"
-#define syslog(x, m) printf(m)
+//#include "acnlog.h"
+#define acnlog(x, m) printf(m)
 
 #define DEBUGLEVEL 1
 #define ACN_DEBUG(level, x) if (level <= DEBUGLEVEL) x
@@ -568,13 +568,13 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 	pdup = data;
 	if(dataLen < (int)(RLP_PREAMBLE_LENGTH + RLP_FIRSTPDU_MINLENGTH + RLP_POSTAMBLE_LENGTH))
 	{
-		syslog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: Packet too short to be valid");
+		acnlog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: Packet too short to be valid");
 		return;	
 	}
 	/* Check and strip off EPI 17 preamble  */
 	if(memcmp(pdup, rlpPreamble, RLP_PREAMBLE_LENGTH))
 	{
-		syslog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: Invalid Preamble");
+		acnlog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: Invalid Preamble");
 		return;
 	}
 	pdup += RLP_PREAMBLE_LENGTH;
@@ -588,7 +588,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 	/* first PDU must have all fields */
 	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG))
 	{
-		syslog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: illegal first PDU flags");
+		acnlog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: illegal first PDU flags");
 		return;
 	}
 
@@ -603,7 +603,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 		pdup += getpdulen(pdup);	/* pdup now points to end */
 		if (pdup > data + dataLen)	/* sanity check */
 		{
-			syslog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: packet length error");
+			acnlog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: packet length error");
 			return;
 		}
 		if (flags & VECTOR_bFLAG)
@@ -618,7 +618,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 		}
 		if (pp > pdup)
 		{
-			syslog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: pdu length error");
+			acnlog(LOG_ERR|LOG_LOCAL0,"rlp_process_packet: pdu length error");
 			return;
 		}
 		if (flags & DATA_bFLAG)

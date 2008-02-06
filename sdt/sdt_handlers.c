@@ -39,7 +39,7 @@ Implementation of a client protocol handler list for SDT
 */ 
 #include "sdt_handlers.h"
 #include "opt.h"
-#include <syslog.h>
+#include <acnlog.h>
 #include <stdlib.h>
 
 #ifdef CONFIG_SDTMEM_STATIC
@@ -91,14 +91,14 @@ sdt_register_handlers(
 {
 	struct sdt_handler_s *h;
 	if(_find_handler(p)){
-        	syslog(LOG_ERR|LOG_LOCAL1,"sdt_register_handlers: Handler already registered. Deregister first.");
+        	acnlog(LOG_ERR|LOG_LOCAL1,"sdt_register_handlers: Handler already registered. Deregister first.");
 		return(1); /* TODO decent sane error handling */	
 	}
 
 	h = _find_handler(PROTO_NONE); /* First empty slot. */
 	if(!h)
 		{
-			syslog(LOG_ERR|LOG_LOCAL1,"sdt_register_handlers: Handler cannot be registered.");
+			acnlog(LOG_ERR|LOG_LOCAL1,"sdt_register_handlers: Handler cannot be registered.");
 			return(2); /* TODO error handling */
 		}
 	h->protocol = p;
@@ -118,7 +118,7 @@ sdt_deregister_handlers(protocolID_t p)
 	h = _find_handler(PROTO_NONE); /* First empty slot. */
 	if(!h)
 		{
-			syslog(LOG_ERR|LOG_LOCAL1,"sdt_deregister_handlers: Handler cannot be deregistered.");
+			acnlog(LOG_ERR|LOG_LOCAL1,"sdt_deregister_handlers: Handler cannot be deregistered.");
 			return(3); 
 		}
 	h->protocol = PROTO_NONE;
@@ -245,7 +245,7 @@ sdt_init_handlers(void)
 {
 	handlers = _new_handler();
 	if(!handlers){
-		syslog(LOG_ERR|LOG_LOCAL1,"init_sdt_handlers: Out of memory. Cannot allocate handlers.");
+		acnlog(LOG_ERR|LOG_LOCAL1,"init_sdt_handlers: Out of memory. Cannot allocate handlers.");
 		return;
 	}
 	handlers->next = handlers; /* point to self */
@@ -304,7 +304,7 @@ sdt_register_handlers(
 	struct sdt_handler_s *h = _new_handler(); 
 
 	if(!h){
-		syslog(LOG_ERR|LOG_LOCAL1,"sdtRegisterHandlers: Cannot allocate memory for new handler.");
+		acnlog(LOG_ERR|LOG_LOCAL1,"sdtRegisterHandlers: Cannot allocate memory for new handler.");
 		return(-1);
 	} 
 	_insert_handler(h);
@@ -327,7 +327,7 @@ sdt_deregister_handlers(protocolID_t p)
 	h = _find_handler(p);
 	
 	if(!h){
-		syslog(LOG_ERR|LOG_LOCAL1,"sdt_deregister_handlers, Handler for protocol %d not found.",(int)p);
+		acnlog(LOG_ERR|LOG_LOCAL1,"sdt_deregister_handlers, Handler for protocol %d not found.",(int)p);
 		return 1; 
 	}
 	_delete_handler(h);
