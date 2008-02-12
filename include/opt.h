@@ -237,7 +237,22 @@ as required.
   LOG_NOTICE  
   LOG_INFO    
   LOG_DEBUG  
- 
+
+  The syslog() macro is formated to match the POSIX version:
+    extern void syslog(int, const char *, ...);
+  Where int is the combination of facility and error level (or'd),
+  const * is a formating string and ... is a list of argument.
+  This allows for a function simialr to the standard printf
+  
+  With ACNLOG_STDOUT, the macro further defines bit 8 as an enable bit set by ACN_DEBUG_ON
+  By setting the module level defines below, messages can enabled on a module by module basis.
+  i.e.
+    acn_log(DEBUG_RLP, "I got an error")'
+    anc_log(DEBUG_RLP, "I got %d errors", error_count);
+  
+  Log levels can still be added:
+    acn_log(DEBUG_RLP | LOG_INFO, "I do not like errors");
+  and would only print if CONFIG_LOGLEVEL was LOG_INFO or higher.
 */
 #ifndef CONFIG_ACNLOG
 #define CONFIG_ACNLOG ACNLOG_STDOUT
@@ -245,6 +260,27 @@ as required.
 
 #ifndef CONFIG_LOGLEVEL
 #define CONFIG_LOGLEVEL LOG_CRIT
+#endif
+
+#define ACN_DEBUG_ON  0x80
+#define ACN_DEBUG_OFF 0
+#ifndef DEBUG_RLP
+  #define DEBUG_RLP ACN_DEBUG_OFF
+#endif
+#ifndef DEBUG_SDT
+  #define DEBUG_SDT ACN_DEBUG_OFF
+#endif
+#ifndef DEBUG_NETI
+  #define DEBUG_NETI ACN_DEBUG_OFF
+#endif
+#ifndef DEBUG_SLP
+  #define DEBUG_SLP ACN_DEBUG_OFF
+#endif
+#ifndef DEBUG_DMP
+  #define DEBUG_DMP ACN_DEBUG_OFF
+#endif
+#ifndef DEBUG_MISC
+  #define DEBUG_MISC ACN_DEBUG_OFF
 #endif
 
 

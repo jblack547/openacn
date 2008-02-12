@@ -47,6 +47,7 @@ Many of the marshal/unmarshal macros evaluate their arguments multiple times
 */
 
 #if CONFIG_MARSHAL_INLINE
+#include "string.h"
 
 static inline uint8_t *marshalU8(uint8_t *data, uint8_t u8)
 {

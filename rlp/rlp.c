@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 static const char *rcsid __attribute__ ((unused)) =
    "$Id$";
 
-/* acnlog facility LOG_RLP is used for ACN:RLP */
+/* acnlog facility DEBUG_RLP is used for ACN:RLP */
 
 #include <string.h>
 #include "opt.h"
@@ -48,9 +48,6 @@ static const char *rcsid __attribute__ ((unused)) =
 
 #include "rlpmem.h"
 #include "acnlog.h"
-
-#define DEBUGLEVEL 1
-#define ACN_DEBUG(level, x) if (level <= DEBUGLEVEL) x
 
 #define NUM_PACKET_BUFFERS	16
 #define BUFFER_ROLLOVER_MASK  (NUM_PACKET_BUFFERS - 1)
@@ -433,20 +430,20 @@ rlp_open_netsocket(localaddr_t localaddr)
 {
 	struct netsocket_s *netsock;
 
-	ACN_DEBUG(4, printf("rlp_open_netsocket: calling rlpm_find_netsock: %d\n", LCLAD_PORT(localaddr)));
+	acnlog(DEBUG_RLP, "rlp_open_netsocket: calling rlpm_find_netsock: %d\n", LCLAD_PORT(localaddr));
 	if (LCLAD_PORT(localaddr) != NETI_PORT_EPHEM && (netsock = rlpm_find_netsock(localaddr))) return netsock;	/* found existing matching socket */
 
-	ACN_DEBUG(4, printf("rlp_open_netsocket: calling rlpm_new_netsock\n"));
+	acnlog(DEBUG_RLP, "rlp_open_netsocket: calling rlpm_new_netsock\n");
 	if ((netsock = rlpm_new_netsock()) == NULL) return NULL;		/* cannot allocate a new one */
 
-	ACN_DEBUG(4, printf("rlp_open_netsocket: calling neti_udp_open\n"));
+	acnlog(DEBUG_RLP, "rlp_open_netsocket: calling neti_udp_open\n");
 	if (neti_udp_open(netsock, localaddr) != 0)
 	{
-		ACN_DEBUG(4, printf("rlp_open_netsocket: calling rlpm_free_netsock\n"));
+		acnlog(DEBUG_RLP, "rlp_open_netsocket: calling rlpm_free_netsock\n");
 		rlpm_free_netsock(netsock);	/* UDP open fails */
 		return NULL;
 	}
-  ACN_DEBUG(4, printf("rlp_open_netsocket: port=%d\n", ntohs(NSK_PORT(*netsock))));
+  acnlog(DEBUG_RLP, "rlp_open_netsocket: port=%d\n", ntohs(NSK_PORT(*netsock)));
 
 	return netsock;
 }
@@ -567,13 +564,13 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 	pdup = data;
 	if(dataLen < (int)(RLP_PREAMBLE_LENGTH + RLP_FIRSTPDU_MINLENGTH + RLP_POSTAMBLE_LENGTH))
 	{
-		acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: Packet too short to be valid");
+		acnlog(LOG_ERR|DEBUG_RLP,"rlp_process_packet: Packet too short to be valid");
 		return;	
 	}
 	/* Check and strip off EPI 17 preamble  */
 	if(memcmp(pdup, rlpPreamble, RLP_PREAMBLE_LENGTH))
 	{
-		acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: Invalid Preamble");
+		acnlog(LOG_ERR|DEBUG_RLP,"rlp_process_packet: Invalid Preamble");
 		return;
 	}
 	pdup += RLP_PREAMBLE_LENGTH;
@@ -587,7 +584,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 	/* first PDU must have all fields */
 	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG))
 	{
-		acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: illegal first PDU flags");
+		acnlog(LOG_ERR|DEBUG_RLP,"rlp_process_packet: illegal first PDU flags");
 		return;
 	}
 
@@ -602,7 +599,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 		pdup += getpdulen(pdup);	/* pdup now points to end */
 		if (pdup > data + dataLen)	/* sanity check */
 		{
-			acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: packet length error");
+			acnlog(LOG_ERR|DEBUG_RLP,"rlp_process_packet: packet length error");
 			return;
 		}
 		if (flags & VECTOR_bFLAG)
@@ -617,7 +614,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 		}
 		if (pp > pdup)
 		{
-			acnlog(LOG_ERR | LOG_RLP, "rlp_process_packet: pdu length error");
+			acnlog(LOG_ERR | DEBUG_RLP, "rlp_process_packet: pdu length error");
 			return;
 		}
 		if (flags & DATA_bFLAG)

@@ -38,6 +38,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __acnlog_h
 #define __acnlog_h
 
+#include "opt.h"
+
 // wrf - borrowed from FreeBSD  
 /* facility codes */
 #define LOG_KERN        (0<<3)  /* kernel messages */
@@ -82,13 +84,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*
   ACN specific defines
 */
-#define LOG_RLP LOG_LOCAL0
-#define LOG_SDT LOG_LOCAL1
-#define LOG_NETI LOG_LOCAL2
-#define LOG_SLP LOG_LOCAL3
-#define LOG_DMP LOG_LOCAL4
-#define LOG_MISC LOG_LOCAL5
-
 #define ACNLOG_NONE 0
 #define ACNLOG_SYSLOG 1
 #define ACNLOG_STDOUT 2
@@ -111,7 +106,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define acnopenlog(ident, option, facility)
 #define acncloselog()
-#define acnlog(priority, ...) if (((priority) & 7) <= CONFIG_LOGLEVEL) printf(__VA_ARGS__)
+#define acnlog(priority, format, ...) if (((priority) & ACN_DEBUG_ON) && (((priority) & 7) <= CONFIG_LOGLEVEL)) printf(format"\n", ##__VA_ARGS__)
 
 #elif CONFIG_ACNLOG == ACNLOG_STDERR
 

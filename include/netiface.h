@@ -263,6 +263,7 @@ extern __inline__ void hostToTransportAddr(const neti_addr_t *hostaddr, uint8_t 
 
 #if CONFIG_STACK_LWIP
   UNUSED_ARG(hostaddr);
+  UNUSED_ARG(transaddr);
 	//memcpy(transaddr+1, &hostaddr->sin_port, 2);
 	//memcpy(transaddr+3, &hostaddr->sin_addr, 4);
 #endif /* CONFIG_STACK_LWIP */

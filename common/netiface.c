@@ -314,9 +314,7 @@ neti_send_to(
   struct pbuf *pkt;  /* Outgoing packet */
   int    result;
 
-  UNUSED_ARG(netsock);
-
-  if (!netsock->nativesock)
+  if (!netsock || !netsock->nativesock)
     return 0;
 
   pkt = pbuf_alloc(PBUF_TRANSPORT, datalen, PBUF_POOL);

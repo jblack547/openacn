@@ -175,7 +175,8 @@ void     sdt_rx_handler(uint8_t *data, int data_len, void *ref, neti_addr_t *rem
 /* BASE MESSAGES */
 void     sdt_tx_join(component_t *local_component, component_t *foreign_component);
 void     sdt_tx_join_accept(sdt_member_t *local_member, component_t *local_component, component_t *foreign_component);
-void     sdt_tx_join_refuse(cid_t foreign_cid, component_t *local_component, neti_addr_t *transport_addr, uint8_t *join, uint8_t reason);
+void     sdt_tx_join_refuse(cid_t foreign_cid, component_t *local_component, neti_addr_t *transport_addr, 
+           uint16_t foreign_channel_num, uint16_t local_mid, uint32_t foreign_rel_seq, uint8_t reason);
 void     sdt_tx_leaving(component_t *foreign_component, component_t *local_component, uint8_t reason);
 void     sdt_tx_nak(component_t *foreign_component, component_t *local_component, uint32_t last_missed);
 
