@@ -244,14 +244,21 @@ as required.
   const * is a formating string and ... is a list of argument.
   This allows for a function simialr to the standard printf
   
-  With ACNLOG_STDOUT, the macro further defines bit 8 as an enable bit set by ACN_DEBUG_ON
-  By setting the module level defines below, messages can enabled on a module by module basis.
-  i.e.
-    acn_log(DEBUG_RLP, "I got an error")'
-    anc_log(DEBUG_RLP, "I got %d errors", error_count);
+  The normal facility values have been extended with LOG_NONE which
+  will disable logging. This allows module level control.
+
+  Log are disable by default (LOG_NONE).  To enable them, changed the module 
+  level define to the desired facility in user_opt.h
+  
+  #define RLP_LOG LOCAL0
+
+  Then to send messages:
+
+    acn_log(RLP_LOG, "I got an error")'
+    anc_log(RLP_LOG, "I got %d errors", error_count);
   
   Log levels can still be added:
-    acn_log(DEBUG_RLP | LOG_INFO, "I do not like errors");
+    acn_log(RLP_LOG | LOG_INFO, "I do not like errors");
   and would only print if CONFIG_LOGLEVEL was LOG_INFO or higher.
 */
 #ifndef CONFIG_ACNLOG
@@ -262,25 +269,27 @@ as required.
 #define CONFIG_LOGLEVEL LOG_CRIT
 #endif
 
-#define ACN_DEBUG_ON  0x80
-#define ACN_DEBUG_OFF 0
-#ifndef DEBUG_RLP
-  #define DEBUG_RLP ACN_DEBUG_OFF
+#define LOG_NONE (-1)
+#ifndef LOG_RLP
+  #define LOG_RLP LOG_NONE
 #endif
-#ifndef DEBUG_SDT
-  #define DEBUG_SDT ACN_DEBUG_OFF
+#ifndef LOG_SDT
+  #define LOG_SDT LOG_NONE
 #endif
-#ifndef DEBUG_NETI
-  #define DEBUG_NETI ACN_DEBUG_OFF
+#ifndef LOG_SDTM
+  #define LOG_SDT LOG_NONE
 #endif
-#ifndef DEBUG_SLP
-  #define DEBUG_SLP ACN_DEBUG_OFF
+#ifndef LOG_NETI
+  #define LOG_NETI LOG_NONE
 #endif
-#ifndef DEBUG_DMP
-  #define DEBUG_DMP ACN_DEBUG_OFF
+#ifndef LOG_SLP
+  #define LOG_SLP LOG_NONE
 #endif
-#ifndef DEBUG_MISC
-  #define DEBUG_MISC ACN_DEBUG_OFF
+#ifndef LOG_DMP
+  #define LOG_DMP LOG_NONE
+#endif
+#ifndef LOG_MISC
+  #define LOG_MISC LOG_NONE
 #endif
 
 

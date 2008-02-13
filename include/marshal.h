@@ -99,7 +99,7 @@ static inline uint16_t unmarshalU16(const uint8_t *data)
 
 static inline uint32_t unmarshalU32(const uint8_t *data)
 {
-	return (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[0];
+	return (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
 }
 
 static inline uint8_t *unmarshalUUID(const uint8_t *data, uint8_t *uuid)

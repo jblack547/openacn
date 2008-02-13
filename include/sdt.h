@@ -135,13 +135,14 @@ typedef struct sdt_channel_s
 {
   uint16_t      number;
   uint16_t      available_mid;
-  neti_addr_t  *downstream;
+  neti_addr_t   destination_addr;      // channel outbound address (multicast)
+  neti_addr_t   channel_addr;         // channel source address
   bool          is_local;
   uint32_t      total_seq;
   uint32_t      reliable_seq;
   uint32_t      oldest_avail;
   sdt_member_t *member_list;
-  struct netsocket_s *sock;
+  struct netsocket_s *sock;           
 } sdt_channel_t;
 
 /* ok, just to make me not have to type stuct all the time */

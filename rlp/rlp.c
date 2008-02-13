@@ -177,6 +177,8 @@ int
 rlp_init(void)
 {	
 	static bool initialized = 0;
+  
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_init");
 
 	if (!initialized)
 	{
@@ -235,6 +237,8 @@ uint8_t *
 rlp_init_block(struct rlp_txbuf_s *buf, uint8_t *datap)
 {
 	uint8_t *blockstart;
+
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_init_block");
 	
 	blockstart = bufdatap(buf);
 
@@ -305,6 +309,8 @@ rlp_add_pdu(
 {
 	uint16_t flags;
 	uint8_t *pdup, *pduend;
+
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_add_pdu");
 
 	pdup = bufhdrp(buf)->blockend;	/* end of last PDU if any */
 	if (pdup == NULL)	/* first PDU of block? */
@@ -417,6 +423,8 @@ rlp_send_block(
 	neti_addr_t *destaddr
 )
 {
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_send_block");
+
 	return neti_send_to(netsock, destaddr, bufhdrp(buf)->blockstart, bufhdrp(buf)->blockend - bufhdrp(buf)->blockstart);
 }
 
@@ -430,20 +438,20 @@ rlp_open_netsocket(localaddr_t localaddr)
 {
 	struct netsocket_s *netsock;
 
-	acnlog(DEBUG_RLP, "rlp_open_netsocket: calling rlpm_find_netsock: %d\n", LCLAD_PORT(localaddr));
+	acnlog(LOG_RLP, "rlp_open_netsocket: calling rlpm_find_netsock: %d", LCLAD_PORT(localaddr));
 	if (LCLAD_PORT(localaddr) != NETI_PORT_EPHEM && (netsock = rlpm_find_netsock(localaddr))) return netsock;	/* found existing matching socket */
 
-	acnlog(DEBUG_RLP, "rlp_open_netsocket: calling rlpm_new_netsock\n");
+	acnlog(LOG_RLP, "rlp_open_netsocket: calling rlpm_new_netsock");
 	if ((netsock = rlpm_new_netsock()) == NULL) return NULL;		/* cannot allocate a new one */
 
-	acnlog(DEBUG_RLP, "rlp_open_netsocket: calling neti_udp_open\n");
+	acnlog(LOG_RLP, "rlp_open_netsocket: calling neti_udp_open");
 	if (neti_udp_open(netsock, localaddr) != 0)
 	{
-		acnlog(DEBUG_RLP, "rlp_open_netsocket: calling rlpm_free_netsock\n");
+		acnlog(LOG_RLP, "rlp_open_netsocket: calling rlpm_free_netsock");
 		rlpm_free_netsock(netsock);	/* UDP open fails */
 		return NULL;
 	}
-  acnlog(DEBUG_RLP, "rlp_open_netsocket: port=%d\n", ntohs(NSK_PORT(*netsock)));
+  acnlog(LOG_RLP, "rlp_open_netsocket: port=%d", NSK_PORT(*netsock));
 
 	return netsock;
 }
@@ -452,6 +460,8 @@ rlp_open_netsocket(localaddr_t localaddr)
 void 
 rlp_close_netsocket(struct netsocket_s *netsock)
 {
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_close_netsocket: port=%d", NSK_PORT(*netsock));
+
 	if (rlpm_netsock_has_rxgroups(netsock)) return;
 
 	neti_udp_close(netsock);
@@ -467,6 +477,8 @@ struct rlp_rxgroup_s *
 rlp_open_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 {
 	struct rlp_rxgroup_s *rxgroup;
+
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_open_rxgroup");
 
 	if (!is_multicast(groupaddr) && groupaddr != NETI_GROUP_UNICAST)
 	{
@@ -502,9 +514,14 @@ static
 void 
 rlp_close_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup)
 {
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_close_rxgroup");
+
 	if (rlpm_rxgroup_has_listeners(rxgroup)) return;
 
+	if (rxgroup->groupaddr != NETI_GROUP_UNICAST)
+	{
 	neti_change_group(netsock, rxgroup->groupaddr, NETI_LEAVEGROUP);
+  }
 	rlpm_free_rxgroup(netsock, rxgroup);
 }
 
@@ -518,6 +535,8 @@ rlp_add_listener(struct netsocket_s *netsock, groupaddr_t groupaddr, protocolID_
 {
 	struct rlp_listener_s *listener;
 	struct rlp_rxgroup_s *rxgroup;
+
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_add_listener");
 
 	if ((rxgroup = rlp_open_rxgroup(netsock, groupaddr)) == NULL) return NULL;
 
@@ -541,6 +560,8 @@ rlp_del_listener(struct netsocket_s *netsock, struct rlp_listener_s *listener)
 {
 	struct rlp_rxgroup_s *rxgroup;
 
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_del_listener");
+
 	rxgroup = rlpm_get_rxgroup(listener);
 	rlpm_free_listener(rxgroup, listener);
 	rlp_close_rxgroup(netsock, rxgroup);
@@ -561,16 +582,18 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 	const uint8_t *pdup, *datap;
 	int datasize;
 
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_process_packet");
+
 	pdup = data;
 	if(dataLen < (int)(RLP_PREAMBLE_LENGTH + RLP_FIRSTPDU_MINLENGTH + RLP_POSTAMBLE_LENGTH))
 	{
-		acnlog(LOG_ERR|DEBUG_RLP,"rlp_process_packet: Packet too short to be valid");
+		acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: Packet too short to be valid");
 		return;	
 	}
 	/* Check and strip off EPI 17 preamble  */
 	if(memcmp(pdup, rlpPreamble, RLP_PREAMBLE_LENGTH))
 	{
-		acnlog(LOG_ERR|DEBUG_RLP,"rlp_process_packet: Invalid Preamble");
+		acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: Invalid Preamble");
 		return;
 	}
 	pdup += RLP_PREAMBLE_LENGTH;
@@ -584,7 +607,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 	/* first PDU must have all fields */
 	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG))
 	{
-		acnlog(LOG_ERR|DEBUG_RLP,"rlp_process_packet: illegal first PDU flags");
+		acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: illegal first PDU flags");
 		return;
 	}
 
@@ -599,7 +622,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 		pdup += getpdulen(pdup);	/* pdup now points to end */
 		if (pdup > data + dataLen)	/* sanity check */
 		{
-			acnlog(LOG_ERR|DEBUG_RLP,"rlp_process_packet: packet length error");
+			acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: packet length error");
 			return;
 		}
 		if (flags & VECTOR_bFLAG)
@@ -614,7 +637,7 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 		}
 		if (pp > pdup)
 		{
-			acnlog(LOG_ERR | DEBUG_RLP, "rlp_process_packet: pdu length error");
+			acnlog(LOG_ERR|LOG_RLP, "rlp_process_packet: pdu length error");
 			return;
 		}
 		if (flags & DATA_bFLAG)

@@ -46,6 +46,7 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "acn_arch.h"
 #include "sdt.h"
 #include "sdtmem.h"
+#include "acnlog.h"
 
 #if CONFIG_SDTMEM_STATIC
 static component_t  *components = NULL;
@@ -79,6 +80,8 @@ sdtm_add_channel(component_t *leader, uint16_t channel_number, bool is_local)
 {
 	sdt_channel_t *channel;
 
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_add_channel");
+
   /* can't have channel number 0 */
   if (channel_number == 0) return NULL; 
 
@@ -103,10 +106,11 @@ sdtm_add_channel(component_t *leader, uint16_t channel_number, bool is_local)
       channel->reliable_seq      = 1;
       channel->oldest_avail      = 1;
       //channel->member_list     = // added when creating members
+      acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_add_channel: %x, %d", channel, channel_number);
       return channel;
     }
   }
-  printf("sdtm_add_channel: none left\n");
+  acnlog(LOG_ERR | LOG_SDTM,"sdtm_add_channel: none left");
   return NULL; /* none left */
 }
 
@@ -117,6 +121,7 @@ sdtm_add_channel(component_t *leader, uint16_t channel_number, bool is_local)
 void 
 sdtm_remove_channel(component_t *leader)
 {
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_remove_channel: %x, %d", leader->tx_channel, leader->tx_channel->number);
   /* mark channel as unused */
   leader->tx_channel->number = 0; /* mark it empty */
   /* remove it from the leader */
@@ -133,6 +138,8 @@ sdt_member_t *
 sdtm_add_member(sdt_channel_t *channel, component_t *component)
 {
   sdt_member_t *member;
+
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_add_member");
 
   // TODO: should we verify the component does not alread exist?
   /* find and empty one */
@@ -157,10 +164,12 @@ sdtm_add_member(sdt_channel_t *channel, component_t *component)
       //member->last_acked   = // default 0
       //member->nak_modulus  = // default 0
       //member->nak_max_wait  = // default 0
+      acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_add_member: %x", member);
       return member;
     }
   }
-  printf("sdtm_add_member: none left\n");
+  acnlog(LOG_ERR | LOG_SDTM,"sdtm_add_member: none left");
+
   return NULL; /* none left */
 }
 
@@ -172,6 +181,8 @@ sdt_member_t *
 sdtm_remove_member(sdt_channel_t *channel, sdt_member_t *member)
 {
   sdt_member_t *cur;
+
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_remove_member: %x", member);
 
   /* if it is at top, then we just move leader */
   if (member == channel->member_list) {
@@ -263,6 +274,8 @@ sdtm_add_component(cid_t cid, cid_t dcid, bool is_local)
 {
   component_t *component;
 
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_add_component");
+
   /* find and empty one */
   for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; component++) {
 		if (uuidIsNull(component->cid)) {
@@ -278,10 +291,12 @@ sdtm_add_component(cid_t cid, cid_t dcid, bool is_local)
         uuidCopy(component->dcid, dcid);
       //component->adhoc_expires_at = // default 0
       component->is_local = is_local;
+      acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_add_component: %x", component);
       return component;
     }
   }
-  printf("sdtm_add_component: none left\n");
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_add_component: none left");
+
   return NULL; /* none left */
 }
 
@@ -296,6 +311,8 @@ component_t *
 sdtm_remove_component(component_t *component)
 {
   component_t *cur;
+
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_remove_component: %x", component);
 
   /* if it is at top, then we just move leader */
   if (component == components) {
