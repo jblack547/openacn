@@ -168,7 +168,9 @@ enum
 int      sdt_init(void);
 void     sdt_startup(bool acceptAdHoc);
 void     sdt_shutdown(void);
-void     sdt_rx_handler(uint8_t *data, int data_len, void *ref, neti_addr_t *remhost, cid_t foreign_cid);
+void     sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const neti_addr_t *remhost, const cid_t foreign_cid);
+//  def void rlpHandler_t(const uint8_t *data, int datasize, void *ref, const neti_addr_t *remhost, const cid_t remcid);
+
 
 // **************************************************************
 //TODO: these are only here for testing. Most will become static
@@ -176,7 +178,7 @@ void     sdt_rx_handler(uint8_t *data, int data_len, void *ref, neti_addr_t *rem
 /* BASE MESSAGES */
 void     sdt_tx_join(component_t *local_component, component_t *foreign_component);
 void     sdt_tx_join_accept(sdt_member_t *local_member, component_t *local_component, component_t *foreign_component);
-void     sdt_tx_join_refuse(cid_t foreign_cid, component_t *local_component, neti_addr_t *transport_addr, 
+void     sdt_tx_join_refuse(const cid_t foreign_cid, component_t *local_component, const neti_addr_t *transport_addr, 
            uint16_t foreign_channel_num, uint16_t local_mid, uint32_t foreign_rel_seq, uint8_t reason);
 void     sdt_tx_leaving(component_t *foreign_component, component_t *local_component, uint8_t reason);
 void     sdt_tx_nak(component_t *foreign_component, component_t *local_component, uint32_t last_missed);
@@ -184,12 +186,12 @@ void     sdt_tx_nak(component_t *foreign_component, component_t *local_component
 //TODO:         sdt_tx_sessions()
 //TODO:         sdt_tx_get_sessions()
 
-void     sdt_rx_join(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *data, uint32_t data_len);
-void     sdt_rx_join_accept(cid_t foreign_cid, uint8_t *join_accept, uint32_t data_len);
-void     sdt_rx_join_refuse(cid_t foreign_cid, uint8_t *join_refuse, uint32_t data_len);
-void     sdt_rx_leaving(cid_t foreign_cid, uint8_t *leaving, uint32_t data_len);
-void     sdt_rx_nak(cid_t foreign_cid, uint8_t *nak, uint32_t data_len);
-void     sdt_rx_wrapper(cid_t foreign_cid, neti_addr_t *transport_addr, uint8_t *wrapper, uint32_t data_len);
+void     sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *transport_addr, const uint8_t *join, uint32_t data_len);
+void     sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_accept, uint32_t data_len);
+void     sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t data_len);
+void     sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_len);
+void     sdt_rx_nak(const cid_t foreign_cid, const uint8_t *nak, uint32_t data_len);
+void     sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *transport_addr, const uint8_t *wrapper,  bool is_reliable, uint32_t data_len);
 //TODO:         sdt_rx_get_sessions()
 //TODO:         sdt_rx_sessions()
 
@@ -203,11 +205,11 @@ void     sdt_tx_connect_accept(component_t *local_component, component_t *foreig
 void     sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, uint32_t protocol);
 //TODO:         sdt_tx_disconecting(sdt_wrapper_t *wrapper);
 
-void     sdt_rx_ack(component_t *local_component, component_t *foreign_component, uint8_t *data, uint32_t data_len);
+void     sdt_rx_ack(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
 //TODO:         sdt_rx_channel_params();
-void     sdt_rx_leave(component_t *local_component, component_t *foreign_component, uint8_t *data, uint32_t data_len);
-void     sdt_rx_connect(component_t *local_component, component_t *foreign_component, uint8_t *data, uint32_t data_len);
-void     sdt_rx_connect_accept(component_t *local_component, component_t *foreign_component, uint8_t *data, uint32_t data_len);
+void     sdt_rx_leave(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
+void     sdt_rx_connect(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
+void     sdt_rx_connect_accept(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
 //TODO:         sdt_rx_connect_refuse();
 //TODO:         sdt_rx_disconnect();
 //TODO:         sdt_rx_disconecting();

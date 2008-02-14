@@ -270,7 +270,7 @@ sdtm_find_member_by_component(sdt_channel_t *channel, component_t *component)
   
 */
 component_t *
-sdtm_add_component(cid_t cid, cid_t dcid, bool is_local)
+sdtm_add_component(const cid_t cid, const cid_t dcid, bool is_local)
 {
   component_t *component;
 
@@ -350,7 +350,7 @@ sdtm_first_component(void)
   
 */
 component_t *
-sdtm_find_component(cid_t cid)
+sdtm_find_component(const cid_t cid)
 {
   component_t *component;
   

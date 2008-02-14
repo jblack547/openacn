@@ -53,8 +53,8 @@ extern sdt_member_t  *sdtm_remove_member(sdt_channel_t *channel, sdt_member_t *m
 extern uint16_t       sdtm_next_member(sdt_channel_t *channel);
 
 
-extern component_t *sdtm_find_component(cid_t cid);
-extern component_t *sdtm_add_component(cid_t cid, cid_t dcid, bool is_local);
+extern component_t *sdtm_find_component(const cid_t cid);
+extern component_t *sdtm_add_component(const cid_t cid, const cid_t dcid, bool is_local);
 extern component_t *sdtm_first_component(void);
 
 extern component_t *sdtm_remove_component(component_t *component);

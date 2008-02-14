@@ -420,7 +420,7 @@ int
 rlp_send_block(
 	struct rlp_txbuf_s *buf, 
 	struct netsocket_s *netsock,
-	neti_addr_t *destaddr
+	const neti_addr_t *destaddr
 )
 {
   acnlog(LOG_DEBUG|LOG_RLP,"rlp_send_block");
