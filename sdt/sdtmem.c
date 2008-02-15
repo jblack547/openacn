@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id: sdtmem.c $
+	$Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -40,7 +40,7 @@ handling.
 
 */
 static const char *rcsid __attribute__ ((unused)) =
-   "$Id: sdtmem.c $";
+   "$Id$";
 
 #include "opt.h"
 #include "acn_arch.h"
