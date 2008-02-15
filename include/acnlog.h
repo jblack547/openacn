@@ -106,7 +106,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define acnopenlog(ident, option, facility)
 #define acncloselog()
-#define acnlog(priority, format, ...) if (((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) printf(format"\n", ##__VA_ARGS__)
+//#define acnlog(priority, format, ...) if (((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) printf(format"\n", ##__VA_ARGS__)
+#define acnlog(priority, format, ...) ((((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) ? printf(format"\n", ##__VA_ARGS__) : (void)0)
 
 #elif CONFIG_ACNLOG == ACNLOG_STDERR
 

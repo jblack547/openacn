@@ -156,7 +156,7 @@ sdtm_add_member(sdt_channel_t *channel, component_t *component)
       //member->nak         = // default 0
       //member->pending     = // default 0
       //member->is_connected = // default 0
-      //member->expiry_time  = // default 0
+      member->expiry_time  = -1;  // 
       //member->expires_at   = // default 0
   
       /* only used for local member */

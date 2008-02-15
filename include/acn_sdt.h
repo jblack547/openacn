@@ -45,17 +45,19 @@ Code which sits on top of SDT should not really have to use this header
 
 #include "opt.h"
 #include "acn_arch.h"
+#if CONFIG_EPI18
+#include "epi18.h"
+#endif
 
 // TODO: Move these to opt.h
 #define SDT_NUM_PACKET_BUFFERS      5   // number of past buffers we are archiving
 
-#define FOREIGN_MEMBER_EXPIRY_TIME  5   // if we haven't heard from a member in this time, we will send a MAK
-#define FOREIGN_MEMBER_NAK_HOLDOFF  2
-#define FOREIGN_MEMBER_NAK_MODULUS  50
-#define FOREIGN_MEMBER_NAK_MAX_WAIT 20
+#define RECIPROCAL_TIMEOUT_ms AD_HOC_TIMEOUT_ms * 2
 
-#if CONFIG_EPI18
-#include "epi18.h"
-#endif
+#define FOREIGN_MEMBER_EXPIRY_TIME_ms  5000 // see MIN_EXPIRY_TIME_ms
+#define FOREIGN_MEMBER_NAK_HOLDOFF_ms  2    // see NAK_HOLDOFF_INTERVAL_ms
+#define FOREIGN_MEMBER_NAK_MODULUS     50   //
+#define FOREIGN_MEMBER_NAK_MAX_TIME_ms 20   // see NAK_MAX_TIME_ms
+
 
 #endif
