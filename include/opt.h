@@ -277,7 +277,7 @@ as required.
   #define LOG_SDT LOG_NONE
 #endif
 #ifndef LOG_SDTM
-  #define LOG_SDT LOG_NONE
+  #define LOG_SDTM LOG_NONE
 #endif
 #ifndef LOG_NETI
   #define LOG_NETI LOG_NONE
@@ -291,6 +291,10 @@ as required.
 #ifndef LOG_MISC
   #define LOG_MISC LOG_NONE
 #endif
+#ifndef LOG_ASSERT
+  #define LOG_ASSERT LOG_NONE
+#endif
+
 
 
 /************************************************************************/

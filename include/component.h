@@ -42,6 +42,7 @@ Information structures and handling relating to components
 
 #include "types.h"
 #include "uuid.h"
+#include "netiface.h"
 
 /************************************************************************/
 /*

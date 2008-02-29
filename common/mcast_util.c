@@ -30,11 +30,10 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id: mcast_util.c 75 2008-01-31 13:23:15Z philipnye $
+	$Id$
 
 */
 /*--------------------------------------------------------------------*/
-#include <strings.h>
 #include "opt.h"
 #include "acn_arch.h"
 #include "mcast_util.h"
@@ -45,6 +44,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ip4addr_t scope_and_host;	/* Network Byte Order */
 uint16_t dyn_mask;
 
+
+/************************************************************************/
+/* local version of ffs to avoid complexities in compiler               */
+static inline int ffs_1(register int x) 
+{ 
+  int p; 
+  if (x == 0) 
+    { return 0; } 
+
+  for (p = 1; (x & 1) == 0; p++) 
+    { x >>= 1; } 
+
+  return p; 
+}
+
 /************************************************************************/
 /*
   Initialize the Multicast Address allocation algorithm.
@@ -53,10 +67,11 @@ uint16_t dyn_mask;
   
   All masks and addresses are passed in Network byte order
 */
+
 int mcast_alloc_init(
 	ip4addr_t scopeaddr, 
 	ip4addr_t scopemask, 
-	local_component_t *comp
+	component_t *comp
 )
 {
 	int HostShift;
@@ -91,8 +106,7 @@ From epi10 r4:
 	Library function ffs (in strings.h) finds LS bit set
 	with lsb numbered as 1
 */
-
-	HostShift = ffs(ntohl(scopemask)) - 9;
+	HostShift = ffs_1(ntohl(scopemask)) - 9;
 	HostPart = ntohl(neti_getmyip(NULL));
 	HostPart &= EPI10_HOST_PART_MASK;
 	HostPart <<= HostShift;

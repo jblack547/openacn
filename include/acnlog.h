@@ -106,8 +106,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define acnopenlog(ident, option, facility)
 #define acncloselog()
-//#define acnlog(priority, format, ...) if (((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) printf(format"\n", ##__VA_ARGS__)
-#define acnlog(priority, format, ...) ((((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) ? printf(format"\n", ##__VA_ARGS__) : (void)0)
+#define acnlog(priority, format, ...) if (((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) printf(format"\n", ##__VA_ARGS__)
+//#define acnlog(priority, format, ...) ((((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) ? printf(format"\n", ##__VA_ARGS__) : (void)0)
 
 #elif CONFIG_ACNLOG == ACNLOG_STDERR
 
@@ -123,6 +123,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define acncloselog()
 #define acnlog(priority, ...)
 
+#endif
+
+#ifdef __CROSSWORKS_ARM
+/* CrossStudio does not correctly define assert(), because it has an lvalue.  This fixes it. */
+#ifdef assert
+#undef assert
+#endif
+#define assert(assertion) if (!assertion) {acnlog(LOG_ASSERT, "Assert(%s) fails in: %s: %s line %d", (#assertion), (__FUNCTION__), (__FILE__), (__LINE__));while(1);}
 #endif
 
 #endif

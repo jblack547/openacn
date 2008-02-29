@@ -1,7 +1,7 @@
 /*--------------------------------------------------------------------*/
 /*
 
-Copyright (c) 2007, Pathway Connectivity Inc.
+Copyright (c) 2008, Electronic Theatre Controls, Inc
 
 All rights reserved.
 
@@ -14,7 +14,7 @@ met:
  * Redistributions in binary form must reproduce the above copyright
    notice, this list of conditions and the following disclaimer in the
    documentation and/or other materials provided with the distribution.
- * Neither the name of Pathway Connectivity Inc. nor the names of its
+ * Neither the name of Engineering Arts nor the names of its
    contributors may be used to endorse or promote products derived from
    this software without specific prior written permission.
 
@@ -34,28 +34,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 /*--------------------------------------------------------------------*/
-#ifndef __mcast_util_h__
-#define __mcast_util_h__ 1
 
-/************************************************************************/
-#include "component.h"
-#include "netiface.h"
-/*
-  Prototypes
-*/
-#if CONFIG_EPI10
-extern int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, component_t *comp);
-/*
-  mcast_alloc_new can be a macro
-*/
-#define mcast_alloc_new(comp) (scope_and_host | htonl((uint32_t)(dyn_mask & (comp)->dyn_mcast++)))
+#ifndef __acn_port_h__
+#define __acn_port_h__ 1
 
-#ifdef mcast_alloc_new
-extern ip4addr_t scope_and_host;	/* Network Byte Order */
-extern uint16_t dyn_mask;
-#else
-extern groupaddr_t mcast_alloc_new(local_component_t *comp);
+#include "types.h"
+#include "uuid.h"
+
+#if CONFIG_STACK_LWIP
+#include "lwip/sys.h"
+#define acn_port_protect() sys_arch_protect()
+#define acn_port_unprotect(pval) sys_arch_unprotect(pval)
 #endif
-#endif	/* CONFIG_EPI10 */
-
 #endif

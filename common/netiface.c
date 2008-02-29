@@ -41,8 +41,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rlpmem.h"
 #include "acnlog.h"
 
-//extern uint8_t *neti_newPacket(int size);
-
 #define INPACKETSIZE DEFAULT_MTU
 
 /************************************************************************/
@@ -59,36 +57,37 @@ static void  netihandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct 
 static int netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *hdr);
 #endif
 
-
 /************************************************************************/
 /*
   Initialize networking
 */
-
 void neti_init(void)
 {
 	return;
 }
 
-
 /************************************************************************/
 /*
-  neti_udp_open
-
-  Open a "socket" with a given local port number
+  neti_udp_open()
+    Open a "socket" with a given local port number
+    The call returns 0 if OK, non-zero if it fails.
 */
-
 #if CONFIG_STACK_LWIP
 int
 neti_udp_open(struct netsocket_s *rlpsock, localaddr_t localaddr)
 {
   struct udp_pcb *neti_pcb;        // common Protocol Control Block
 
+  if (rlpsock->nativesock) {
+    acnlog(LOG_WARNING | LOG_NETI, "neti_udp_open : already open");
+    return -1;
+  }
+
   neti_pcb = udp_new();
   if (!neti_pcb)
     return -1;
 
-  rlpsock->nativesock = (int)neti_pcb;
+  rlpsock->nativesock = neti_pcb;
 
   // BIND:sets local_ip and local_port
   if (!udp_bind(neti_pcb, LCLAD_INADDR(localaddr), LCLAD_PORT(localaddr)) == ERR_OK)
@@ -96,11 +95,9 @@ neti_udp_open(struct netsocket_s *rlpsock, localaddr_t localaddr)
 
   if (LCLAD_PORT(localaddr) == NETI_PORT_EPHEM) {
 // if port was 0, then the stack should have given us a port, so assign it back
-	NSK_PORT(*rlpsock) = neti_pcb->local_port;
-  }
-  else
-  {
-	NSK_PORT(*rlpsock) = LCLAD_PORT(localaddr);
+    NSK_PORT(*rlpsock) = neti_pcb->local_port;
+  }  else {
+    NSK_PORT(*rlpsock) = LCLAD_PORT(localaddr);
   }
 #if !CONFIG_LOCALIP_ANY
 	NSK_INADDR(*rlpsock) = LCLAD_INADDR(localaddr);
@@ -215,15 +212,21 @@ neti_udp_open(struct netsocket_s *rlpsock, struct localaddr_s *localaddr)
 
 /************************************************************************/
 /*
-  neti_udp_close
+  neti_udp_close()
+    Close "socket"
   
 */
 #if CONFIG_STACK_LWIP
 void 
-neti_udp_close(struct netsocket_s *netsock)
+neti_udp_close(struct netsocket_s *rlpsock)
 {
-  udp_remove((struct udp_pcb*) (netsock->nativesock));
-  netsock->nativesock = NULL;
+  if (!rlpsock->nativesock) {
+    acnlog(LOG_WARNING | LOG_NETI, "neti_udp_close : upd not open");
+    return;
+  }
+  udp_remove((struct udp_pcb*) (rlpsock->nativesock));
+  /* clear pointer */
+  rlpsock->nativesock = NULL;
 }
 #endif /* CONFIG_STACK_LWIP */
 
@@ -231,7 +234,8 @@ neti_udp_close(struct netsocket_s *netsock)
 /************************************************************************/
 /*
   neti_change_group
-  Parameter operation specifies NETI_JOINGROUP or NETI_LEAVEGROUP
+    Parameter operation specifies NETI_JOINGROUP or NETI_LEAVEGROUP
+    The call returns 0 if OK, non-zero if it fails.
 */
 
 #if CONFIG_STACK_LWIP
@@ -242,6 +246,9 @@ neti_change_group(struct netsocket_s *rlpsock, ip4addr_t localGroup, int operati
 
   UNUSED_ARG(rlpsock);
 
+	if (!is_multicast(localGroup)) return -1;
+
+  /* result = ERR_OK which is defined as zero so return value is consistent */
   addr.addr = localGroup;
   if (operation == NETI_JOINGROUP)
     return igmp_joingroup(&netif_default->ip_addr, &addr);
@@ -284,7 +291,7 @@ int
 neti_change_group(struct netsocket_s *rlpsock, ip4addr_t localGroup, int operation)
 {
 	int rslt;
-
+  #error Return value here is not consistent with other stacks
 	if (!isMulticast(localGroup)) return 0;
 
 	if (operation == NETI_JOINGROUP)
@@ -298,31 +305,86 @@ neti_change_group(struct netsocket_s *rlpsock, ip4addr_t localGroup, int operati
 
 /************************************************************************/
 /*
-  neti_send_to
-
+  neti_send_to()
+    Send message to give address
+    The call returns the number of characters sent, or negitive if an error occurred. 
 */
 
 #if CONFIG_STACK_LWIP
 int
 neti_send_to(
-	struct netsocket_s *netsock,
+	struct netsocket_s *rlpsock,
 	const neti_addr_t *destaddr,
 	uint8_t *data,
 	size_t datalen
 )
 {
-  struct pbuf *pkt;  /* Outgoing packet */
-  int    result;
+  struct pbuf     *pkt;  /* Outgoing packet */
+  struct eth_addr *ethaddr_ret;
+  struct ip_addr  *ipaddr_ret;
+  int              result;
+  int              t_begin;
+  struct ip_addr   dest_addr;
+  ip4addr_t        addr;
+  int              arp_index;
 
-  if (!netsock || !netsock->nativesock)
-    return 0;
+  if (!rlpsock || !rlpsock->nativesock)
+    return -1;
+
+  //struct ip_addr *ipaddr,
+  addr = NETI_INADDR(destaddr);
+  dest_addr.addr = addr;
+
+  if (!is_multicast(addr)) {
+    /* We have the arp queue turned off, so we need to make sure we have a ARP entry  */
+    /* else it will fail on first try */
+    result = -1;
+    arp_index = etharp_find_addr(netif_default, &dest_addr, &ethaddr_ret, &ipaddr_ret);
+    if (arp_index < 0) {
+      result = etharp_query(netif_default, &dest_addr, NULL);
+      if (result == ERR_OK) {
+        result = -1;
+        t_begin = sys_jiffies();
+        /* wait 2 seconds (ARP TIMEOUT)*/
+        while ((unsigned int)sys_jiffies() - t_begin < 2000) {
+          arp_index = etharp_find_addr(netif_default, &dest_addr, &ethaddr_ret, &ipaddr_ret);
+          if (arp_index >= 0) {
+            result = 0;
+            break;
+          }
+        }
+      } else {
+        acnlog(LOG_WARNING | LOG_NETI, "neti_send_to : ARP query failure");
+        return -1;
+      }
+    } else
+      result = 0;
+  
+    if (result != 0) {
+      acnlog(LOG_WARNING | LOG_NETI, "neti_send_to : ARP failure: %d.%d.%d.%d", 
+        ntohl(addr) >> 24 & 0x000000ff,
+        ntohl(addr) >> 16 & 0x000000ff,
+        ntohl(addr) >> 8 & 0x000000ff,
+        ntohl(addr) & 0x000000ff);
+      return result;
+    }
+  }
 
   pkt = pbuf_alloc(PBUF_TRANSPORT, datalen, PBUF_POOL);
-  memcpy(pkt->payload, data, datalen);
-
-  result = udp_sendto((struct udp_pcb*) (netsock->nativesock), pkt, (struct ip_addr *)&NETI_INADDR(destaddr), NETI_PORT(destaddr));
-  pbuf_free(pkt);
-  return (result);
+  if(pkt) {
+    memcpy(pkt->payload, data, datalen);
+    result = udp_sendto((struct udp_pcb*) (rlpsock->nativesock), pkt, (struct ip_addr *)&NETI_INADDR(destaddr), NETI_PORT(destaddr));
+    pbuf_free(pkt);
+    /* 0 is OK */
+    if (result == 0) {
+      // we will assume it all went!
+      return datalen;
+    }
+  } else {
+    acnlog(LOG_WARNING | LOG_NETI, "neti_send_to : Unable to allocate pbuf");
+  }
+  /* didn't send */
+  return -1;
 }
 #endif
 
@@ -360,9 +422,8 @@ neti_send_to(
 /*
   Poll for input
 */
-
 #if CONFIG_STACK_LWIP
-
+  /* function is not required for LWIP */
 #endif
 
 /************************************************************************/
@@ -483,11 +544,9 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 
 /************************************************************************/
 /* 
-  netihandler
-  
-  socket call back 
+  netihandler()
+    Socket call back 
 */
-
 #if CONFIG_STACK_LWIP
 /*
   This function is call for connections.  Our stack ensures us that if we get here, it is for us even 
@@ -497,21 +556,22 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 static void 
 netihandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr, u16_t port)
 {
-
-  // addr is source address
-  // port is source port
-
-  // 
-
   neti_addr_t remhost;
+  ip4addr_t dest_inaddr;
+
+  // arg is contains netsock
 
   UNUSED_ARG(pcb);
 
   NETI_INADDR(&remhost) = addr->addr;
   NETI_PORT(&remhost) = port;
-  // arg is contains netsock
-  // we don't have destination address so we will force to NULL
-  rlp_process_packet(arg, p->payload, p->tot_len, NULL, &remhost);
+
+  // We don't have destination address in our callback
+  // Turns out that the destinaion address is just after the location
+  // of the source address
+  dest_inaddr = ((struct ip_addr*)((char*)addr + sizeof(struct ip_addr)))->addr;
+
+  rlp_process_packet(arg, p->payload, p->tot_len, dest_inaddr, &remhost);
   pbuf_free(p);
 }
 #endif /* CONFIG_STACK_LWIP */
@@ -542,7 +602,7 @@ netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *h
 
 /************************************************************************/
 /*
-  neti_getmyip
+  neti_getmyip()
 
 */
 
@@ -552,12 +612,10 @@ netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *h
 ip4addr_t
 neti_getmyip(neti_addr_t *destaddr)
 {
-
   UNUSED_ARG(destaddr);
   return netif_default->ip_addr.addr;
 }
 #endif /* CONFIG_STACK_LWIP */
-
 
 /************************************************************************/
 #if CONFIG_STACK_BSD

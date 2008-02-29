@@ -180,6 +180,11 @@ rlpm_find_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 
 	sockix = netsock - sockets;	// index of our socket
 
+  // treat all non-multicast the as the same
+  if (!is_multicast(groupaddr)) {
+    groupaddr = NETI_GROUP_UNICAST;
+  }
+
 	for (rxgroup = listeners; rxgroup < listeners + MAX_LISTENERS; ++rxgroup)
 	{
 		if (

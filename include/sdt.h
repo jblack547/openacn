@@ -113,20 +113,27 @@ typedef struct sdt_component_s
 } sdt_component_t;
 #endif
 
+typedef enum
+{
+  msEMPTY     = 0,
+  msPENDING   = 1,
+  msJOINED = 2
+} member_state_t;
+
 typedef struct sdt_member_s
 {
   struct sdt_member_s *next;
-  component_t     *component;
-  uint16_t mid;
-  uint8_t  nak:1;
-  uint8_t  pending:1;
-  uint8_t  is_connected:1;
-  uint8_t  expiry_time_s;
-  uint32_t expires_at;
+  component_t    *component;
+  uint16_t        mid;
+  uint8_t         nak:1;
+  member_state_t  state;
+  uint8_t         expiry_time_s;
+  uint32_t        expires_ms;
+  uint32_t        mak_ms;
   
   /* only used for local member */
   uint16_t nak_holdoff;
-  uint16_t last_acked;
+  //uint16_t last_acked;
   uint16_t nak_modulus;
   uint16_t nak_max_wait;
 } sdt_member_t;
@@ -135,14 +142,15 @@ typedef struct sdt_channel_s
 {
   uint16_t      number;
   uint16_t      available_mid;
-  neti_addr_t   destination_addr;      // channel outbound address (multicast)
-  neti_addr_t   channel_addr;         // channel source address
+  neti_addr_t   destination_addr;     // channel outbound address (multicast)
+  neti_addr_t   source_addr;          // channel source address
   bool          is_local;
   uint32_t      total_seq;
   uint32_t      reliable_seq;
   uint32_t      oldest_avail;
   sdt_member_t *member_list;
-  struct netsocket_s *sock;           
+  struct netsocket_s    *sock; 
+  struct rlp_listener_s *listener;     // multicast listener
 } sdt_channel_t;
 
 /* ok, just to make me not have to type stuct all the time */
@@ -180,19 +188,19 @@ void     sdt_tick(void *arg);  /* timer call back */
 /* BASE MESSAGES */
 void     sdt_tx_join(component_t *local_component, component_t *foreign_component);
 void     sdt_tx_join_accept(sdt_member_t *local_member, component_t *local_component, component_t *foreign_component);
-void     sdt_tx_join_refuse(const cid_t foreign_cid, component_t *local_component, const neti_addr_t *transport_addr, 
+void     sdt_tx_join_refuse(const cid_t foreign_cid, component_t *local_component, const neti_addr_t *source_addr, 
            uint16_t foreign_channel_num, uint16_t local_mid, uint32_t foreign_rel_seq, uint8_t reason);
 void     sdt_tx_leaving(component_t *foreign_component, component_t *local_component, sdt_member_t *local_member, uint8_t reason);
 void     sdt_tx_nak(component_t *foreign_component, component_t *local_component, uint32_t last_missed);
 //TODO:         sdt_tx_sessions()
 //TODO:         sdt_tx_get_sessions()
 
-void     sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *transport_addr, const uint8_t *join, uint32_t data_len);
+void     sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8_t *join, uint32_t data_len);
 void     sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_accept, uint32_t data_len);
 void     sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t data_len);
 void     sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_len);
 void     sdt_rx_nak(const cid_t foreign_cid, const uint8_t *nak, uint32_t data_len);
-void     sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *transport_addr, const uint8_t *wrapper,  bool is_reliable, uint32_t data_len);
+void     sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8_t *wrapper,  bool is_reliable, uint32_t data_len);
 //TODO:         sdt_rx_get_sessions()
 //TODO:         sdt_rx_sessions()
 
@@ -205,7 +213,7 @@ void     sdt_tx_connect_accept(component_t *local_component, component_t *foreig
 //TODO:  sdt_tx_connect_refuse(sdt_wrapper_t *wrapper);
 void     sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, uint32_t protocol);
 //TODO:  sdt_tx_disconecting(sdt_wrapper_t *wrapper);
-void     sdt_tx_mak(component_t *local_component);
+void     sdt_tx_mak_all(component_t *local_component);
 
 void     sdt_rx_ack(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
 //TODO:         sdt_rx_channel_params();

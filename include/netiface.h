@@ -79,12 +79,14 @@ typedef ip4addr_t groupaddr_t;
 #include "lwip/netif.h"
 #include "lwip/igmp.h"
 #include "lwip/pbuf.h"
+#include "lwip/sys.h"
+#include "netif/etharp.h"
 
 #if CONFIG_NET_IPV4
 #define NETI_FAMILY AF_INET
 #endif
 
-typedef int neti_nativeSocket_t;
+typedef struct udp_pcb *neti_nativeSocket_t;
 typedef struct sockaddr_in neti_addr_t;
 /*
 struct sockaddr_in {
