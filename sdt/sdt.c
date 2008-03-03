@@ -75,6 +75,8 @@ recurse infinitely on this definition.
 #define CHANNEL_OUTBOUND_TRAFFIC 0
 #define SDT_TMR_INTERVAL 1000
 
+static component_t     *components = NULL;
+
 enum
 {
   ALLOCATED_LOCAL_COMP       = 1,
@@ -99,6 +101,14 @@ enum {
   ssSTARTED,
   ssCLOSING
 };
+
+uint16_t      sdt_next_member(sdt_channel_t *channel);
+sdt_member_t *sdt_find_member_by_mid(sdt_channel_t *channel, uint16_t mid);
+sdt_member_t *sdt_find_member_by_component(sdt_channel_t *channel, component_t *component);
+component_t  *sdt_find_component(const cid_t cid);
+
+
+
 
 //TODO: wrf these were moved header file for testing...
 #if 0
@@ -169,7 +179,7 @@ static void
 // wrf - not used at this time
 sdt_local_init(void)
 {
-  my_component = sdtm_add_component(my_xcid, my_xdcid, true);
+  my_component = sdt_add_component(my_xcid, my_xdcid, true);
   if (!my_component) {
     acnlog(LOG_DEBUG | LOG_SDT, "sdt_local_init : failed to get new component");
   return;
@@ -189,7 +199,7 @@ struct localComponent_s {
 int 
 sdt_register(struct localComponent_s comp)
 {
-  sdtm_add_component(comp, NULL, what?);
+  sdt_add_component(comp, NULL, what?);
 }
 #endif
 
@@ -282,7 +292,7 @@ sdt_shutdown(void)
   sdt_started = ssCLOSING;
 
   /* if we have a local component with members in the channel, tell them  to get out of town */
-  component = sdtm_first_component();
+  component = components;
   while(component) {
     if (component->is_local && component->tx_channel) {
       member = component->tx_channel->member_list;
@@ -295,10 +305,10 @@ sdt_shutdown(void)
   }
 
   /*  get first component and rip thru all of them (cleaning up resources along the way) */
-  component = sdtm_first_component();
+  component = components;
   while(component) {
     /* returns the next component after delete */
-    component = sdtm_remove_component(component);
+    component = sdt_del_component(component);
   }
 
   /* adhoc clean up */
@@ -322,6 +332,322 @@ sdt_shutdown(void)
   sdt_started = ssCLOSED;
   return 0;
 }
+
+/*****************************************************************************/
+/* 
+  Add a new component and initialize it;
+  returns new component or NULL
+ */
+component_t *
+sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local)
+{
+  component_t *component;
+
+  #if LOG_DEBUG | LOG_SDT
+  char  uuid_text[37];
+  uuidToText(cid, uuid_text);
+  #endif
+
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_component: %s", uuid_text);
+
+  /* find and empty one */
+  component = sdtm_new_component();
+  if (component) {
+    component->next = components;
+    components = component;
+    /* assign values */
+    if (cid) 
+      uuidCopy(component->cid, cid);
+    if (dcid)
+      uuidCopy(component->dcid, dcid);
+    //component->adhoc_expires_at = // default 0
+    component->is_local = is_local;
+    //tx_channel = 0 // default
+    if (is_local) {
+      mcast_alloc_init(0, 0, component);
+    }
+    //is_receprocal     // default 0 (false)
+    return component;
+  }
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_component: failed to add new component");
+
+  return NULL; /* none left */
+}
+
+
+/*****************************************************************************/
+/* 
+  Delete a component and it's dependencies
+  returns next component or NULL
+ */
+component_t *
+sdt_del_component(component_t *component)
+{
+  component_t *cur;
+
+  #if LOG_DEBUG | LOG_SDT
+  char  uuid_text[37];
+  uuidToText(component->cid, uuid_text);
+  #endif
+
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_component: %s", uuid_text);
+
+  /* remove our channel (and member list) */
+  if (component->tx_channel) {
+    sdt_del_channel(component);
+  }
+
+  /* if it is at top, then we just move leader */
+  if (component == components) {
+    components = component->next;
+    sdtm_free_component(component);
+    return components;
+  }
+  
+  /* else run through list in order, finding previous one */
+  cur = components;
+  while (cur) {
+    if (cur->next == component) {
+      /* jump around it */
+      cur->next = component->next;
+      sdtm_free_component(component);
+      return (cur->next);
+    }
+    cur = cur->next;
+  }
+  return NULL;
+}
+
+/*****************************************************************************/
+/* 
+  Add a new channel into component and initialize it;
+  returns new channel or NULL
+ */
+sdt_channel_t *
+sdt_add_channel(component_t *leader, uint16_t channel_number, bool is_local)
+{
+	sdt_channel_t *channel;
+
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_channel %d", channel_number);
+
+  /* can't have channel number 0 */
+  if (channel_number == 0) {
+    return NULL; 
+  }
+
+  //TODO: should we check to see if this exists already?
+  channel = sdtm_new_channel();
+  if (channel) {
+    /* assign this to our leader */
+    /* assign passed and default values */
+    channel->number  = channel_number;
+    channel->available_mid     = 1;
+    channel->is_local          = is_local;
+    channel->total_seq         = 1;
+    channel->reliable_seq      = 1;
+    channel->oldest_avail      = 1;
+    //channel->member_list     = // added when creating members
+    //channel->sock;           = // default null
+    //channel->listener;       = // multicast listener, default null
+    leader->tx_channel = channel;
+    return channel;
+  }
+  acnlog(LOG_ERR | LOG_SDT,"sdt_add_channel: failed to get new channel");
+  return NULL; /* none left */
+}
+
+/*****************************************************************************/
+/* 
+  Delete a channel and it's dependencies from a component
+  returns NULL (reserving return of next channel for later)
+ */
+sdt_channel_t *
+sdt_del_channel(component_t *leader)
+{
+  sdt_member_t  *member;
+  sdt_channel_t *channel;
+
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_channel: %d", leader->tx_channel->number);
+
+  channel = leader->tx_channel;
+  /* remove it from the leader */
+  leader->tx_channel = NULL;
+
+  /* now we can clean it up */
+  /* remove members */
+  if (leader->tx_channel) {
+    member = leader->tx_channel->member_list;
+    while(member) {
+      member = sdt_del_member(leader->tx_channel, member);
+    }
+    /* remove listener */
+    if (leader->tx_channel->listener) {
+      rlp_del_listener(leader->tx_channel->sock, leader->tx_channel->listener);
+    }
+  }
+  /* and nuke it */
+  sdtm_free_channel(leader->tx_channel);
+  return NULL;
+}
+
+/*****************************************************************************/
+/* 
+  Add a new member into the channel and initialize it;
+  returns new member or NULL
+ */
+sdt_member_t *
+sdt_add_member(sdt_channel_t *channel, component_t *component)
+{
+  sdt_member_t *member;
+
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_member: to channel %d", channel->number);
+
+  // TODO: should we verify the component does not alread exist?
+  /* find and empty one */
+  member = sdtm_new_member();
+  if (member) {
+    /* put this one at the head of the list */
+    member->next = channel->member_list;
+    channel->member_list = member;
+    /* assign passed and default values */
+    member->component     = component;
+    //member->mid           = // default 0
+    //member->nak           = // default 0
+    //member->state         = // deafult 0 = msEMPTY;
+    //member->expiry_time_s = // default 0
+    member->expires_ms   = -1;// expired
+    //member->mak_ms      = // default 0
+
+    /* only used for local member */
+    //member->nak_holdoff  = // default 0
+    //member->last_acked   = // default 0
+    //member->nak_modulus  = // default 0
+    //member->nak_max_wait  = // default 0
+    return member;
+  }
+  acnlog(LOG_ERR | LOG_SDT,"sdt_new_member: none left");
+
+  return NULL; /* none left */
+}
+
+
+/*****************************************************************************/
+/* 
+  Delete a member and it's dependencies from a channel
+  returns next membe or NULL
+ */
+sdt_member_t *
+sdt_del_member(sdt_channel_t *channel, sdt_member_t *member)
+{
+  sdt_member_t *cur;
+
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_member: %d from channel %d", member->mid, channel->number);
+
+  /* if it is at top, then we just move leader */
+  if (member == channel->member_list) {
+    channel->member_list = member->next;
+    sdtm_free_member(member);
+    return channel->member_list;
+  }
+  
+  /* else run through list in order, finding previous one */
+  cur = channel->member_list;
+  while (cur) {
+    if (cur->next == member) {
+      /* jump around it */
+      cur->next = member->next;
+      sdtm_free_member(member);
+      return cur->next;
+    }
+    cur = cur->next;
+  }
+  return NULL;
+}
+
+/******************************************************************************** 
+    Functions that do not depend on a particular memory model continue from here
+*/
+
+/*****************************************************************************/
+/*
+  find next available MID for a channel
+*/
+uint16_t 
+sdt_next_member(sdt_channel_t *channel)
+{
+    if (channel->available_mid == 0x7FFF)
+      channel->available_mid = 1;
+
+    /* find MID typically it will the next MID */
+    /* we are going to assume that we will always find one! */
+    while(sdt_find_member_by_mid(channel, channel->available_mid)) 
+      channel->available_mid++;
+
+    /* return this one and go ahead in increment to next */
+    return channel->available_mid++;
+}
+
+/*****************************************************************************/
+/*
+  Find member by MID
+*/
+sdt_member_t *
+sdt_find_member_by_mid(sdt_channel_t *channel, uint16_t mid)
+{
+  sdt_member_t *member;
+  
+  member = channel->member_list;
+  
+  while(member) {
+    if (member->mid == mid) {
+      return member;
+    }
+    member = member->next;
+  }
+  return NULL;  /* oops */
+}
+
+/*****************************************************************************/
+/*
+  Find member by Component
+*/
+sdt_member_t *
+sdt_find_member_by_component(sdt_channel_t *channel, component_t *component)
+{
+  sdt_member_t *member;
+  
+  member = channel->member_list;
+  
+  while(member) {
+    if (member->component == component) {
+      return member;
+    }
+    member = member->next;
+  }
+  return NULL;  /* oops */
+}
+
+/*****************************************************************************/
+/*
+  
+*/
+component_t *
+sdt_find_component(const cid_t cid)
+{
+  component_t *component;
+  
+  component = components;
+  
+  while(component) {
+    if (uuidIsEqual(component->cid, cid)) {
+      return (component);
+    }
+    component = component->next;
+  }
+  return NULL;  /* oops */
+}
+
+
 
 /*****************************************************************************/
 /*
@@ -460,7 +786,7 @@ sdt_tick(void *arg)
   if (!sdt_started) 
     return;
   
-  component = sdtm_first_component();
+  component = components;
   while(component) {
     channel = component->tx_channel;
     if (channel) {
@@ -486,7 +812,7 @@ sdt_tick(void *arg)
             sdt_tx_leaving(component, member->component, member, SDT_REASON_CHANNEL_EXPIRED);
           }
           /* remove this member*/
-          sdtm_remove_member(channel, member);
+          sdt_del_member(channel, member);
         } 
         member = member->next;
       }
@@ -520,7 +846,7 @@ sdt_tick(void *arg)
           if (channel->listener) {
             rlp_del_listener(sdt_multicast_socket, channel->listener);
           }
-          sdtm_remove_channel(component);
+          sdt_del_channel(component);
         }
       }
     } /* of channels */
@@ -966,7 +1292,7 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
       }
     }
     // create channel
-    local_channel = sdtm_add_channel(local_component, rand(), true);
+    local_channel = sdt_add_channel(local_component, rand(), true);
     if (!local_channel) {
       acnlog(LOG_ERR | LOG_SDT, "sdt_tx_join : unable to add channel");
       return;
@@ -984,24 +1310,24 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
   }
 
   /* Sanity check  */
-  foreign_member = sdtm_find_member_by_component(local_channel, foreign_component);
+  foreign_member = sdt_find_member_by_component(local_channel, foreign_component);
   if (foreign_member) {
     acnlog(LOG_DEBUG | LOG_SDT, "sdt_tx_join : already a member -- suppressing join");
-    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdtm_remove_channel(local_component);
+    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdt_del_channel(local_component);
     return;
   }  
 
   /* put foreign component in our local channel list */
-  foreign_member = sdtm_add_member(local_channel, foreign_component);
+  foreign_member = sdt_add_member(local_channel, foreign_component);
   if (!foreign_member) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_tx_join : failed to allocate foreign member");
-    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdtm_remove_channel(local_component);
+    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdt_del_channel(local_component);
     return;
   }
   allocations |= ALLOCATED_FOREIGN_MEMBER;
 
   /* set mid */
-  foreign_member->mid = sdtm_next_member(local_channel);
+  foreign_member->mid = sdt_next_member(local_channel);
   /* Timeout if JOIN ACCEPT and followup ACK is not received */
   foreign_member->expires_ms = RECIPROCAL_TIMEOUT_ms;
   /* set move flag up one state */
@@ -1011,8 +1337,8 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
   tx_buffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!tx_buffer) {
     acnlog(LOG_ERR | LOG_SDT, "sdt_tx_join : failed to get new txbuf");
-    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdtm_remove_channel(local_component);
-    if (allocations & ALLOCATED_FOREIGN_MEMBER) sdtm_remove_member(local_channel, foreign_member);
+    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdt_del_channel(local_component);
+    if (allocations & ALLOCATED_FOREIGN_MEMBER) sdt_del_member(local_channel, foreign_member);
     return;
   } 
   buf_start = rlp_init_block(tx_buffer, NULL);
@@ -1234,7 +1560,7 @@ sdt_tx_nak(component_t *foreign_component, component_t *local_component, uint32_
   foreign_channel = foreign_component->tx_channel;
   local_channel = local_component->tx_channel;
 
-  local_member = sdtm_find_member_by_component(foreign_channel, local_component);
+  local_member = sdt_find_member_by_component(foreign_channel, local_component);
   if (!local_member) {
     acnlog(LOG_ERR | LOG_SDT, "sdt_tx_nak : failed to find local_member");
     return;
@@ -1315,11 +1641,11 @@ sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8
 
   auto void remove_allocations(void);
   void remove_allocations(void) {
-    if (allocations & ALLOCATED_LOCAL_MEMBER) sdtm_remove_member(foreign_channel, local_member);
+    if (allocations & ALLOCATED_LOCAL_MEMBER) sdt_del_member(foreign_channel, local_member);
     if (allocations & ALLOCATED_FOREIGN_LISTENER) rlp_del_listener(sdt_multicast_socket, foreign_channel->listener);
-    if (allocations & ALLOCATED_FOREIGN_CHANNEL) sdtm_remove_channel(foreign_component);
-    if (allocations & ALLOCATED_FOREIGN_COMP) sdtm_remove_component(foreign_component);
-    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdtm_remove_channel(local_component);
+    if (allocations & ALLOCATED_FOREIGN_CHANNEL) sdt_del_channel(foreign_component);
+    if (allocations & ALLOCATED_FOREIGN_COMP) sdt_del_component(foreign_component);
+    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdt_del_channel(local_component);
   }
 
   /* verify data length */  
@@ -1336,7 +1662,7 @@ sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8
   joinp += UUIDSIZE;
 
   /* see if this is for one of our components */
-  local_component = sdtm_find_component(local_cid);
+  local_component = sdt_find_component(local_cid);
   if (!local_component) {
     acnlog(LOG_NOTICE | LOG_SDT, "sdt_rx_join: Not addressed to me");
     return; /* not addressed to any local component */
@@ -1376,7 +1702,7 @@ sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8
       }
     }
     // create channel
-    local_channel = sdtm_add_channel(local_component, rand(), true);
+    local_channel = sdt_add_channel(local_component, rand(), true);
     if (!local_channel) {
       acnlog(LOG_ERR | LOG_SDT, "sdt_rx_join : failed to add local channel");
       sdt_tx_join_refuse(foreign_cid, local_component, source_addr, foreign_channel_number, local_mid, foreign_reliable_seq, SDT_REASON_RESOURCES);
@@ -1408,9 +1734,9 @@ sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8
   // TODO: possible callback to app to verify accept
   
   /*  Are we already tracking the src component, if not add it */
-  foreign_component = sdtm_find_component(foreign_cid);
+  foreign_component = sdt_find_component(foreign_cid);
   if (!foreign_component) {
-    foreign_component = sdtm_add_component(foreign_cid, NULL, false);
+    foreign_component = sdt_add_component(foreign_cid, NULL, false);
     if (!foreign_component) { /* allocation failure */
       acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_join: failed to add foreign component");
       sdt_tx_join_refuse(foreign_cid, local_component, source_addr, foreign_channel_number, local_mid, foreign_reliable_seq, SDT_REASON_RESOURCES);
@@ -1433,7 +1759,7 @@ sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8
     acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_join: pre-existing foreign channel %d", foreign_channel_number);
   } else {
     /* add foreign channel */
-    foreign_channel = sdtm_add_channel(foreign_component, foreign_channel_number, false);
+    foreign_channel = sdt_add_channel(foreign_component, foreign_channel_number, false);
     if (!foreign_channel) {
       acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_join: failed to add foreign channel");
       remove_allocations();
@@ -1479,10 +1805,10 @@ sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8
     }
   }
 
-  local_member = sdtm_find_member_by_component(foreign_channel, local_component);
+  local_member = sdt_find_member_by_component(foreign_channel, local_component);
   if (!local_member) {
     /* add local component to foreign channel */
-    local_member = sdtm_add_member(foreign_channel, local_component);
+    local_member = sdt_add_member(foreign_channel, local_component);
     if (!local_member) {
       acnlog(LOG_ERR | LOG_SDT, "sdt_rx_join: failed to add local member");
       sdt_tx_join_refuse(foreign_cid, local_component, source_addr, foreign_channel_number, local_mid, foreign_reliable_seq, SDT_REASON_RESOURCES);
@@ -1554,7 +1880,7 @@ sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_accept, uint32_t
   }
 
   /* verify we are tracking this component */
-  foreign_component = sdtm_find_component(foreign_cid);
+  foreign_component = sdt_find_component(foreign_cid);
   if (!foreign_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_join_accept: foreign_component not found");
     return;
@@ -1563,7 +1889,7 @@ sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_accept, uint32_t
   /* verify leader CID */
   unmarshalUUID(join_accept, local_cid);
   join_accept += UUIDSIZE;
-  local_component = sdtm_find_component(local_cid);
+  local_component = sdt_find_component(local_cid);
   if (!local_component) {
     acnlog(LOG_NOTICE | LOG_SDT, "sdt_rx_join_accept: not for me");
     return;
@@ -1580,7 +1906,7 @@ sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_accept, uint32_t
   /* this is the MID of that the leader assigned when sending the JOIN*/
   foreign_mid = unmarshalU16(join_accept);
   join_accept += sizeof(uint16_t);
-  foreign_member = sdtm_find_member_by_mid(local_component->tx_channel, foreign_mid);
+  foreign_member = sdt_find_member_by_mid(local_component->tx_channel, foreign_mid);
   if (!foreign_member) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_join_accept: MID not found in channel");
     return;
@@ -1599,7 +1925,7 @@ sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_accept, uint32_t
       return;
     } else {
       /* we should send an ACK now */
-      local_member = sdtm_find_member_by_component(foreign_component->tx_channel, local_component);
+      local_member = sdt_find_member_by_component(foreign_component->tx_channel, local_component);
       if (local_member) {
         if (local_member->state == msPENDING) {
           sdt_tx_ack(local_member->component, foreign_component);
@@ -1642,7 +1968,7 @@ sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t
   }
 
   /* verify we are tracking this component */
-  foreign_component = sdtm_find_component(foreign_cid);
+  foreign_component = sdt_find_component(foreign_cid);
   if (!foreign_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_join_refuse: foreign_component not found");
     return;
@@ -1651,7 +1977,7 @@ sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t
   /* get leader */
   unmarshalUUID(join_refuse, local_cid);
   join_refuse += UUIDSIZE;
-  local_component = sdtm_find_component(local_cid);
+  local_component = sdt_find_component(local_cid);
   if (!local_component) {
     acnlog(LOG_NOTICE | LOG_SDT, "sdt_rx_join_refuse: Not for me");
     return;
@@ -1707,7 +2033,7 @@ sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_le
   }
 
   /* verify we are tracking this component */
-  foreign_component = sdtm_find_component(foreign_cid);
+  foreign_component = sdt_find_component(foreign_cid);
   if (!foreign_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_leaving: foreign_component not found");
     return;
@@ -1716,7 +2042,7 @@ sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_le
   /* get leader cid */
   unmarshalUUID(leaving, local_cid);
   leaving += UUIDSIZE;
-  local_component = sdtm_find_component(local_cid);
+  local_component = sdt_find_component(local_cid);
   if (!local_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_leaving: local_component not found");
     return;
@@ -1736,7 +2062,7 @@ sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_le
 
   foreign_mid = unmarshalU16(leaving);
   leaving += sizeof(uint16_t);
-  foreign_member = sdtm_find_member_by_mid(local_component->tx_channel, foreign_mid);
+  foreign_member = sdt_find_member_by_mid(local_component->tx_channel, foreign_mid);
   if (!foreign_member)  {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_leaving: member not found");
     return;
@@ -1778,7 +2104,7 @@ sdt_rx_nak(const cid_t foreign_cid, const uint8_t *nak, uint32_t data_len)
   }
 
   /* verify we are tracking this component */
-  foreign_component = sdtm_find_component(foreign_cid);
+  foreign_component = sdt_find_component(foreign_cid);
   if (!foreign_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_nak: foreign_component not found");
     return;
@@ -1787,7 +2113,7 @@ sdt_rx_nak(const cid_t foreign_cid, const uint8_t *nak, uint32_t data_len)
   /* get Leader CID */
   unmarshalUUID(nak, local_cid);
   nak += UUIDSIZE;
-  local_component = sdtm_find_component(local_cid);
+  local_component = sdt_find_component(local_cid);
   if (!local_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_nak: local_component not found");
     return;
@@ -1892,7 +2218,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const ui
   data_end = wrapper + data_len;
 
   /* verify we are tracking this component */
-  foreign_component = sdtm_find_component(foreign_cid);
+  foreign_component = sdt_find_component(foreign_cid);
   if (!foreign_component)  {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper: Not tracking this component");
     return;
@@ -2054,7 +2380,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const ui
             return;
           } else {
             /* now find the foreign component in the local channel and mark it as having been acked */
-            foreign_member = sdtm_find_member_by_component(local_member->component->tx_channel, foreign_component);
+            foreign_member = sdt_find_member_by_component(local_member->component->tx_channel, foreign_component);
             if (foreign_member) {
               foreign_member->mak_ms = 1000; //TODO: un-hard code this
             } else {
@@ -2123,7 +2449,7 @@ sdt_tx_ack(component_t *local_component, component_t *foreign_component)
 
   /* get foreign member in local channel */
   /* this will be used to get the MID to send it to */
-  foreign_member = sdtm_find_member_by_component(local_channel, foreign_component);
+  foreign_member = sdt_find_member_by_component(local_channel, foreign_component);
   if (!foreign_member) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_tx_ack : failed to get foreign_member");
     return;
@@ -2275,7 +2601,7 @@ sdt_tx_connect(component_t *local_component, component_t *foreign_component, uin
   local_channel = local_component->tx_channel;
 
   /* get local member in foreign channel */
-  foreign_member = sdtm_find_member_by_component(local_channel, foreign_component);
+  foreign_member = sdt_find_member_by_component(local_channel, foreign_component);
   if (!foreign_member) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_tx_connect : failed to get foreign_member");
     return;
@@ -2351,7 +2677,7 @@ sdt_tx_connect_accept(component_t *local_component, component_t *foreign_compone
   local_channel = local_component->tx_channel;
 
   /* get local member in foreign channel */
-  foreign_member = sdtm_find_member_by_component(local_channel, foreign_component);
+  foreign_member = sdt_find_member_by_component(local_channel, foreign_component);
   if (!foreign_member) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_tx_connect_accept : failed to get foreign_member");
     return;
@@ -2430,7 +2756,7 @@ sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, 
   local_channel = local_component->tx_channel;
 
   /* get local member in foreign channel */
-  foreign_member = sdtm_find_member_by_component(local_channel, foreign_component);
+  foreign_member = sdt_find_member_by_component(local_channel, foreign_component);
   if (!foreign_member) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_tx_disconnect : failed to get foreign_member");
     return;
@@ -2567,7 +2893,7 @@ sdt_rx_ack(component_t *local_component, component_t *foreign_component, const u
     return;
   }
 
-  member = sdtm_find_member_by_component(local_channel, foreign_component);
+  member = sdt_find_member_by_component(local_channel, foreign_component);
   if (!member) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_ack : failed to get foreign_member");
     return;
@@ -2591,7 +2917,7 @@ sdt_rx_ack(component_t *local_component, component_t *foreign_component, const u
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_ack : foreign component without channel");
     return;
   }
-  member = sdtm_find_member_by_component(foreign_channel, local_component);
+  member = sdt_find_member_by_component(foreign_channel, local_component);
   if (!member) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_ack : failed to get local_member");
     return;
@@ -2636,7 +2962,7 @@ sdt_rx_leave(component_t *local_component, component_t *foreign_component, const
     return;
   }
 
-  local_member = sdtm_find_member_by_component(foreign_component->tx_channel, local_component);
+  local_member = sdt_find_member_by_component(foreign_component->tx_channel, local_component);
   if (local_member) {
     /* send "I'm out of here" and delete the member */
     sdt_tx_leaving(foreign_component, local_member->component, local_member , SDT_REASON_ASKED_TO_LEAVE);

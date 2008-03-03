@@ -181,6 +181,16 @@ int      sdt_shutdown(void);
 void     sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const neti_addr_t *remhost, const cid_t foreign_cid);
 void     sdt_tick(void *arg);  /* timer call back */
 
+/* add with init */
+component_t   *sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local);
+sdt_channel_t *sdt_add_channel(component_t *leader, uint16_t channel_number, bool is_local);
+sdt_member_t  *sdt_add_member(sdt_channel_t *channel, component_t *component);
+
+/* delete with cleanup */
+component_t   *sdt_del_component(component_t *component);
+sdt_channel_t *sdt_del_channel(component_t *leader);
+sdt_member_t  *sdt_del_member(sdt_channel_t *channel, sdt_member_t *member);
+
 
 // **************************************************************
 //TODO: these are only here for testing. Most will become static

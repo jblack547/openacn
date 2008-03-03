@@ -43,20 +43,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 extern void sdtm_init(void);
 
-extern sdt_channel_t *sdtm_add_channel(component_t *leader, uint16_t channel_number, bool is_local);
-extern void           sdtm_remove_channel(component_t *leader);
+extern sdt_channel_t *sdtm_new_channel(void);
+extern void           sdtm_free_channel(sdt_channel_t *channel);
 
-extern sdt_member_t  *sdtm_find_member_by_mid(sdt_channel_t *channel, uint16_t mid);
-extern sdt_member_t  *sdtm_find_member_by_component(sdt_channel_t *channel, component_t *component);
-extern sdt_member_t  *sdtm_add_member(sdt_channel_t *channel, component_t *component);
-extern sdt_member_t  *sdtm_remove_member(sdt_channel_t *channel, sdt_member_t *member);
-extern uint16_t       sdtm_next_member(sdt_channel_t *channel);
+extern sdt_member_t  *sdtm_new_member(void);
+extern void           sdtm_free_member(sdt_member_t *member);
 
-
-extern component_t *sdtm_find_component(const cid_t cid);
-extern component_t *sdtm_add_component(const cid_t cid, const cid_t dcid, bool is_local);
-extern component_t *sdtm_first_component(void);
-
-extern component_t *sdtm_remove_component(component_t *component);
+extern component_t *sdtm_new_component(void);
+extern void         sdtm_free_component(component_t *component);
 
 #endif
