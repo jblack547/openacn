@@ -97,7 +97,7 @@ sdtm_new_channel(void)
 void 
 sdtm_free_channel(sdt_channel_t *channel)
 {
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_channel: %d", channel->number);
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_channel");
 
   /* mark channel as unused */
   channel->number = 0; /* mark it empty */
@@ -210,7 +210,7 @@ sdtm_new_channel(void)
 void 
 sdtm_free_channel(sdt_channel_t *channel)
 {
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_channel: %d", leader->tx_channel->number);
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_channel");
   
   /* mark channel as unused */
   free(channel);

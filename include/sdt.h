@@ -128,7 +128,7 @@ typedef struct sdt_member_s
   uint8_t         nak:1;
   member_state_t  state;
   uint8_t         expiry_time_s;
-  uint32_t        expires_ms;
+  int             expires_ms;
   uint32_t        mak_ms;
   
   /* only used for local member */

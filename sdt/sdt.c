@@ -53,6 +53,7 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "marshal.h"
 #include "netiface.h"
 #include "mcast_util.h"
+#include "acn_port.h"
 
 #if CONFIG_STACK_LWIP
 #include "lwip/sys.h"
@@ -106,7 +107,6 @@ uint16_t      sdt_next_member(sdt_channel_t *channel);
 sdt_member_t *sdt_find_member_by_mid(sdt_channel_t *channel, uint16_t mid);
 sdt_member_t *sdt_find_member_by_component(sdt_channel_t *channel, component_t *component);
 component_t  *sdt_find_component(const cid_t cid);
-
 
 
 
@@ -164,6 +164,8 @@ static       void     sdt_client_rx_handler(component_t *local_component, compon
 static       uint32_t check_sequence(sdt_channel_t *channel, bool is_reliable, uint32_t total_seq, uint32_t reliable_seq, uint32_t oldest_avail);
 static       uint8_t *sdt_format_client_block(uint8_t *client_block, uint16_t foreignlMember, uint32_t protocol, uint16_t association);
 
+#if 0
+// wrf - not used at this time
 enum
 {
   SDT_STATE_NON_MEMBER,
@@ -174,9 +176,7 @@ enum
   SDT_STATE_LEAVING,  
 };
 
-#if 0
 static void
-// wrf - not used at this time
 sdt_local_init(void)
 {
   my_component = sdt_add_component(my_xcid, my_xdcid, true);
@@ -278,8 +278,9 @@ sdt_startup(bool acceptAdHoc)
 int  
 sdt_shutdown(void)
 {
-  component_t     *component;
-  sdt_member_t    *member;
+  component_t    *component;
+  sdt_member_t   *member;
+  acn_protect_t   protect;
 
   LOG_FSTART();
 
@@ -294,22 +295,30 @@ sdt_shutdown(void)
   /* if we have a local component with members in the channel, tell them  to get out of town */
   component = components;
   while(component) {
-    if (component->is_local && component->tx_channel) {
+    if (component->tx_channel) {
       member = component->tx_channel->member_list;
-      while(member) {
-        sdt_tx_leave(component, member->component, member);
-        member = member->next;
+      if (component->tx_channel->is_local) {
+        while(member) {
+          sdt_tx_leave(component, member->component, member);
+          member = member->next;
+        }
+      } else {
+        while(member) {
+          sdt_tx_leaving(component, member->component, member, SDT_REASON_NONSPEC);
+          member = member->next;
+        }
       }
     }
     component = component->next;
   }
-
+  protect = ACN_PORT_PROTECT();
   /*  get first component and rip thru all of them (cleaning up resources along the way) */
   component = components;
   while(component) {
     /* returns the next component after delete */
     component = sdt_del_component(component);
   }
+  ACN_PORT_UNPROTECT(protect);
 
   /* adhoc clean up */
   if (sdt_adhoc_listener && sdt_adhoc_socket) {
@@ -361,7 +370,6 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local)
     if (dcid)
       uuidCopy(component->dcid, dcid);
     //component->adhoc_expires_at = // default 0
-    component->is_local = is_local;
     //tx_channel = 0 // default
     if (is_local) {
       mcast_alloc_init(0, 0, component);
@@ -475,18 +483,18 @@ sdt_del_channel(component_t *leader)
 
   /* now we can clean it up */
   /* remove members */
-  if (leader->tx_channel) {
-    member = leader->tx_channel->member_list;
+  if (channel) {
+    member = channel->member_list;
     while(member) {
-      member = sdt_del_member(leader->tx_channel, member);
+      member = sdt_del_member(channel, member);
     }
     /* remove listener */
-    if (leader->tx_channel->listener) {
-      rlp_del_listener(leader->tx_channel->sock, leader->tx_channel->listener);
+    if (channel->listener) {
+      rlp_del_listener(channel->sock, channel->listener);
     }
   }
   /* and nuke it */
-  sdtm_free_channel(leader->tx_channel);
+  sdtm_free_channel(channel);
   return NULL;
 }
 
@@ -669,6 +677,10 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const neti_addr_t *
   UNUSED_ARG(ref);
 
   LOG_FSTART();
+
+  /* just in case something comes in while shutting down */
+  if (sdt_started != ssSTARTED)
+    return;
  
   /* local pointer */
 	pdup = data;
@@ -747,6 +759,7 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const neti_addr_t *
       case SDT_REL_WRAPPER :
         acnlog(LOG_DEBUG | LOG_SDT,"sdtRxHandler: Dispatch to sdt_rx_wrapper as reliable");
         sdt_rx_wrapper(foreign_cid, remhost, datap, true, data_size);
+        break;
       case SDT_UNREL_WRAPPER :
         acnlog(LOG_DEBUG | LOG_SDT,"sdtRxHandler: Dispatch to sdt_rx_wrapper as unreliable");
         sdt_rx_wrapper(foreign_cid, remhost, datap, false, data_size);
@@ -769,6 +782,12 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const neti_addr_t *
 /*****************************************************************************/
 /*
   Callback from OS to deal with session timeouts
+
+  This function make the assumption that other threads that use the memory allocated 
+  in sdtmem.c are of higher priority than this one and that a preemptive os is used. 
+  By doing this, the higher priority threads will complete what they are doing before 
+  giving up control.  This avoiding more complex locking schemes. It also assume that these
+  tasks do not yield control back while in the middle of processing on the common memory.
 */
 //TODO: this should be in opt.h as it is implementation dependent;
 #define MS_PER_TICK 100
@@ -779,6 +798,7 @@ sdt_tick(void *arg)
   sdt_channel_t *channel;
   sdt_member_t  *member;
   int            do_mak;
+  acn_protect_t  protect;
 
   UNUSED_ARG(arg);
 
@@ -795,13 +815,12 @@ sdt_tick(void *arg)
       while(member) {
         if (member->expires_ms > 0) {
           member->expires_ms -= MS_PER_TICK;
-          if ((int)member->expires_ms < 0) {
+          if (member->expires_ms < 0) {
             member->expires_ms = 0;
           }
         }
         /* expired if zero */
         if (member->expires_ms == 0) {
-          member->expires_ms = -1;  // turn it off
           /* if channel is local, then all members are foreign */
           if (channel->is_local) {
             //command the member to leave my channel
@@ -811,10 +830,16 @@ sdt_tick(void *arg)
             /* send a leaving message */
             sdt_tx_leaving(component, member->component, member, SDT_REASON_CHANNEL_EXPIRED);
           }
+        }
+        /* this catches the case where expires_ms = -1 when created or when we have done responses and need to just delte*/
+        if (member->expires_ms <= 0) {
           /* remove this member*/
-          sdt_del_member(channel, member);
-        } 
-        member = member->next;
+          protect = ACN_PORT_PROTECT();
+          member = sdt_del_member(channel, member);
+          ACN_PORT_UNPROTECT(protect);
+        } else {
+          member = member->next;
+        }
       }
       /* if the leader is local, send MAK if mak time out     */
       /* If any device needs MAK, then we will send it to all */
@@ -840,52 +865,20 @@ sdt_tick(void *arg)
         if (do_mak) {
           sdt_tx_mak_all(component);
         }
-      } else { /* must be foreign */
-        /* if we have no member, delete channel */
-        if (!channel->member_list) {
-          if (channel->listener) {
-            rlp_del_listener(sdt_multicast_socket, channel->listener);
-          }
-          sdt_del_channel(component);
-        }
+      }
+      /* if we have no member, delete channel */
+      if (!channel->member_list) {
+        protect = ACN_PORT_PROTECT();
+        sdt_del_channel(component);
+        ACN_PORT_UNPROTECT(protect);
       }
     } /* of channels */
 
-    /* if component is local has no channels, then also close the reciprocal */
-
-    /* if component is reciprocal we can delete it as we created it */
-
-    // TODO open/close socket as needed
-    //if (!channel->memberList) { /* no members left in the channel */
-    //  if (currentChannel == channel) {
-    //    currentSrc = 0;
-    //    currentChannel = 0;
-    //    currentLeader =0;
-    //  }
-    //  mcast_leave(channel->downstreamIP);
-    //  rlp_close_socket(channel->sock);
-    //  /* remove the channel from the leader */
-    //  *prevChannel = channel->next;
-    //  ppFree(channel, sizeof(sdt_channel_t));
-    //  channel = *prevChannel;
-    //} else {
-    //  prevChannel = &(channel->next);
-    //  channel = channel->next;
-    //}
-    
-    // TODO remove stail foreign components
-    //if (!leader->channelList) { /* no channels left on this leader */
-    //  remoteComp = leader->component;
-    //  /* remove the leader */
-    //  *prevLeader = leader->next;
-    //  ppFree(leader, sizeof(sdt_leader_t));
-    //  leader = *prevLeader;
-    //  unregister_foreign_component(remoteComp->cid);
-    //} else {
-    //  prevLeader = &(leader->next);
-    //  leader = leader->next;
-    //}
-    component = component->next;
+    if (!channel && component->auto_created) {
+      component = sdt_del_component(component);
+    } else {
+      component = component->next;
+    }
   } /* of while */
   /* Reset timers */
 }
@@ -1279,6 +1272,16 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
   assert(local_component);
   assert(foreign_component);
 
+  auto void remove_allocations(void);
+  void remove_allocations(void) {
+//    if (allocations & ALLOCATED_LOCAL_MEMBER) sdt_del_member(foreign_channel, local_member);
+//    if (allocations & ALLOCATED_FOREIGN_LISTENER) rlp_del_listener(sdt_multicast_socket, foreign_channel->listener);
+//    if (allocations & ALLOCATED_FOREIGN_CHANNEL) sdt_del_channel(foreign_component);
+//    if (allocations & ALLOCATED_FOREIGN_COMP) sdt_del_component(foreign_component);
+    if (allocations & ALLOCATED_FOREIGN_MEMBER) sdt_del_member(local_channel, foreign_member);
+    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdt_del_channel(local_component);
+  }
+
   local_channel = local_component->tx_channel;
   foreign_channel = foreign_component->tx_channel;
 
@@ -1313,7 +1316,7 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
   foreign_member = sdt_find_member_by_component(local_channel, foreign_component);
   if (foreign_member) {
     acnlog(LOG_DEBUG | LOG_SDT, "sdt_tx_join : already a member -- suppressing join");
-    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdt_del_channel(local_component);
+    remove_allocations();
     return;
   }  
 
@@ -1321,7 +1324,7 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
   foreign_member = sdt_add_member(local_channel, foreign_component);
   if (!foreign_member) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_tx_join : failed to allocate foreign member");
-    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdt_del_channel(local_component);
+    remove_allocations();
     return;
   }
   allocations |= ALLOCATED_FOREIGN_MEMBER;
@@ -1337,8 +1340,7 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
   tx_buffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
   if (!tx_buffer) {
     acnlog(LOG_ERR | LOG_SDT, "sdt_tx_join : failed to get new txbuf");
-    if (allocations & ALLOCATED_LOCAL_CHANNEL) sdt_del_channel(local_component);
-    if (allocations & ALLOCATED_FOREIGN_MEMBER) sdt_del_member(local_channel, foreign_member);
+    remove_allocations();
     return;
   } 
   buf_start = rlp_init_block(tx_buffer, NULL);
@@ -1743,6 +1745,7 @@ sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8
       remove_allocations();
       return;
     }  
+    foreign_component->auto_created = true;
     allocations |= ALLOCATED_FOREIGN_COMP;
   }
   
@@ -1771,14 +1774,6 @@ sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8
   foreign_channel->reliable_seq = foreign_reliable_seq;
   foreign_channel->source_addr = *source_addr;
 
-  printf("Source IP: %"U16_F".%"U16_F".%"U16_F".%"U16_F"\n", 
-            (u16_t)(ntohl(source_addr) >> 24) & 0xff,
-            (u16_t)(ntohl(source_addr) >> 16) & 0xff,
-            (u16_t)(ntohl(source_addr) >> 8 ) & 0xff,
-            (u16_t)(ntohl(source_addr)      ) & 0xff
-            );
-
-  
   joinp = unmarshal_transport_address(joinp, source_addr, &foreign_channel->destination_addr, &address_type);
 
   if (address_type == SDT_ADDR_IPV6) {
@@ -2072,7 +2067,7 @@ sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_le
   acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_leaving : channel %d, mid %d", local_channel_number, foreign_mid);
 
   /* ok now remove it on next tick*/
-  foreign_member->expires_ms = 0;
+  foreign_member->expires_ms = -1;
   return;
 }
 
@@ -2292,7 +2287,10 @@ sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const ui
       /* Discard and send sequence lost message to leader */
       local_member = foreign_channel->member_list;
       while (local_member) {
+        /* send "I'm out of here" and delete the member */
         sdt_tx_leaving(foreign_component, local_member->component, local_member, SDT_REASON_LOST_SEQUENCE);
+        /* remove on next tick */
+        local_member->expires_ms = -1;
         local_member = local_member->next;
       }
       return;
@@ -2903,7 +2901,7 @@ sdt_rx_ack(component_t *local_component, component_t *foreign_component, const u
   reliableSeq = unmarshalU32(data);
   
   /* reset timer */
-  member->expires_ms =FOREIGN_MEMBER_EXPIRY_TIME_ms;
+  member->expires_ms = FOREIGN_MEMBER_EXPIRY_TIME_ms;
   
   /* we should send an ACK now */
   if (member->state == msPENDING) {
@@ -2967,7 +2965,7 @@ sdt_rx_leave(component_t *local_component, component_t *foreign_component, const
     /* send "I'm out of here" and delete the member */
     sdt_tx_leaving(foreign_component, local_member->component, local_member , SDT_REASON_ASKED_TO_LEAVE);
     /* remove on next tick */
-    local_member->expires_ms = 0;
+    local_member->expires_ms = -1;
   } else {
     acnlog(LOG_ERR | LOG_WARNING, "sdt_rx_leave: no local member");
   }

@@ -43,7 +43,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if CONFIG_STACK_LWIP
 #include "lwip/sys.h"
-#define acn_port_protect() sys_arch_protect()
-#define acn_port_unprotect(pval) sys_arch_unprotect(pval)
+#define acn_protect_t sys_prot_t
+#define ACN_PORT_PROTECT() sys_arch_protect()
+#define ACN_PORT_UNPROTECT(pval) sys_arch_unprotect(pval)
 #endif
 #endif

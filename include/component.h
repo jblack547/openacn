@@ -66,7 +66,7 @@ typedef struct component_s
 #if CONFIG_SDT
   neti_addr_t   adhoc_addr;
 	int           adhoc_expires_at;
-  bool          is_local;
+  bool          auto_created;
   struct sdt_channel_s *tx_channel;
 	struct component_s   *next;
 #endif
