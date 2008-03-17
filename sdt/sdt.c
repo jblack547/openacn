@@ -74,6 +74,7 @@ recurse infinitely on this definition.
 #define LOG_FEND() 
 
 #define CHANNEL_OUTBOUND_TRAFFIC 0
+
 #define SDT_TMR_INTERVAL 1000
 
 static component_t     *components = NULL;
@@ -139,8 +140,9 @@ static void     sdt_tx_connect(component_t *local_component, component_t *foreig
 static void     sdt_tx_connect_accept(component_t *local_component, component_t *foreign_component, uint32_t protocol);
 //TODO:         sdt_tx_connect_refuse(sdt_wrapper_t *wrapper);
 static void     sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, uint32_t protocol);
-//TODO:         sdt_tx_disconecting(sdt_wrapper_t *wrapper);
+static void     sdt_tx_disconnecting(component_t *local_component, component_t *foreign_component, uint32_t protocol, uint8_t reason);
 static void     sdt_tx_mak_all(component_t *local_component);
+
 
 
 static void     sdt_rx_ack(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
@@ -163,6 +165,12 @@ static       uint8_t *sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt
 static       void     sdt_client_rx_handler(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
 static       uint32_t check_sequence(sdt_channel_t *channel, bool is_reliable, uint32_t total_seq, uint32_t reliable_seq, uint32_t oldest_avail);
 static       uint8_t *sdt_format_client_block(uint8_t *client_block, uint16_t foreignlMember, uint32_t protocol, uint16_t association);
+
+//TODO: this is fake!
+#define DMP_PROTOCOL_ID     100
+#define PROTO_DMP           DMP_PROTOCOL_ID
+
+
 
 #if 0
 // wrf - not used at this time
@@ -233,6 +241,31 @@ sdt_init(void)
 
 /*****************************************************************************/
 /* 
+  Short wrapper around join
+ */
+int 
+sdt_join(component_t *local_component, component_t *foreign_component)
+{
+  if (local_component && foreign_component) {
+    sdt_tx_join(local_component, foreign_component);
+    return 0;
+  }
+  /* Fail */
+  return -1;
+}
+/*****************************************************************************/
+/* 
+  Short wrapper around tx_data
+ */
+//int 
+//sdt_send(component_t *local_component, component_t *foreign_component, void *data)
+//{
+//  return 0;
+//}
+
+
+/*****************************************************************************/
+/* 
   Kick off the SDT processes
     returns -1 if fails, 0 otherwise
  */
@@ -251,6 +284,7 @@ sdt_startup(bool acceptAdHoc)
   if (acceptAdHoc) {
     /* Open ad hoc channel on ephemerql port */
     if (!sdt_adhoc_socket) {
+      //TODO: this is just a hack until we get SLP working
       sdt_adhoc_socket = rlp_open_netsocket(0x5000);
 //      sdt_adhoc_socket = rlp_open_netsocket(NETI_PORT_EPHEM);
       if (sdt_adhoc_socket) {
@@ -299,11 +333,17 @@ sdt_shutdown(void)
       member = component->tx_channel->member_list;
       if (component->tx_channel->is_local) {
         while(member) {
+          if (member->state == msCONNECTED) {
+            sdt_tx_disconnect(component, member->component, PROTO_DMP);
+          }
           sdt_tx_leave(component, member->component, member);
           member = member->next;
         }
       } else {
         while(member) {
+          if (member->state == msCONNECTED) {
+            sdt_tx_disconnecting(component, member->component, PROTO_DMP, SDT_REASON_NONSPEC);
+          }
           sdt_tx_leaving(component, member->component, member, SDT_REASON_NONSPEC);
           member = member->next;
         }
@@ -351,6 +391,7 @@ component_t *
 sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local)
 {
   component_t *component;
+  acn_protect_t  protect;
 
   #if LOG_DEBUG | LOG_SDT
   char  uuid_text[37];
@@ -359,7 +400,16 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local)
 
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_component: %s", uuid_text);
 
+  /* See if we have this already */
+  component = sdt_find_component(cid);
+  if (component) {
+    acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_component: component already exists");
+    return component;
+  }
+
+  /* we need to protect this because incomming data is a higher priority and can add it's own component */
   /* find and empty one */
+  protect = ACN_PORT_PROTECT();
   component = sdtm_new_component();
   if (component) {
     component->next = components;
@@ -375,8 +425,10 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local)
       mcast_alloc_init(0, 0, component);
     }
     //is_receprocal     // default 0 (false)
+    ACN_PORT_UNPROTECT(protect);
     return component;
   }
+  ACN_PORT_UNPROTECT(protect);
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_component: failed to add new component");
 
   return NULL; /* none left */
@@ -392,6 +444,7 @@ component_t *
 sdt_del_component(component_t *component)
 {
   component_t *cur;
+  acn_protect_t  protect;
 
   #if LOG_DEBUG | LOG_SDT
   char  uuid_text[37];
@@ -407,8 +460,10 @@ sdt_del_component(component_t *component)
 
   /* if it is at top, then we just move leader */
   if (component == components) {
+    protect = ACN_PORT_PROTECT();
     components = component->next;
     sdtm_free_component(component);
+    ACN_PORT_UNPROTECT(protect);
     return components;
   }
   
@@ -417,8 +472,10 @@ sdt_del_component(component_t *component)
   while (cur) {
     if (cur->next == component) {
       /* jump around it */
+      protect = ACN_PORT_PROTECT();
       cur->next = component->next;
       sdtm_free_component(component);
+      ACN_PORT_UNPROTECT(protect);
       return (cur->next);
     }
     cur = cur->next;
@@ -435,6 +492,7 @@ sdt_channel_t *
 sdt_add_channel(component_t *leader, uint16_t channel_number, bool is_local)
 {
 	sdt_channel_t *channel;
+  acn_protect_t  protect;
 
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_channel %d", channel_number);
 
@@ -444,6 +502,9 @@ sdt_add_channel(component_t *leader, uint16_t channel_number, bool is_local)
   }
 
   //TODO: should we check to see if this exists already?
+  /* we need to protect this because incomming data is a higher priority and can add it's own component */
+  /* find and empty one */
+  protect = ACN_PORT_PROTECT();
   channel = sdtm_new_channel();
   if (channel) {
     /* assign this to our leader */
@@ -458,8 +519,10 @@ sdt_add_channel(component_t *leader, uint16_t channel_number, bool is_local)
     //channel->sock;           = // default null
     //channel->listener;       = // multicast listener, default null
     leader->tx_channel = channel;
+    ACN_PORT_UNPROTECT(protect);
     return channel;
   }
+  ACN_PORT_UNPROTECT(protect);
   acnlog(LOG_ERR | LOG_SDT,"sdt_add_channel: failed to get new channel");
   return NULL; /* none left */
 }
@@ -474,6 +537,7 @@ sdt_del_channel(component_t *leader)
 {
   sdt_member_t  *member;
   sdt_channel_t *channel;
+  acn_protect_t  protect;
 
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_channel: %d", leader->tx_channel->number);
 
@@ -494,7 +558,10 @@ sdt_del_channel(component_t *leader)
     }
   }
   /* and nuke it */
+  protect = ACN_PORT_PROTECT();
   sdtm_free_channel(channel);
+  ACN_PORT_UNPROTECT(protect);
+
   return NULL;
 }
 
@@ -507,11 +574,14 @@ sdt_member_t *
 sdt_add_member(sdt_channel_t *channel, component_t *component)
 {
   sdt_member_t *member;
+  acn_protect_t  protect;
 
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_member: to channel %d", channel->number);
 
   // TODO: should we verify the component does not alread exist?
+  /* we need to protect this because incomming data is a higher priority and can add it's own component */
   /* find and empty one */
+  protect = ACN_PORT_PROTECT();
   member = sdtm_new_member();
   if (member) {
     /* put this one at the head of the list */
@@ -531,8 +601,10 @@ sdt_add_member(sdt_channel_t *channel, component_t *component)
     //member->last_acked   = // default 0
     //member->nak_modulus  = // default 0
     //member->nak_max_wait  = // default 0
+    ACN_PORT_UNPROTECT(protect);
     return member;
   }
+  ACN_PORT_UNPROTECT(protect);
   acnlog(LOG_ERR | LOG_SDT,"sdt_new_member: none left");
 
   return NULL; /* none left */
@@ -548,13 +620,16 @@ sdt_member_t *
 sdt_del_member(sdt_channel_t *channel, sdt_member_t *member)
 {
   sdt_member_t *cur;
+  acn_protect_t  protect;
 
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_member: %d from channel %d", member->mid, channel->number);
 
   /* if it is at top, then we just move leader */
   if (member == channel->member_list) {
+    protect = ACN_PORT_PROTECT();
     channel->member_list = member->next;
     sdtm_free_member(member);
+    ACN_PORT_UNPROTECT(protect);
     return channel->member_list;
   }
   
@@ -563,8 +638,10 @@ sdt_del_member(sdt_channel_t *channel, sdt_member_t *member)
   while (cur) {
     if (cur->next == member) {
       /* jump around it */
+      protect = ACN_PORT_PROTECT();
       cur->next = member->next;
       sdtm_free_member(member);
+      ACN_PORT_UNPROTECT(protect);
       return cur->next;
     }
     cur = cur->next;
@@ -637,7 +714,7 @@ sdt_find_member_by_component(sdt_channel_t *channel, component_t *component)
 
 /*****************************************************************************/
 /*
-  
+  Find component by CID
 */
 component_t *
 sdt_find_component(const cid_t cid)
@@ -654,8 +731,6 @@ sdt_find_component(const cid_t cid)
   }
   return NULL;  /* oops */
 }
-
-
 
 /*****************************************************************************/
 /*
@@ -798,7 +873,6 @@ sdt_tick(void *arg)
   sdt_channel_t *channel;
   sdt_member_t  *member;
   int            do_mak;
-  acn_protect_t  protect;
 
   UNUSED_ARG(arg);
 
@@ -833,10 +907,14 @@ sdt_tick(void *arg)
         }
         /* this catches the case where expires_ms = -1 when created or when we have done responses and need to just delte*/
         if (member->expires_ms <= 0) {
+          /* tell application */
+          if (member->state != msEMPTY) {
+            if (component->callback) {
+              (*component->callback)(SDT_EVENT_LEAVE, member->component);
+            }
+          }
           /* remove this member*/
-          protect = ACN_PORT_PROTECT();
           member = sdt_del_member(channel, member);
-          ACN_PORT_UNPROTECT(protect);
         } else {
           member = member->next;
         }
@@ -847,7 +925,7 @@ sdt_tick(void *arg)
         do_mak = 0;
         member = channel->member_list;
         while(member) {
-          if (member->state == msJOINED) {
+          if (member->state == msJOINED || member->state == msCONNECTED) {
             if (member->mak_ms > 0) {
               member->mak_ms -= MS_PER_TICK;
               if ((int)member->mak_ms < 0 ) {
@@ -868,9 +946,7 @@ sdt_tick(void *arg)
       }
       /* if we have no member, delete channel */
       if (!channel->member_list) {
-        protect = ACN_PORT_PROTECT();
         sdt_del_channel(component);
-        ACN_PORT_UNPROTECT(protect);
       }
     } /* of channels */
 
@@ -1099,19 +1175,19 @@ sdt_client_rx_handler(component_t *local_component, component_t *foreign_compone
 
     switch(vector) {
       case SDT_ACK :
-        sdt_rx_ack(local_component, foreign_component, pdup, data_size);
+        sdt_rx_ack(local_component, foreign_component, datap, data_size);
         break;
       case SDT_CHANNEL_PARAMS :
         acnlog(LOG_INFO | LOG_SDT,"sdt_client_rx_handler: SDT_CHANNEL_PARAMS not supported..");
         break;
       case SDT_LEAVE :
-        sdt_rx_leave(local_component, foreign_component, pdup, data_size);
+        sdt_rx_leave(local_component, foreign_component, datap, data_size);
         break;
       case SDT_CONNECT :
-        sdt_rx_connect(local_component, foreign_component, pdup, data_size);
+        sdt_rx_connect(local_component, foreign_component, datap, data_size);
         break;
       case SDT_CONNECT_ACCEPT :
-        sdt_rx_connect_accept(local_component, foreign_component, pdup, data_size);
+        sdt_rx_connect_accept(local_component, foreign_component, datap, data_size);
         break;
       case SDT_CONNECT_REFUSE :
         acnlog(LOG_INFO | LOG_SDT,"sdt_client_rx_handler: Our Connect was Refused ??? ");
@@ -1206,7 +1282,7 @@ static
 uint8_t *
 sdt_format_client_block(uint8_t *client_block, uint16_t foreign_mid, uint32_t protocol, uint16_t association)
 {
-  LOG_FSTART();
+  //LOG_FSTART();
 
   /* skip flags and length for now */
   client_block += 2; 
@@ -1236,8 +1312,6 @@ msec_to_ticks(int time_in_msec)
 {
   return time_in_msec;
 }
-
-
 
 /*****************************************************************************/
 /*
@@ -1953,6 +2027,7 @@ sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t
   uint16_t          foreign_mid;
   uint32_t          rel_seq_num;
   uint8_t           reason_code;
+  sdt_member_t     *foreign_member;
 
   LOG_FSTART();
 
@@ -1993,6 +2068,14 @@ sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t
   /* get reason */
   reason_code = unmarshalU8(join_refuse);
   join_refuse += sizeof(uint8_t);
+
+  /* well, if they don't want to play, nuke-em */
+  if (local_component->tx_channel) {
+    foreign_member = sdt_find_member_by_mid(local_component->tx_channel, foreign_mid);
+    if (foreign_member) {
+      foreign_member->expires_ms = -1;
+    }
+  }
 
   //TODO: add reason to text
   acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_join_refuse: channel %d, mid, %d, reason %d", local_channel_number, foreign_mid, reason_code);
@@ -2391,7 +2474,10 @@ sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const ui
 
         if (protocol == PROTO_SDT) {
           sdt_client_rx_handler(local_member->component, foreign_component, datap, data_size);
-        } //else {
+        } else {
+          if (local_member->component->callback)
+            (*local_member->component->callback)(SDT_EVENT_DATA, (void*)datap);
+        }
 //        rx_handler = sdt_get_rx_handler(clientProtocol,ref)    
 //        if(!rx_handler) {
 //          acnlog(LOG_DEBUG | LOG_SDT,"sdt_rx_wrapper: Unknown Vector - skip");
@@ -2576,6 +2662,8 @@ sdt_tx_leave(component_t *local_component, component_t *foreign_component, sdt_m
 
   CONNECT is sent in a reliable wrapper
 */
+// TODO: We need timeout on connect
+
 /*static*/ void 
 sdt_tx_connect(component_t *local_component, component_t *foreign_component, uint32_t protocol)
 {
@@ -2748,6 +2836,7 @@ sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, 
   assert(local_component->tx_channel);
   assert(foreign_component);
   assert(foreign_component->tx_channel);
+  assert(local_component->tx_channel->sock);
 
   /* just to make it easier */
   foreign_channel = foreign_component->tx_channel;
@@ -2767,12 +2856,6 @@ sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, 
     return;
   } 
   wrapper = rlp_init_block(tx_buffer, NULL);
-
-  /* we must have a local socket */
-  if (!local_channel->sock) {
-    acnlog(LOG_INFO | LOG_SDT, "sdt_tx_disconnect : assuming ad-hoc socket");
-    local_channel->sock = sdt_adhoc_socket;
-  }
 
   /* create a wrapper and get pointer to client block */
   client_block = sdt_format_wrapper(wrapper, SDT_RELIABLE, local_channel, 0xffff, 0xffff, 0); /* no acks, 0 threshold */
@@ -2800,6 +2883,76 @@ sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, 
 
 /*****************************************************************************/
 //TODO:         sdt_tx_disconecting();
+/*
+  Send DISCONNECTING
+    local_component   - local component sending DISCONNECTING
+    foreign_component - foreign component receiving
+    protocol          - DMP we hope!
+
+  DISCONNECTING is sent in a reliable wrapper
+*/
+/*static*/ void 
+sdt_tx_disconnecting(component_t *local_component, component_t *foreign_component, uint32_t protocol, uint8_t reason)
+{
+  uint8_t       *wrapper;
+  uint8_t       *client_block;
+  uint8_t       *datagram;
+  sdt_member_t  *foreign_member;
+  rlp_txbuf_t   *tx_buffer;
+  sdt_channel_t *foreign_channel;
+  sdt_channel_t *local_channel;
+
+  LOG_FSTART();
+
+  assert(local_component);
+  assert(local_component->tx_channel);
+  assert(foreign_component);
+  assert(foreign_component->tx_channel);
+  assert(local_component->tx_channel->sock);
+
+  /* just to make it easier */
+  foreign_channel = foreign_component->tx_channel;
+  local_channel = local_component->tx_channel;
+
+  /* get local member in foreign channel */
+  foreign_member = sdt_find_member_by_component(local_channel, foreign_component);
+  if (!foreign_member) {
+    acnlog(LOG_WARNING | LOG_SDT, "sdt_tx_disconnect : failed to get foreign_member");
+    return;
+  }
+    
+  /* Create packet buffer */
+  tx_buffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
+  if (!tx_buffer) {
+    acnlog(LOG_ERR | LOG_SDT, "sdt_tx_disconnect : failed to get new txbuf");
+    return;
+  } 
+  wrapper = rlp_init_block(tx_buffer, NULL);
+
+  /* create a wrapper and get pointer to client block */
+  client_block = sdt_format_wrapper(wrapper, SDT_RELIABLE, local_channel, 0xffff, 0xffff, 0); /* no acks, 0 threshold */
+  
+  /* create client block and get pointer to opaque datagram */
+  datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, CHANNEL_OUTBOUND_TRAFFIC);
+
+  /* add datagram (DISCONNECT message) */
+  datagram = marshalU16(datagram, 8 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  datagram = marshalU8(datagram, SDT_DISCONNECTING);
+  datagram = marshalU32(datagram, protocol);
+  datagram = marshalU8(datagram, reason);
+
+  /* add length to client block pdu */
+  marshalU16(client_block, (10+8) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+
+  /* add length to wrapper pdu */
+  marshalU16(wrapper, (datagram-wrapper) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+
+  /* add our PDU (sets its length there)*/
+  rlp_add_pdu(tx_buffer, wrapper, datagram-wrapper, NULL);
+  /* and send it on */
+  rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
+  rlpm_freetxbuf(tx_buffer);
+}
 
 /*****************************************************************************/
 /*
@@ -2856,6 +3009,91 @@ sdt_tx_mak_all(component_t *local_component)
 
 /*****************************************************************************/
 /*
+  Send protocol data
+    local_component   - local component sending CONNECT
+    foreign_component - foreign component receiving
+    protocol          - DMP we hope!
+    data              - pointer to data
+
+  data is sent in a reliable wrapper
+*/
+// TODO: We need timeout on connect
+
+/*static*/ void 
+sdt_tx_reliable_data(component_t *local_component, component_t *foreign_component, uint32_t protocol, bool response, void *data, uint32_t data_len)
+{
+  uint8_t       *wrapper;
+  uint8_t       *client_block;
+  uint8_t       *datagram;
+  sdt_member_t  *foreign_member;
+  rlp_txbuf_t   *tx_buffer;
+  sdt_channel_t *foreign_channel;
+  sdt_channel_t *local_channel;
+  uint16_t       association;
+
+  LOG_FSTART();
+
+  assert(local_component);
+  assert(local_component->tx_channel);
+  assert(foreign_component);
+  assert(foreign_component->tx_channel);
+
+  /* just to make it easier */
+  foreign_channel = foreign_component->tx_channel;
+  local_channel = local_component->tx_channel;
+
+  /* get local member in foreign channel */
+  foreign_member = sdt_find_member_by_component(local_channel, foreign_component);
+  if (!foreign_member) {
+    acnlog(LOG_WARNING | LOG_SDT, "sdt_tx_connect : failed to get foreign_member");
+    return;
+  }
+    
+  /* Create packet buffer */
+  tx_buffer = rlpm_newtxbuf(DEFAULT_MTU, local_component);
+  if (!tx_buffer) {
+    acnlog(LOG_ERR | LOG_SDT, "sdt_tx_connect : failed to get new txbuf");
+    return;
+  } 
+  wrapper = rlp_init_block(tx_buffer, NULL);
+
+  /* we must have a local socket */
+  if (!local_channel->sock) {
+    acnlog(LOG_INFO | LOG_SDT, "sdt_tx_connect : assuming ad-hoc socket");
+    local_channel->sock = sdt_adhoc_socket;
+  }
+
+  /* create a wrapper and get pointer to client block */
+  client_block = sdt_format_wrapper(wrapper, SDT_RELIABLE, local_channel, 0xffff, 0xffff, 0); /* no acks, 0 threshold */
+  
+  /* create client block and get pointer to opaque datagram */
+  if (response) {
+    association = foreign_channel->number;
+  } else {
+    association = 0;
+  }
+  datagram = sdt_format_client_block(client_block, foreign_member->mid, protocol, association);
+
+  /* add datagram CONNECT message) */
+  memcpy(datagram, data, data_len);
+  datagram += data_len;
+
+  /* add length to client block pdu */
+  marshalU16(client_block, (10+data_len) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+
+  /* add length to wrapper pdu */
+  marshalU16(wrapper, (datagram-wrapper) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+
+  /* add our PDU (sets its length there)*/
+  rlp_add_pdu(tx_buffer, wrapper, datagram-wrapper, NULL);
+  /* and send it on */
+  rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
+  rlpm_freetxbuf(tx_buffer);
+}
+
+
+/*****************************************************************************/
+/*
   Receive ACK
     local_component   - local component receiving ACK
     foreign_component - foreign component sending
@@ -2891,12 +3129,12 @@ sdt_rx_ack(component_t *local_component, component_t *foreign_component, const u
     return;
   }
 
+  /* Foreign Member */
   member = sdt_find_member_by_component(local_channel, foreign_component);
   if (!member) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_ack : failed to get foreign_member");
     return;
   }
-
   //TODO: how should this be processed
   reliableSeq = unmarshalU32(data);
   
@@ -2907,14 +3145,14 @@ sdt_rx_ack(component_t *local_component, component_t *foreign_component, const u
   if (member->state == msPENDING) {
     sdt_tx_ack(local_component, member->component);
     member->state = msJOINED;
+    if (local_component->callback)
+      (*local_component->callback)(SDT_EVENT_JOIN, foreign_component);
     acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_ack : foreign member %d JOINED", member->mid);
+    sdt_tx_connect(local_component, foreign_component, PROTO_DMP);
   }
 
-  /* get local member */
-  if (!foreign_channel) {
-    acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_ack : foreign component without channel");
-    return;
-  }
+
+  /* Local Member */
   member = sdt_find_member_by_component(foreign_channel, local_component);
   if (!member) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_ack : failed to get local_member");
@@ -2922,6 +3160,9 @@ sdt_rx_ack(component_t *local_component, component_t *foreign_component, const u
   }
   if (member->state == msPENDING) {
     member->state = msJOINED;
+    /* let application know we have failed*/
+    if (foreign_component->callback)
+      (*foreign_component->callback)(SDT_EVENT_JOIN, local_component);
     acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_ack : local member %d JOINED", member->mid);
   }
  
@@ -2982,20 +3223,17 @@ sdt_rx_leave(component_t *local_component, component_t *foreign_component, const
 /*static*/ void 
 sdt_rx_connect(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len)
 {
-  uint32_t protocol;
-
-  UNUSED_ARG(local_component);
-  UNUSED_ARG(foreign_component);
-  UNUSED_ARG(data);
+  uint32_t      protocol;
+  sdt_member_t *local_member;
+  sdt_member_t *foreign_member;
 
   LOG_FSTART();
 
-  //assert(local_component);
-  //assert(local_component->tx_channel);
-  //assert(foreign_component);
-  //assert(foreign_component->tx_channel);
+  assert(local_component);
+  assert(local_component->tx_channel);
+  assert(foreign_component);
+  assert(foreign_component->tx_channel);
   
-
   /* verify data length */  
   if (data_len != 4) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_connect: Invalid data_len");
@@ -3003,15 +3241,31 @@ sdt_rx_connect(component_t *local_component, component_t *foreign_component, con
   }
 
   protocol = unmarshalU32(data);
-  
-  //TODO: Implement DMP
-  /*
-  if (protocol == PROTO_DMP)
-  {
-    sdt_tx_connect_accept(wrapper, remoteLeader->component, protocol, remoteChannel);
-    sdt_tx_connect(wrapper, localLeader, localChannel, remoteLeader->component, remoteChannel, PROTO_DMP);
+
+  //TODO: Implement DMP HERE
+  /* connect should come from leader so we are member of his channel */
+  local_member = sdt_find_member_by_component(foreign_component->tx_channel, local_component);
+  foreign_member = sdt_find_member_by_component(local_component->tx_channel, foreign_component);
+
+  /* my membership in him */
+  if (!local_member) {
+    acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_connect: local member not found");
+    return;
   }
-  */
+  if (!foreign_member) {
+    acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_connect: foreign member not found");
+    return;
+  }
+
+  /* protocol ? */
+  if (protocol == PROTO_DMP) {
+    sdt_tx_connect_accept(local_component, foreign_component, protocol);
+    /* only send our own connect if we are in JOINED state */
+  } else {
+    acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_connect: unsupported protocol");
+    //TODO: send join refuse
+    return;
+  }
 }
 
 /*****************************************************************************/
@@ -3025,18 +3279,15 @@ sdt_rx_connect(component_t *local_component, component_t *foreign_component, con
 /*static*/ void 
 sdt_rx_connect_accept(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len)
 {
-  uint32_t protocol;
-
-  UNUSED_ARG(local_component);
-  UNUSED_ARG(foreign_component);
-  UNUSED_ARG(data);
+  uint32_t       protocol;
+  sdt_member_t  *foreign_member;
 
   LOG_FSTART();
 
-  //assert(local_component);
-  //assert(local_component->tx_channel);
-  //assert(foreign_component);
-  //assert(foreign_component->tx_channel);
+  assert(local_component);
+  assert(local_component->tx_channel);
+  assert(foreign_component);
+  assert(foreign_component->tx_channel);
 
   /* verify data length */  
   if (data_len != 4) {
@@ -3047,13 +3298,22 @@ sdt_rx_connect_accept(component_t *local_component, component_t *foreign_compone
   /*  verify protocol */
   protocol = unmarshalU32(data);
 
-  //TODO wrf implment DMB
-  /*
-  if (protocol == PROTO_DMP) {
-    acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_connect_accept: WooHoo pointless Session established");
-    member->isConnected = 1;
+  foreign_member = sdt_find_member_by_component(local_component->tx_channel, foreign_component);
+  if (foreign_member) {
+    //TODO wrf implment DMP
+    if (protocol == PROTO_DMP) {
+      foreign_member->state = msCONNECTED;
+      acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_connect_accept: WooHoo pointless Session established");
+      /* let our app know */
+      if (local_component->callback)
+        (*local_component->callback)(SDT_EVENT_CONNECT, foreign_component);
+    } else {
+      acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_connect_accept: Unknown protcol");
+    }
+  } else {
+    acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_connect_accept: Unable to find member");
   }
-  */
+
 }
 
 /*****************************************************************************/

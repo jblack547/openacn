@@ -100,24 +100,12 @@ enum
   SDT_ADDR_IPV6 = 2,
 };
 
-#if 0   // MOVED TO component.h
-typedef struct sdt_component_s
-{
-	struct sdt_component_s *next;
-	cid_t         cid;
-	cid_t         dcid;
-  neti_addr_t   adhoc_addr;
-	int           adhoc_expires_at;
-  bool          is_local;
-  struct sdt_channel_s *tx_channel;
-} sdt_component_t;
-#endif
-
 typedef enum
 {
   msEMPTY     = 0,
   msPENDING   = 1,
-  msJOINED = 2
+  msJOINED    = 2,
+  msCONNECTED = 3
 } member_state_t;
 
 typedef struct sdt_member_s
@@ -180,6 +168,9 @@ int      sdt_startup(bool acceptAdHoc);
 int      sdt_shutdown(void);
 void     sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const neti_addr_t *remhost, const cid_t foreign_cid);
 void     sdt_tick(void *arg);  /* timer call back */
+int      sdt_join(component_t *local_component, component_t *foreign_component);
+
+void     sdt_tx_reliable_data(component_t *local_component, component_t *foreign_component, uint32_t protocol, bool response, void *data, uint32_t data_len);
 
 /* add with init */
 component_t   *sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local);
@@ -190,6 +181,16 @@ sdt_member_t  *sdt_add_member(sdt_channel_t *channel, component_t *component);
 component_t   *sdt_del_component(component_t *component);
 sdt_channel_t *sdt_del_channel(component_t *leader);
 sdt_member_t  *sdt_del_member(sdt_channel_t *channel, sdt_member_t *member);
+
+//enum
+//{
+//  SDT_EVENT_JOIN_FAILED,
+//  SDT_EVENT_JOIN_TERMINATED,
+//  SDT_EVENT_JOINED,
+//  SDT_EVENT_CONNECTED,
+//  SDT_EVENT_DISCONNECTED
+//};
+
 
 
 // **************************************************************
@@ -222,7 +223,7 @@ void     sdt_tx_connect(component_t *local_component, component_t *foreign_compo
 void     sdt_tx_connect_accept(component_t *local_component, component_t *foreign_component, uint32_t protocol);
 //TODO:  sdt_tx_connect_refuse(sdt_wrapper_t *wrapper);
 void     sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, uint32_t protocol);
-//TODO:  sdt_tx_disconecting(sdt_wrapper_t *wrapper);
+void     sdt_tx_disconnecting(component_t *local_component, component_t *foreign_component, uint32_t protocol, uint8_t reason);
 void     sdt_tx_mak_all(component_t *local_component);
 
 void     sdt_rx_ack(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);

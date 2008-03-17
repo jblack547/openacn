@@ -56,6 +56,23 @@ Information structures and handling relating to components
   as pointers to it may be stored and dereferenced at a later time.
 */
 
+#if CONFIG_SDT
+typedef enum
+{
+  SDT_EVENT_JOIN,
+  SDT_EVENT_LEAVE,
+  SDT_EVENT_CONNECT,
+  SDT_EVENT_DISCONNECT,
+  SDT_EVENT_DATA
+} component_event_t;
+
+typedef void component_callback_t (
+	component_event_t state,
+  void *param
+);
+
+#endif
+
 typedef struct component_s
 {
 	cid_t cid;
@@ -69,6 +86,7 @@ typedef struct component_s
   bool          auto_created;
   struct sdt_channel_s *tx_channel;
 	struct component_s   *next;
+  component_callback_t    *callback;
 #endif
 } component_t;
 
