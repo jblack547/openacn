@@ -53,7 +53,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   Do NOT use string functions on SLPString structures, they do NOT contain a terminating NULL!
   use getSLP_STR on it first to malloc and copy to a new string.
   
-  SLP requires a slp_tmr() to be called a 1 ms intervals.  
+  SLP requires a slp_tick() to be called a 1 ms intervals.  
 
   This software was designed using the UDP layer of the LWIP TCP/IP stack (http://savannah.nongnu.org/projects/lwip/).
   This software was designed using FREERTOS (http://savannah.nongnu.org/projects/lwip/).
@@ -71,6 +71,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   - review and perhaps converto to macros areas that are OS dependent (i.e. delays)
   - packing and unpacking needs to deal with big/little endian.
   - ntoa needs conditional
+
 
   Versions:
   0.0.1   Initial release to test integration
@@ -119,15 +120,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*=========================================================================*/
 /* constants */
 /*=========================================================================*/
-const char   acn_scope_str[]    = "ACN-DEFAULT";
-const uint16_t  acn_scope_len   = sizeof(acn_scope_str) -1;
-const char   local_lang_str[]   = "en";
-const uint16_t  local_lang_len  = sizeof(local_lang_str) - 1;
+const char      acn_scope_str[]   = "ACN-DEFAULT";
+const uint16_t  acn_scope_len     = sizeof(acn_scope_str) - 1;
+const char      local_lang_str[]  = "en";
+const uint16_t  local_lang_len    = sizeof(local_lang_str) - 1;
 
-const char   da_req_str[]       = SLP_DA_SERVICE_TYPE;
-const uint16_t  da_req_len      = sizeof(da_req_str) - 1;
-const char   sa_reg_str[]       = SLP_SA_SERVICE_TYPE;
-const uint16_t  sa_reg_len      = sizeof(sa_reg_str) - 1;
+const char      da_req_str[]      = SLP_DA_SERVICE_TYPE;
+const uint16_t  da_req_len        = sizeof(da_req_str) - 1;
+const char      sa_reg_str[]      = SLP_SA_SERVICE_TYPE;
+const uint16_t  sa_reg_len        = sizeof(sa_reg_str) - 1;
 
 /*=========================================================================*/
 /* globals */
@@ -136,7 +137,7 @@ const uint16_t  sa_reg_len      = sizeof(sa_reg_str) - 1;
 /*=========================================================================*/
 /* locals */
 /*=========================================================================*/
-xTaskHandle slp_task = NULL;    // SLP Thread createed in slp_open
+//xTaskHandle slp_task = NULL;    // SLP Thread createed in slp_open
 
 struct udp_pcb *slp_pcb;        // common Protocol Control Block
 struct ip_addr slpmcast;        // multicast address for SLP
@@ -199,7 +200,7 @@ static void slp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_a
 #if SLP_IS_UA || SLP_IS_SA
 SLPError slp_receive_daadvert(unsigned long ip, SLPHeader *header, char *data);
 SLPError slp_discover_da(void);
-void     slp_active_discovery_start(void);
+//void     slp_active_discovery_start(void);  // see header file
 #endif
 
 // UA only functions (also see header file)
@@ -760,15 +761,15 @@ char *unpackURL_ENTRY(char* data, SLPUrlEntry *urlentry)
 
 /******************************************************************************/
 // Check and process DA timers
-// called once per millisecond
-void slp_tmr(void *arg)
+// called once per SLP_TMR_INTERVAL
+void slp_tick(void *arg)
 {
 //  static int second_counter = 0;
   int  x;
 
   SLP_UNUSED_ARG(arg);
 
-  msticks++;
+  msticks += SLP_TMR_INTERVAL;
   
   // see if we need to send DA discovers
   if (dda_timer.discover) {
@@ -790,7 +791,10 @@ void slp_tmr(void *arg)
         return;
       }
     } else {
-      dda_timer.counter--;
+      dda_timer.counter -= SLP_TMR_INTERVAL;
+      if ((sint32_t)dda_timer.counter < 0) {
+        dda_timer.counter = 0;
+      }
     }
   }
   for (x=0;x<MAX_DA;x++) {
@@ -945,7 +949,11 @@ SLPError slp_send_srvrqst(unsigned long ip, char *req_srv_type, char *reg_predic
   offset = packSLP_STR(offset, &slp_string);
   
   // service-type
-  slp_string.len = strlen(req_srv_type);
+  if (req_srv_type) {
+    slp_string.len = strlen(req_srv_type);
+  } else {
+    slp_string.len = 0;
+  }
   slp_string.str = req_srv_type;
   offset = packSLP_STR(offset, &slp_string);
   
@@ -955,8 +963,12 @@ SLPError slp_send_srvrqst(unsigned long ip, char *req_srv_type, char *reg_predic
   offset = packSLP_STR(offset, &slp_string);
   
   /// predicate string
+  if (reg_predicate) {
+    slp_string.len = strlen(reg_predicate);
+  } else {
+    slp_string.len = 0;
+  }
   slp_string.str = reg_predicate;
-  slp_string.len = strlen(reg_predicate);
   offset = packSLP_STR(offset, &slp_string);
 
   // slp_spi (null)
@@ -1272,7 +1284,7 @@ SLPError slp_send_srvrply(unsigned long ip, uint16_t reply_xid, uint16_t error_c
   // send it!
   ipaddr.addr = ip;
 
-  pkt = pbuf_realloc(pkt, length);
+  pbuf_realloc(pkt, length);
   result = udp_sendto(slp_pcb, pkt, &slpmcast, SLP_RESERVED_PORT);
   pbuf_free(pkt);
   return (result);
@@ -1453,7 +1465,7 @@ SLPError slp_send_reg(unsigned long ip, bool fresh)
   // send it!
   ipaddr.addr = ip;
 
-  pkt = pbuf_realloc(pkt, length);
+  pbuf_realloc(pkt, length);
   result = udp_sendto(slp_pcb, pkt, &slpmcast, SLP_RESERVED_PORT);
   pbuf_free(pkt);
   return (result);
@@ -1540,7 +1552,7 @@ SLPError slp_send_dereg(unsigned long ip)
   // send it!
   ipaddr.addr = ip;
 
-  pkt = pbuf_realloc(pkt, length);
+  pbuf_realloc(pkt, length);
   result = udp_sendto(slp_pcb, pkt, &slpmcast, SLP_RESERVED_PORT);
   pbuf_free(pkt);
   return (result);
@@ -1686,7 +1698,11 @@ SLPError slp_send_attrrqst(unsigned long ip, char *req_url, char *tags,
   offset = packSLP_STR(offset, &slp_string);
 
   // URL 
-  slp_string.len = strlen(req_url);
+  if (req_url) {
+    slp_string.len = strlen(req_url);
+  } else {
+    slp_string.len = 0;
+  }
   slp_string.str = req_url;
   offset = packSLP_STR(offset, &slp_string);
 
@@ -1696,7 +1712,11 @@ SLPError slp_send_attrrqst(unsigned long ip, char *req_url, char *tags,
   offset = packSLP_STR(offset, &slp_string);
 
   // tag list
-  slp_string.len = strlen(tags);
+  if (tags) {
+    slp_string.len = strlen(tags);
+  } else {
+    slp_string.len = 0;
+  }
   slp_string.str = tags;
   offset = packSLP_STR(offset, &slp_string);
 
@@ -2049,7 +2069,7 @@ SLPError slp_send_saadvert(unsigned long ip, uint16_t reply_xid)
   // send it!
   ipaddr.addr = ip;
 
-  pkt = pbuf_realloc(pkt, length);
+  pbuf_realloc(pkt, length);
   result = udp_sendto(slp_pcb, pkt, &slpmcast, SLP_RESERVED_PORT);
   pbuf_free(pkt);
   return (result);
@@ -2211,21 +2231,21 @@ int x;
 //FUNCTION TESTED
 SLPError slp_open(void) 
 {
-  portTickType xLastWakeTime;
+//  portTickType xLastWakeTime;
 
   acnlog(LOG_DEBUG | LOG_SLP , "slp_open");  
 
   // sorry, we can only open once
-  if (slp_task) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_open: already open");  
-    return SLP_HANDLE_IN_USE;
-  }
+//  if (slp_task) {
+//    acnlog(LOG_DEBUG | LOG_SLP , "slp_open: already open");  
+//    return SLP_HANDLE_IN_USE;
+//  }
 
   // wait for network to be running. DHCP will bring it up after we get a IP address
-  xLastWakeTime = xTaskGetTickCount();
-  while (!netif_is_up(netif_default)) {
-    vTaskDelayUntil( &xLastWakeTime, 1000/portTICK_RATE_MS);
-  }
+//  xLastWakeTime = xTaskGetTickCount();
+//  while (!netif_is_up(netif_default)) {
+//    vTaskDelayUntil( &xLastWakeTime, 1000/portTICK_RATE_MS);
+//  }
 
   // TODO: make this a const
   // set address
@@ -2247,13 +2267,13 @@ SLPError slp_open(void)
   udp_recv(slp_pcb, slp_recv, 0);
 
   /* Start our thread */
-  slp_task = sys_thread_new("SLP", slp_thread, netif_default, SLP_THREAD_STACK, SLP_THREAD_PRIO);
-
-  if (slp_task) {
+//  slp_task = sys_thread_new("SLP", slp_thread, netif_default, SLP_THREAD_STACK, SLP_THREAD_PRIO);
+//
+//  if (slp_task) {
     return SLP_OK;
-  } else {
-    return SLP_NOT_OPEN;
-  }
+//  } else {
+//    return SLP_NOT_OPEN;
+//  }
 }
 
 /*******************************************************************************
@@ -2264,9 +2284,9 @@ void slp_close(void)
   acnlog(LOG_DEBUG | LOG_SLP , "slp_close");  
 
   // sorry, not open
-  if (!slp_task) {
-    return;
-  }
+//  if (!slp_task) {
+//    return;
+//  }
 
   // tell our DAs that we are going away (this is blocking)
   #if SLP_IS_SA || SLP_IS_UA
@@ -2277,7 +2297,7 @@ void slp_close(void)
   igmp_leavegroup(&netif_default->ip_addr, &slpmcast);
 
   // shut down thread;
-  sys_thread_delete(slp_task);
+//  sys_thread_delete(slp_task);
  
   // remove our callback
   udp_recv(slp_pcb, NULL, 0);
@@ -2286,25 +2306,29 @@ void slp_close(void)
   udp_remove(slp_pcb);
 
   // flag that we are done
-  slp_task = NULL;
+//  slp_task = NULL;
 }
 
 #if SLP_IS_SA
 /*******************************************************************************
 // Registers a service URL and service attributes with SLP. 
-// TODO: should we make sure we only call this once,
-         of if we call it again, we de-register first
+   TODO: current implementation only allows us to register one component
 *******************************************************************************/
 //FUNCTION TESTED
 SLPError slp_reg(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list) 
 {
   acnlog(LOG_DEBUG | LOG_SLP , "slp_reg");
 
+   /* can only have one! */
+   if (attr_list) {
+    return SLP_PARAMETER_BAD;
+   }
+
   // you must open first
    if (!slp_pcb)  {
      return SLP_NOT_OPEN;
    }
-
+  
   // make sure we have a real attribute
   if (!reg_attr_list) {
     return SLP_PARAMETER_BAD;
@@ -2340,6 +2364,7 @@ SLPError slp_reg(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list)
 #if SLP_IS_SA
 /*******************************************************************************
 
+// TODO: Add support for more than one registration
 *******************************************************************************/
 //FUNCTION TESTED
 SLPError slp_dereg(void) 
@@ -2366,27 +2391,28 @@ SLPError slp_dereg(void)
 }
 #endif //#SLP_IS_SA
 
-/*******************************************************************************
-  Thread for SLP
-*******************************************************************************/
-void slp_thread( void *pvParameters )
-{
-  portTickType xLastWakeTime;
-
-  /* Parameters are not used - suppress compiler error. */
-  SLP_UNUSED_ARG(pvParameters);
-
-  // start a discovery
-  #if SLP_IS_UA || SLP_IS_SA
-  slp_active_discovery_start();
-  #endif
-
-  /* Initialise xLastWakeTime */
-  xLastWakeTime = xTaskGetTickCount();
-  while (1)   {
-    // call our timer routine
-    slp_tmr(0);
-    // now wait
-    vTaskDelayUntil( &xLastWakeTime, 1/portTICK_RATE_MS );
-  }
-}
+// TODO: This thread is now done by the application thread.
+///*******************************************************************************
+//  Thread for SLP
+//*******************************************************************************/
+//void slp_thread( void *pvParameters )
+//{
+//  portTickType xLastWakeTime;
+//
+//  /* Parameters are not used - suppress compiler error. */
+//  SLP_UNUSED_ARG(pvParameters);
+//
+//  // start a discovery
+//  #if SLP_IS_UA || SLP_IS_SA
+//  slp_active_discovery_start();
+//  #endif
+//
+//  /* Initialise xLastWakeTime */
+//  xLastWakeTime = xTaskGetTickCount();
+//  while (1)   {
+//    // call our timer routine
+//    slp_tick(0);
+//    // now wait
+//    vTaskDelayUntil( &xLastWakeTime, 1/portTICK_RATE_MS );
+//  }
+//}

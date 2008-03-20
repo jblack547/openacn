@@ -35,6 +35,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __DISCOVER_H__
 #define __DISCOVER_H__
 
+#include "component.h"
+
 void discover_acn(char *dcid);
+void discover_register(component_t *component);
+void discover_deregister(void);
+
 
 #endif //__DISCOVER_H__

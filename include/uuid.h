@@ -46,6 +46,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 For most purposes a UUID is simply an array of 16 octets
 */
 #define UUIDSIZE 16
+#define UUID_STR_SIZE 37  /* includeing null termination */
 
 typedef uint8_t uuid_t[UUIDSIZE];
 
@@ -59,8 +60,6 @@ typedef uint8_t uuid_t[UUIDSIZE];
 #define UUID_CLKSEQ_HI(uuid) (*((uuid) + 8))
 #define UUID_CLKSEQ_LOW(uuid) (*((uuid) + 9))
 #define UUID_NODE(uuid) ((uuid) + 10)
-
-//const uuid_t null_uuid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 int textToUuid(const char *uuidText, uuid_t uuidp);
 char *uuidToText(const uuid_t uuidp, char *uuidText);

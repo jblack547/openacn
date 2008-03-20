@@ -158,7 +158,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 /* LightweightIP (LWIP) stack */
 #ifndef CONFIG_STACK_LWIP
-#define	CONFIG_STACK_LWIP  0
+#define	CONFIG_STACK_LWIP     0
 #endif
 /* Pathway Connectivity stack - derived from Waterloo stack */
 #ifndef CONFIG_STACK_PATHWAY
@@ -313,6 +313,10 @@ Protocols to build
 #ifndef CONFIG_E131
 #define CONFIG_E131    0
 #endif
+#ifndef CONFIG_SLP
+#define CONFIG_SLP     1
+#endif
+
 
 /*
   EPI conformance
@@ -359,6 +363,14 @@ Protocols to build
 #define	CONFIG_SINGLE_COMPONENT   1
 #endif
 
+/* See EIP 19, standard allows these to be bigger but to keep memory usage and avoid malloc */
+/* we are making them static. Default of 64 should work (see EPI 19, section 3.2) */
+#ifndef ACN_FCTN_SIZE 
+#define ACN_FCTN_SIZE 64  /* be sure to include one for a null terminator */
+#endif
+#ifndef ACN_UACN_SIZE 
+#define ACN_UACN_SIZE 64  /* be sure to include one for a null terminator */
+#endif
 
 /************************************************************************/
 /*
@@ -427,9 +439,6 @@ Protocols to build
 #ifndef SDT_MAX_SESSIONS
 #define SDT_MAX_SESSIONS            4
 #endif
-
-
-
 
 /************************************************************************/
 /*

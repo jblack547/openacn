@@ -100,6 +100,13 @@ enum
   SDT_ADDR_IPV6 = 2,
 };
 
+/* sdt state */
+typedef enum {
+  ssCLOSED,
+  ssSTARTED,
+  ssCLOSING
+} sdt_state_t;
+
 typedef enum
 {
   msEMPTY     = 0,
@@ -132,7 +139,6 @@ typedef struct sdt_channel_s
   uint16_t      available_mid;
   neti_addr_t   destination_addr;     // channel outbound address (multicast)
   neti_addr_t   source_addr;          // channel source address
-  bool          is_local;
   uint32_t      total_seq;
   uint32_t      reliable_seq;
   uint32_t      oldest_avail;
@@ -173,14 +179,20 @@ int      sdt_join(component_t *local_component, component_t *foreign_component);
 void     sdt_tx_reliable_data(component_t *local_component, component_t *foreign_component, uint32_t protocol, bool response, void *data, uint32_t data_len);
 
 /* add with init */
-component_t   *sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local);
-sdt_channel_t *sdt_add_channel(component_t *leader, uint16_t channel_number, bool is_local);
+component_t   *sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t access);
+
+sdt_channel_t *sdt_add_channel(component_t *leader, uint16_t channel_number);
 sdt_member_t  *sdt_add_member(sdt_channel_t *channel, component_t *component);
 
 /* delete with cleanup */
 component_t   *sdt_del_component(component_t *component);
 sdt_channel_t *sdt_del_channel(component_t *leader);
 sdt_member_t  *sdt_del_member(sdt_channel_t *channel, sdt_member_t *member);
+
+/* misc */
+component_t   *sdt_first_component(void);
+component_t   *sdt_find_component(const cid_t cid);
+
 
 //enum
 //{
@@ -191,53 +203,8 @@ sdt_member_t  *sdt_del_member(sdt_channel_t *channel, sdt_member_t *member);
 //  SDT_EVENT_DISCONNECTED
 //};
 
-
-
-// **************************************************************
-//TODO: these are only here for testing. Most will become static
-// **************************************************************
-/* BASE MESSAGES */
-void     sdt_tx_join(component_t *local_component, component_t *foreign_component);
-void     sdt_tx_join_accept(sdt_member_t *local_member, component_t *local_component, component_t *foreign_component);
-void     sdt_tx_join_refuse(const cid_t foreign_cid, component_t *local_component, const neti_addr_t *source_addr, 
-           uint16_t foreign_channel_num, uint16_t local_mid, uint32_t foreign_rel_seq, uint8_t reason);
-void     sdt_tx_leaving(component_t *foreign_component, component_t *local_component, sdt_member_t *local_member, uint8_t reason);
-void     sdt_tx_nak(component_t *foreign_component, component_t *local_component, uint32_t last_missed);
-//TODO:         sdt_tx_sessions()
-//TODO:         sdt_tx_get_sessions()
-
-void     sdt_rx_join(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8_t *join, uint32_t data_len);
-void     sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_accept, uint32_t data_len);
-void     sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t data_len);
-void     sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_len);
-void     sdt_rx_nak(const cid_t foreign_cid, const uint8_t *nak, uint32_t data_len);
-void     sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8_t *wrapper,  bool is_reliable, uint32_t data_len);
-//TODO:         sdt_rx_get_sessions()
-//TODO:         sdt_rx_sessions()
-
-/* WRAPPED MESSAGES */
-void     sdt_tx_ack(component_t *local_component, component_t *foreign_component);
-//TODO:  sdt_tx_channel_params(sdt_wrapper_t *wrapper);
-void     sdt_tx_leave(component_t *local_component, component_t *foreign_component, sdt_member_t *foreign_member);
-void     sdt_tx_connect(component_t *local_component, component_t *foreign_component, uint32_t protocol);
-void     sdt_tx_connect_accept(component_t *local_component, component_t *foreign_component, uint32_t protocol);
-//TODO:  sdt_tx_connect_refuse(sdt_wrapper_t *wrapper);
-void     sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, uint32_t protocol);
-void     sdt_tx_disconnecting(component_t *local_component, component_t *foreign_component, uint32_t protocol, uint8_t reason);
-void     sdt_tx_mak_all(component_t *local_component);
-
-void     sdt_rx_ack(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
-//TODO:         sdt_rx_channel_params();
-void     sdt_rx_leave(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
-void     sdt_rx_connect(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
-void     sdt_rx_connect_accept(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
-//TODO:         sdt_rx_connect_refuse();
-//TODO:         sdt_rx_disconnect();
-//TODO:         sdt_rx_disconecting();
-
 /* may go away, used for testing */
 int  sdt_get_adhoc_port(void);
-
 
 
 #endif

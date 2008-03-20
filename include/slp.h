@@ -53,7 +53,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SLP_THREAD_PRIO         3
 #define SLP_THREAD_STACK        600 // FIXME What should this be?
 
-#define SLP_IS_SA               0
+#define SLP_IS_SA               1
 #define SLP_IS_UA               1
 
 #define SLP_MTU                 600 // Max SLP data packet (not including 44 bytes for header)
@@ -61,8 +61,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*=========================================================================*/
 /* SLP Constants                                                           */
 /*=========================================================================*/
-#define SLP_TMR_INTERVAL  1     // in ms
-#define SLP_TMR_TPS       1000  // inverse of SLP_TMR_INTERVAL
+#define SLP_TMR_INTERVAL  100     // in ms
+#define SLP_TMR_TPS       10      // inverse of SLP_TMR_INTERVAL
 
 // TPS = number of times the timer is hit per second
 // Max time to wait for a complete multicast query response (all values.)
@@ -177,25 +177,25 @@ typedef enum {
 /*=========================================================================*/
 /* Misc "adjustable" constants (I would not adjust the if I were you)      */
 /*=========================================================================*/
-#define SLPD_CONFIG_MAX_RECONN      2    /* max number tcp of reconnects   */
-                                         /* to complete an outgoing        */
-                                         /* transaction                    */
-                                         
-#define SLPD_MAX_SOCKETS            128  /* maximum number of sockets      */
-
-#define SLPD_COMFORT_SOCKETS        64   /* a "comfortable" number of      */
-                                         /* of sockets.  Exceeding this    */
-                                         /* number will indicate a busy    */
-                                         /* agent                          */
-
-#define SLPD_CONFIG_CLOSE_CONN      900  /* max idle time (60 min) when    */
-                                         /* not busy                       */
-                                         
-#define SLPD_CONFIG_BUSY_CLOSE_CONN 30   /* max idle time (30 sec) when    */
-                                         /* busy                           */
-                                         
-#define SLPD_CONFIG_DA_FIND         900  /* minimum delay between active   */
-                                         /* discovery requests (15 min)    */
+//#define SLPD_CONFIG_MAX_RECONN      2    /* max number tcp of reconnects   */
+//                                         /* to complete an outgoing        */
+//                                         /* transaction                    */
+//                                         
+//#define SLPD_MAX_SOCKETS            128  /* maximum number of sockets      */
+//
+//#define SLPD_COMFORT_SOCKETS        64   /* a "comfortable" number of      */
+//                                         /* of sockets.  Exceeding this    */
+//                                         /* number will indicate a busy    */
+//                                         /* agent                          */
+//
+//#define SLPD_CONFIG_CLOSE_CONN      900  /* max idle time (60 min) when    */
+//                                         /* not busy                       */
+//                                         
+//#define SLPD_CONFIG_BUSY_CLOSE_CONN 30   /* max idle time (30 sec) when    */
+//                                         /* busy                           */
+//                                         
+//#define SLPD_CONFIG_DA_FIND         900  /* minimum delay between active   */
+//                                         /* discovery requests (15 min)    */
 
 #define DA_CLOSED    		0  // closed, no active registrions.
 #define DA_SEND_REG 		1  // need to send registration
@@ -305,7 +305,7 @@ void slp_close(void);
 /* open slp */
 SLPError slp_open(void);
 /* slp timer callback */
-void slp_tmr(void *arg);
+void slp_tick(void *arg);
 /* slp registration */
 
 #if SLP_IS_SA
@@ -320,6 +320,12 @@ SLPError slp_send_srvrqst(unsigned long ip, char *req_srv_type, char *reg_predic
 SLPError slp_send_attrrqst(unsigned long ip, char *req_url, char *tags,
   void (*callback) (int error, char *attributes));
 #endif
+
+// UA and SA functions
+#if SLP_IS_UA || SLP_IS_SA
+void     slp_active_discovery_start(void);
+#endif
+
 
 
 #endif // SLP_H

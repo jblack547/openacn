@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id: acn_config.h 2 2007-09-17 09:31:30Z philipnye $
+	$Id: component.h$
 
 */
 /*--------------------------------------------------------------------*/
@@ -56,6 +56,14 @@ Information structures and handling relating to components
   as pointers to it may be stored and dereferenced at a later time.
 */
 
+typedef enum
+{
+  accUNKNOWN,
+  accDEVICE,
+  accCONTROL,
+  accBOTH
+} access_t;
+
 #if CONFIG_SDT
 typedef enum
 {
@@ -77,6 +85,10 @@ typedef struct component_s
 {
 	cid_t cid;
 	cid_t dcid;
+  char  fctn[ACN_FCTN_SIZE];  
+  char  uacn[ACN_UACN_SIZE];
+  access_t   access;
+  bool       is_local;
 #if CONFIG_EPI10
 	uint16_t dyn_mcast;
 #endif
@@ -84,9 +96,9 @@ typedef struct component_s
   neti_addr_t   adhoc_addr;
 	int           adhoc_expires_at;
   bool          auto_created;
-  struct sdt_channel_s *tx_channel;
 	struct component_s   *next;
-  component_callback_t    *callback;
+  struct sdt_channel_s *tx_channel;
+  component_callback_t *callback;
 #endif
 } component_t;
 
