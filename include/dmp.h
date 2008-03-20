@@ -30,22 +30,21 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
 #ifndef __dmp_h__
 #define __dmp_h__ 1
 
-// wrf #include <arch/types.h>
 #include "types.h"
-//??#include "acn_config.h"
+#include "component.h"
 
-#define ADDRESS_TYPE_MASK				0x30
-#define VIRTUAL_ADDRESS_BIT			0x80
-#define RELATIVE_ADDRESS_BIT			0x40
-#define ADDRESS_SIZE_MASK				0x03
-#define RESERVED_BIT_MASK				0x0C
+#define ADDRESS_TYPE_MASK        0x30
+#define VIRTUAL_ADDRESS_BIT      0x80
+#define RELATIVE_ADDRESS_BIT     0x40
+#define ADDRESS_SIZE_MASK        0x03
+#define RESERVED_BIT_MASK        0x0C
 
 
 #define DMP_VECTOR_LEN 1
@@ -53,41 +52,41 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 enum
 {
-	ONE_OCTET_ADDRESS = 0,
-	TWO_OCTET_ADDRESS = 1,
-	FOUR_OCTET_ADDRESS = 2,
-	RESERVED = 3,
+  ONE_OCTET_ADDRESS  = 0,
+  TWO_OCTET_ADDRESS  = 1,
+  FOUR_OCTET_ADDRESS = 2,
+  RESERVED           = 3,
 };
 
 enum
 {
-	SINGLE_ADDRESS_SINGLE_DATA    = 0x00,
-	RANGE_ADDRESS_SINGLE_DATA     = 0x10,
-	RANGE_ADDRESS_EQUAL_SIZE_DATA = 0x20,
-	RANGE_ADDRESS_MIXED_SIZE_DATA = 0x30,
+  SINGLE_ADDRESS_SINGLE_DATA    = 0x00,
+  RANGE_ADDRESS_SINGLE_DATA     = 0x10,
+  RANGE_ADDRESS_EQUAL_SIZE_DATA = 0x20,
+  RANGE_ADDRESS_MIXED_SIZE_DATA = 0x30,
 };
 
 enum
 {
-	DMP_GET_PROPERTY = 					1,
-	DMP_SET_PROPERTY = 					2,
-	DMP_GET_PROPERTY_REPLY =			3,
-	DMP_EVENT =								4,
-	DMP_MAP_PROPERTY =					5,
-	DMP_UNMAP_PROPERTY =					6,
-	DMP_SUBSCRIBE =						7,
-	DMP_UNSUBSCRIBE =						8,
-	DMP_GET_PROPERTY_FAIL = 			9,
-	DMP_SET_PROPERTY_FAIL = 			10,
-	DMP_MAP_PROPERTY_FAIL =				11,
-	DMP_SUBSCRIBE_ACCEPT =				12,
-	DMP_SUBSCRIBE_REJECT =				13,
-	DMP_ALLOCATE_MAP =					14,
-	DMP_ALLOCATE_MAP_REPLY =			15,
-	DMP_DEALLOCATE_MAP =					16,
+  DMP_GET_PROPERTY =          1,
+  DMP_SET_PROPERTY =          2,
+  DMP_GET_PROPERTY_REPLY =    3,
+  DMP_EVENT =                 4,
+  DMP_MAP_PROPERTY =          5,
+  DMP_UNMAP_PROPERTY =        6,
+  DMP_SUBSCRIBE =             7,
+  DMP_UNSUBSCRIBE =           8,
+  DMP_GET_PROPERTY_FAIL =     9,
+  DMP_SET_PROPERTY_FAIL =     10,
+  DMP_MAP_PROPERTY_FAIL =     11,
+  DMP_SUBSCRIBE_ACCEPT =      12,
+  DMP_SUBSCRIBE_REJECT =      13,
+  DMP_ALLOCATE_MAP =          14,
+  DMP_ALLOCATE_MAP_REPLY =    15,
+  DMP_DEALLOCATE_MAP =        16,
 };
 
-void initDmp(void);
-uint32_t dmpRxHandler(foreign_component_t *srcComp, local_component_t *dstComp, void *srcSession, uint8_t *data, uint32_t dataLen);
-void dmpCompOfflineNotify(foreign_component_t *remoteComp);
+void dmp_init(void);
+uint32_t dmp_rx_handler(component_t *srcComp, component_t *dstComp, void *srcSession, uint8_t *data, uint32_t dataLen);
+void dmp_comp_offline_notify(component_t *remoteComp);
 #endif

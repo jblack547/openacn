@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -46,7 +46,9 @@ Code which sits on top of DMP should not really have to use this header
 #include "types.h"
 
 /* ESTA registered protocol code */
-#define PROTO_DMP  2
+#define DMP_PROTOCOL_ID     2
+#define PROTO_DMP           DMP_PROTOCOL_ID
+
 
 
 #endif
