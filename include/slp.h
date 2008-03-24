@@ -208,9 +208,10 @@ typedef struct _SLPDa_list
 {
   uint32_t    ip;
   uint32_t    state;      // for ack from da after registration
-  uint32_t    counter;    // counter for message handleing
+  uint32_t    counter;    // counter for message handling
   uint32_t    retries;    // number of times to retry to sending message;
   uint32_t    boot_time;  // boottime from discovery
+  uint32_t    timeout;    // counter to discover missing gone bye bye! See CONFIG_DA_BEAT
 } SLPDa_list;
 
 typedef struct _SLPdda_timer

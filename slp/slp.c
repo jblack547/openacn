@@ -101,6 +101,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acnlog.h"
 #include "pack.h"     // to pack and unpack data strucures
 #include "ntoa.h"     // "32 bit" network address value to ascii
+#include "acn_port.h"
 
 /* SLP include */
 #include "slp.h"      // This module
@@ -342,9 +343,12 @@ void da_ip_list(char *str)
 void da_clear(void)
 {
   int x;
+  int protect;
+  protect = ACN_PORT_PROTECT();
   for (x=0;x<MAX_DA;x++) {
     da_delete(da_list[x].ip);
   }
+  ACN_PORT_UNPROTECT(protect);
 }
 #endif //SLP_IS_SA || SLP_IS_UA
 
@@ -385,6 +389,7 @@ SLPError da_service_ack(unsigned long ip)
           da_list[x].state = DA_EXPIRE;
           da_list[x].counter = SLP_REGIGISTION_REFRESH;
           da_list[x].retries = 0;
+          da_list[x].timeout = CONFIG_DA_BEAT;
           break;
         case DA_WAIT_DEREG:
           // we found it mark it closed
@@ -421,14 +426,15 @@ SLPError da_add(SLPDAAdvert *daadvert)
   // see if we have ip address
   for (x=0;x<MAX_DA;x++) {
     if (da_list[x].ip == ip) {
-       if (daadvert->boot_time == 0) {
+      if (daadvert->boot_time == 0) {
         // da is going down, just nuke it
         da_delete(da_list[x].ip);
         return SLP_OK;
       }
       // see if has rebooted
       if (daadvert->boot_time == da_list[x].boot_time) {
-        // already have this one, do nothing...
+        // already have this one, do nothing...well...ok, mark it as still active.
+        da_list[x].timeout = CONFIG_DA_BEAT;
         return SLP_OK;
       } else {
         // must of rebooted, nukeit to force a registration
@@ -438,16 +444,13 @@ SLPError da_add(SLPDAAdvert *daadvert)
     // else find first free slot
     if (da_list[x].ip == 0) {
       da_list[x].ip = ip;
+      da_list[x].state = DA_CLOSED;
+      da_list[x].timeout = CONFIG_DA_BEAT;
       // if we have an attribute list, then set it to register
       #if SLP_IS_SA
       if (attr_list) {
         da_reg_idx(x);
-      } else {
-        da_list[x].state = DA_CLOSED;
       }
-      #endif
-      #if SLP_IS_UA
-        da_list[x].state = DA_CLOSED;
       #endif
       da_list[x].boot_time = daadvert->boot_time;
       return SLP_OK;
@@ -469,8 +472,10 @@ SLPError da_delete(unsigned long ip)
 
   for (x=0;x<MAX_DA;x++) {
     if(da_list[x].ip == ip) {
-      da_list[x].ip = 0;
+      
       da_list[x].state = DA_CLOSED;
+      da_list[x].ip = 0;
+
       return SLP_OK;
     }
   }
@@ -766,6 +771,7 @@ void slp_tick(void *arg)
 {
 //  static int second_counter = 0;
   int  x;
+  int  protect;
 
   SLP_UNUSED_ARG(arg);
 
@@ -799,6 +805,15 @@ void slp_tick(void *arg)
   }
   for (x=0;x<MAX_DA;x++) {
     if (da_list[x].ip) {
+      // deal with DA timeout first
+      da_list[x].timeout--;
+      if (!da_list[x].timeout) {
+        acnlog(LOG_DEBUG | LOG_SLP , "slp_tick: da_timeout:[%s]", ntoa(da_list[x].ip)); 
+        protect = ACN_PORT_PROTECT();
+        da_delete(da_list[x].ip);
+        ACN_PORT_UNPROTECT(protect);
+        continue;
+      }
       if (da_list[x].counter == 0) {
         switch (da_list[x].state) {
           case DA_SEND_REG:
@@ -860,7 +875,9 @@ void slp_tick(void *arg)
               return;
             } else {
               // time out on de-registration so remove it
-              da_list[x].ip = 0;
+              ACN_PORT_PROTECT();
+              da_delete(da_list[x].ip);
+              ACN_PORT_UNPROTECT(protect);
             }
             break;
         }
