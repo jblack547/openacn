@@ -59,6 +59,10 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "lwip/sys.h"
 #endif
 
+#if CONFIG_DMP
+#include "dmp.h"
+#endif
+
 /* local enums/defines */
 #if !CONFIG_RLP_SINGLE_CLIENT
 /*
@@ -803,6 +807,8 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const neti_addr_t *
 			data_size = pdup - pp;
     }
 
+
+
     /* Dispatch to vector */
     /* At the sdt root layer vectors are commands or wrappers */
     switch(vector) {
@@ -901,7 +907,7 @@ sdt_tick(void *arg)
             sdt_tx_leaving(component, member->component, member, SDT_REASON_CHANNEL_EXPIRED);
           }
         }
-        /* this catches the case where expires_ms = -1 when created or when we have done responses and need to just delte*/
+        /* this catches the case where expires_ms = -1 when created or when we have done responses and need to just delete*/
         if (member->expires_ms <= 0) {
           /* tell application */
           if (member->state != msEMPTY) {
@@ -1123,7 +1129,7 @@ sdt_client_rx_handler(component_t *local_component, component_t *foreign_compone
 
   /* verify min data length */
   if (data_len < 3) {
-		acnlog(LOG_WARNING | LOG_SDT,"sdt_rx_handler: Packet too short to be valid");
+		acnlog(LOG_WARNING | LOG_SDT,"sdt_client_rx_handler: Packet too short to be valid");
     return;
   }
   data_end = data + data_len;
@@ -1215,7 +1221,11 @@ static uint32_t
 check_sequence(sdt_channel_t *channel, bool is_reliable, uint32_t total_seq, uint32_t reliable_seq, uint32_t oldest_avail)
 {
   int diff;
-  
+
+//  if (is_reliable) {
+//    return SEQ_NAK;/* activate nak system */
+//  }
+
   diff = total_seq - channel->total_seq;
   if (diff == 1) { 
     /* normal seq */
@@ -2376,6 +2386,8 @@ sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const ui
       break;
   }
 
+//**************************
+
   //TODO: Currently doesn't care about the MAK Threshold
 
   /* send acks if needed */
@@ -2406,7 +2418,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const ui
 		return;
 	}
 
-  /* decode and dispatch the wrapped pdus (Wrapped SDT or DMP) */
+  /* decode and dispatch the wrapped pdus (SDT Client Block, wrapped SDT or DMP) */
   while(pdup < data_end)  {
 		const uint8_t *pp;
 		uint8_t  flags;
@@ -2447,6 +2459,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const ui
     }
 
     /* now dispatch to members */
+    /* this is kind of silly as in the current implemention there is only one member of a foreign channel..our local channel*/
     local_member = foreign_channel->member_list;
     while (local_member) {
       if ((local_mid == 0xFFF) || (local_member->mid == local_mid)) {
@@ -2468,12 +2481,23 @@ sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const ui
         /* we have data on this channel so reset the expiry timeout */
         local_member->expires_ms = local_member->expiry_time_s * 1000;
 
-        if (protocol == PROTO_SDT) {
-          sdt_client_rx_handler(local_member->component, foreign_component, datap, data_size);
-        } else {
-          if (local_member->component->callback)
-            (*local_member->component->callback)(SDT_EVENT_DATA, (void*)datap);
+        switch (protocol)
+        {
+          case PROTO_SDT:
+            sdt_client_rx_handler(local_member->component, foreign_component, datap, data_size);
+            break;
+          #if CONFIG_DMP
+          case PROTO_DMP:
+            dmp_client_rx_handler(local_member->component, foreign_component, datap, data_size);
+          
+          //TODO: replace with registered callback
+
+//            if (local_member->component->callback)
+//              (*local_member->component->callback)(SDT_EVENT_DATA, (void*)datap);
+            break;
+          #endif
         }
+
 //        rx_handler = sdt_get_rx_handler(clientProtocol,ref)    
 //        if(!rx_handler) {
 //          acnlog(LOG_DEBUG | LOG_SDT,"sdt_rx_wrapper: Unknown Vector - skip");

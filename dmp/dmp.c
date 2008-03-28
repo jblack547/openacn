@@ -58,6 +58,7 @@ This source file has not.
 
 */
 
+#if 0
 typedef struct
 {
   uint32_t startAddress;
@@ -107,25 +108,44 @@ typedef struct
 // END TEMPS
 
 static inline void dmp_encode_address_header(pdu_header_type *pdu, dmp_address_t dmpAddress);
-static inline int dmp_decode_address_header(pdu_header_type *pdu, uint8_t *data, dmp_address_t *dmpAddress);
+static inline int  dmp_decode_address_header(pdu_header_type *pdu, uint8_t *data, dmp_address_t *dmpAddress);
 
-static uint32_t dmp_get_prop(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static void dmp_tx_get_prop_reply(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t *reply, uint32_t replyLength);
-static void dmp_tx_get_prop_fail(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
-static int dmp_set_prop(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static void dmp_tx_set_prop_fail(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
+#endif
 
-static int dmp_rx_allocate_map(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static uint32_t dmp_rx_deallocate_map(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static uint32_t dmp_rx_map_property(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static void dmp_tx_allocate_map_reply(component_t *localComp, component_t *foreignComp, void *relatedSession, uint8_t reasonCode);
-static void dmp_tx_map_prop_fail(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
+static uint32_t dmp_rx_get_property(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
+static uint32_t dmp_rx_set_property(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
+#if 0
+              //dmp_rx_get_prop_reply 
+              //dmp_rx_event
+static uint32_t dmp_rx_map_property(component_t *foreign_compoent, component_t *local_component, void *srcSession, pdu_header_type *pdu);
+              //dmp_rx_unmap_property
+static uint32_t dmp_rx_subscribe(component_t *foreign_compoent, component_t *local_component, void *srcSession, pdu_header_type *pdu);
+static uint32_t dmp_rx_unsubscribe(component_t *foreign_compoent, component_t *local_component, void *srcSession, pdu_header_type *pdu);
+              //dmp_rx_get_property_fail
+              //dmp_rx_set_property_fail
+              //dmp_rx_map_property_fail
+              //dmp_rx_subscribe_accept
+              //dmp_subscribe_reject
+static uint32_t dmp_rx_allocate_map(component_t *foreign_compoent, component_t *local_component, void *srcSession, pdu_header_type *pdu);
+              //dmp_rx_allocate_map_reply
+static uint32_t dmp_rx_deallocate_map(component_t *foreign_compoent, component_t *local_component, void *srcSession, pdu_header_type *pdu);
 
-
-static uint32_t dmp_rx_subscribe(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static uint32_t dmp_rx_unsubscribe(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu);
-static void dmp_tx_subscribe_accept(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address);
-static void dmp_tx_subscribe_fail(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
+                //dmp_tx_get_property
+                //dmp_tx_set_property
+static void     dmp_tx_get_prop_reply(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address, uint8_t *reply, uint32_t replyLength);
+                //dmp_tx_event
+                //dmp_tx_map_property
+                //dmp_tx_unmap_property
+                //dmp_tx_subscribe
+                //dmp_tx_unsubscribe
+static void     dmp_tx_get_prop_fail(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
+static void     dmp_tx_set_prop_fail(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
+static void     dmp_tx_map_prop_fail(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
+static void     dmp_tx_subscribe_accept(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address);
+static void     dmp_tx_subscribe_reject(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address, uint8_t reasonCode);
+                //dmp_tx_allocate_map
+static void     dmp_tx_allocate_map_reply(component_t *localComp, component_t *foreign_compoent, void *relatedSession, uint8_t reasonCode);
+                //dmp_tx_deallocate_map
 
 static void dmp_event_callback(component_t *localComp, uint32_t address, uint8_t *value, uint32_t valueLength);
 
@@ -138,12 +158,152 @@ dmp_init(void)
   allocateToPool((void*)event_memory, sizeof(event_t) * MAX_QUEUED_EVENTS, sizeof(event_t));
   registerEventCallback(dmp_event_callback);
 }
+#endif
+
 
 /*****************************************************************************/
-/* 
+/* Receive DMP the opaque datagram from an SDT ClientBlock
+   This could contain 0 to N DMP messages
+ */
+void 
+dmp_client_rx_handler(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len)
+{
+  const uint8_t    *data_end;
+	const uint8_t    *pdup, *datap;
+  uint8_t           vector   = 0;
+	uint32_t          data_size = 0;
+            
+//  LOG_FSTART();
+
+  /* verify min data length */
+  if (data_len < 3) {
+		acnlog(LOG_WARNING | LOG_DMP,"dmp_client_rx_handler: Packet too short to be valid");
+    return;
+  }
+  data_end = data + data_len;
+
+  /* start of our pdu block containing one or multiple pdus*/
+  pdup = data;
+
+	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
+		acnlog(LOG_WARNING | LOG_DMP,"dmp_client_rx_handler: illegal first PDU flags");
+		return;
+	}
+
+  while(pdup < data_end)  {
+		const uint8_t *pp;
+		uint8_t  flags;
+
+    /* Decode flags */
+    flags = unmarshalU8(pdup);
+
+    /* save pointer*/
+		pp = pdup + 2;
+
+    /* get pdu length and point to next pdu */
+    pdup += getpdulen(pdup);
+    
+		if (pdup > data_end) {
+			acnlog(LOG_WARNING | LOG_DMP,"dmp_client_rx_handler: packet length error");
+			return;
+		}
+
+    /* Get vector or leave the same as last */
+    if (flags & VECTOR_bFLAG) {
+      vector = unmarshalU8(pp);
+			pp += sizeof(uint8_t);
+    }
+    /* pp now points to potential start of data */
+
+    /* get packet data (or leave pointer to old data) */
+    if (flags & DATA_bFLAG) {
+      datap = pp;
+      /* calculate reconstructed pdu length */
+			data_size = pdup - pp;
+    }
+
+    /* we are going to assume there will be a reply sent back to the foreign component
+       so we will go ahead and create a xmit buffer.  This way, all the messages can be put
+       in one buffer
+    */
+    
+
+    switch(vector) {
+      case DMP_GET_PROPERTY:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_GET_PROPERTY not supported..");
+        dmp_rx_get_property(local_component, foreign_component, datap, data_size);
+        break;
+      case DMP_SET_PROPERTY:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_SET_PROPERTY not supported..");
+        dmp_rx_set_property(local_component, foreign_component, datap, data_size);
+        break;
+      case DMP_GET_PROPERTY_REPLY:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_GET_PROPERTY_REPLY not supported..");
+        //dmp_rx_get_prop_reply
+        break;
+      case DMP_EVENT:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_EVENT not supported..");
+        //dmp_rx_event
+        break;
+      case DMP_MAP_PROPERTY:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_MAP_PROPERTY not supported..");
+        //dmp_rx_map_property(foreign_compoent, local_component, srcSession, &pdu);
+        break;
+      case DMP_UNMAP_PROPERTY:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_UNMAP_PROPERTY not supported..");
+        //dmp_rx_unmap_property
+        break;
+      case DMP_SUBSCRIBE:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_SUBSCRIBE not supported..");
+        //dmp_rx_subscribe(foreign_compoent, local_component, srcSession, &pdu);
+        break;
+      case DMP_UNSUBSCRIBE:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_UNSUBSCRIBE not supported..");
+        //dmp_rx_unsubscribe(foreign_compoent, local_component, srcSession, &pdu);
+        break;
+      case DMP_GET_PROPERTY_FAIL:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_GET_PROPERTY_FAIL not supported..");
+        //dmp_rx_get_property_fail
+        break;
+      case DMP_SET_PROPERTY_FAIL:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_SET_PROPERTY_FAIL not supported..");
+        //dmp_rx_set_property_fail
+        break;
+      case DMP_MAP_PROPERTY_FAIL:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_MAP_PROPERTY_FAIL not supported..");
+        //dmp_rx_map_property_fail
+        break;
+      case DMP_SUBSCRIBE_ACCEPT:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_SUBSCRIBE_ACCEPT not supported..");
+        //dmp_rx_subscribe_accept
+        break;
+      case DMP_SUBSCRIBE_REJECT:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_SUBSCRIBE_REJECT not supported..");
+        //dmp_subscribe_reject
+        break;
+      case DMP_ALLOCATE_MAP:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_ALLOCATE_MAP not supported..");
+        //dmp_rx_allocate_map(foreign_compoent, local_component, srcSession, &pdu);
+        break;
+      case DMP_ALLOCATE_MAP_REPLY:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_ALLOCATE_MAP_REPLY not supported..");
+        //dmp_rx_allocate_map_reply
+        break;
+      case DMP_DEALLOCATE_MAP:
+        acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_DEALLOCATE_MAP not supported..");
+        //dmp_rx_deallocate_map(foreign_compoent, local_component, srcSession, &pdu);
+        break;
+    }
+  }
+//  LOG_FEND();
+}
+
+#if 0
+/*****************************************************************************/
+/* Receive a client block
  */
 uint32_t 
-dmp_rx_handler(component_t *srcComp, component_t *dstComp, void *srcSession, uint8_t *data, uint32_t dataLen)
+dmp_rx_handler(component_t *foreign_compoent, component_t *local_component, void *srcSession, uint8_t *data, uint32_t dataLen)
 {
   uint32_t processed = 0;
   pdu_header_type pdu;
@@ -164,35 +324,35 @@ dmp_rx_handler(component_t *srcComp, component_t *dstComp, void *srcSession, uin
     switch(pdu.vector) {
       case DMP_SET_PROPERTY :
         set_active = 1;
-        dmp_set_prop(srcComp, dstComp, srcSession, &pdu);
+        //dmp_rx_set_property(foreign_compoent, local_component, srcSession, &pdu);
         set_active = 0;
         break;
       case DMP_GET_PROPERTY :
-        ;//acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_get_prop");
-        dmp_get_prop(srcComp, dstComp, srcSession, &pdu);
+        //acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_get_prop");
+        //dmp_get_prop(foreign_compoent, local_component, srcSession, &pdu);
         break;
       case DMP_ALLOCATE_MAP :
-        ;//acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_rx_allocate_map");
-        dmp_rx_allocate_map(srcComp, dstComp, srcSession, &pdu);
+        //acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_rx_allocate_map");
+        //dmp_rx_allocate_map(foreign_compoent, local_component, srcSession, &pdu);
         break;
       case DMP_DEALLOCATE_MAP :
-        ;//acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_rx_deallocate_map");
-        dmp_rx_deallocate_map(srcComp, dstComp, srcSession, &pdu);
+        //acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_rx_deallocate_map");
+        //dmp_rx_deallocate_map(foreign_compoent, local_component, srcSession, &pdu);
         break;
       case DMP_MAP_PROPERTY :
-        ;//acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_rx_map_property");
-        dmp_rx_map_property(srcComp, dstComp, srcSession, &pdu);
+        //acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_rx_map_property");
+        //dmp_rx_map_property(foreign_compoent, local_component, srcSession, &pdu);
         break;
       case DMP_UNMAP_PROPERTY :
         ;//acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmpUnmapProp");
         break;
       case DMP_SUBSCRIBE :
-        ;//acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_rx_subscribe");
-        dmp_rx_subscribe(srcComp, dstComp, srcSession, &pdu);
+        //acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_rx_subscribe");
+        //dmp_rx_subscribe(foreign_compoent, local_component, srcSession, &pdu);
         break;
       case DMP_UNSUBSCRIBE :
-        ;//acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_rx_unsubscribe");
-        dmp_rx_unsubscribe(srcComp, dstComp, srcSession, &pdu);
+        //acnlog(LOG_DEBUG|LOG_LOCAL4,"dmpRxHandler: Dispatch to dmp_rx_unsubscribe");
+        //dmp_rx_unsubscribe(foreign_compoent, local_component, srcSession, &pdu);
         break;
       default:
         ;//acnlog(LOG_WARNING|LOG_LOCAL4,"dmpRxHandler: Unknown Vector (protocol) - skipping");
@@ -327,13 +487,15 @@ dmp_decode_address_header(pdu_header_type *pdu, uint8_t *data, dmp_address_t *dm
   }
   return data - top;
 }
+#endif
 
 /*****************************************************************************/
 /* 
  */
 static uint32_t 
-dmp_get_prop(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu)
+dmp_rx_get_property(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len)
 {
+#if 0
   dmp_address_t dmpAddress;
   dmp_address_t replyAddress;
   
@@ -359,18 +521,18 @@ dmp_get_prop(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_h
     replyAddress.numProps = 0;
 
     while(dmpAddress.numProps) {
-      result = (dmpAddress.startAddress & PROP_READ_BIT) ? getProperty(dstComp, dmpAddress.startAddress, curPos) : WRITE_ONLY_ERROR;
+      result = (dmpAddress.startAddress & PROP_READ_BIT) ? getProperty(local_component, dmpAddress.startAddress, curPos) : WRITE_ONLY_ERROR;
 
       dmpAddress.numProps--;
       dmpAddress.startAddress += dmpAddress.addressInc;
       curPos += (result < 0) ? 0 : result;
       if((result != lastResult) && replyAddress.numProps) {
         if(lastResult < 0) {
-//          acnlog(LOG_DEBUG|LOG_LOCAL4,"dmp_get_prop: fail within loop");
-          dmp_tx_get_prop_fail(dstComp, srcComp, srcSession, replyAddress, (result * -1));
+//          acnlog(LOG_DEBUG|LOG_LOCAL4,"dmp_rx_get_property: fail within loop");
+          dmp_tx_get_prop_fail(local_component, foreign_compoent, srcSession, replyAddress, (result * -1));
         } else {
-//          acnlog(LOG_DEBUG|LOG_LOCAL4,"dmp_get_prop: success within loop");
-          dmp_tx_get_prop_reply(dstComp, srcComp, srcSession, replyAddress, propReplyBuf, curPos - propReplyBuf);
+//          acnlog(LOG_DEBUG|LOG_LOCAL4,"dmp_rx_get_property: success within loop");
+          dmp_tx_get_prop_reply(local_component, foreign_compoent, srcSession, replyAddress, propReplyBuf, curPos - propReplyBuf);
         }
         
         //reset
@@ -382,19 +544,22 @@ dmp_get_prop(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_h
       lastResult = result;
     }
     if(lastResult < 0) {
-//      acnlog(LOG_DEBUG|LOG_LOCAL4,"dmp_get_prop: fail at end");
-      dmp_tx_get_prop_fail(dstComp, srcComp, srcSession, replyAddress, (result * -1));
+//      acnlog(LOG_DEBUG|LOG_LOCAL4,"dmp_rx_get_property: fail at end");
+      dmp_tx_get_prop_fail(local_component, foreign_compoent, srcSession, replyAddress, (result * -1));
     } else {
-//      acnlog(LOG_DEBUG|LOG_LOCAL4,"dmp_get_prop: success at end");
-      dmp_tx_get_prop_reply(dstComp, srcComp, srcSession, replyAddress, propReplyBuf, curPos - propReplyBuf);
+//      acnlog(LOG_DEBUG|LOG_LOCAL4,"dmp_rx_get_property: success at end");
+      dmp_tx_get_prop_reply(local_component, foreign_compoent, srcSession, replyAddress, propReplyBuf, curPos - propReplyBuf);
     }
   }
   return pdu->dataLength + processed;  
+
+#endif
+  return 0;
 }
 
 /*      
       if(dmpAddress.startAddress & PROP_READ_BIT)
-        result = getProperty(dstComp, dmpAddress.startAddress, curPos);
+        result = getProperty(local_component, dmpAddress.startAddress, curPos);
       else
         result = WRITE_ONLY_ERROR;
 
@@ -412,9 +577,9 @@ dmp_get_prop(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_h
       {
         //send off the results to this point
         if(lastResult < 0) //error condition
-          dmp_tx_get_prop_fail(dstComp, srcComp, srcSession, replyAddress, (result * -1));
+          dmp_tx_get_prop_fail(local_component, foreign_compoent, srcSession, replyAddress, (result * -1));
         else if(lastResult > 0) //sucess
-          dmp_tx_get_prop_reply(dstComp, srcComp, srcSession, replyAddress, topOfBuffer, curPos - topOfBuffer);
+          dmp_tx_get_prop_reply(local_component, foreign_compoent, srcSession, replyAddress, topOfBuffer, curPos - topOfBuffer);
 
         //begin a new pdu
         topOfBuffer = curPos;
@@ -433,9 +598,9 @@ dmp_get_prop(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_h
     }
   }
   if(result < 0)
-    dmp_tx_get_prop_fail(dstComp, srcComp, srcSession, replyAddress, (result * -1));
+    dmp_tx_get_prop_fail(local_component, foreign_compoent, srcSession, replyAddress, (result * -1));
   else
-    dmp_tx_get_prop_reply(dstComp, srcComp, srcSession, replyAddress, topOfBuffer, curPos - topOfBuffer);
+    dmp_tx_get_prop_reply(local_component, foreign_compoent, srcSession, replyAddress, topOfBuffer, curPos - topOfBuffer);
   return pdu->dataLength + processed;
 }
 */
@@ -443,9 +608,10 @@ dmp_get_prop(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_h
 /*****************************************************************************/
 /* 
  */
-static int 
-dmp_set_prop(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu)
+static uint32_t
+dmp_rx_set_property(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len)
 {
+#if 0
   dmp_address_t dmpAddress;
   dmp_address_t replyAddress;
   int isVariable = 0;
@@ -486,7 +652,7 @@ dmp_set_prop(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_h
         isVariable = 0;
         
       if(dmpAddress.startAddress & PROP_WRITE_BIT)
-          result = setProperty(dstComp, dmpAddress.startAddress, pdu->data + processed, sizeofValue);
+          result = setProperty(local_component, dmpAddress.startAddress, pdu->data + processed, sizeofValue);
       else
         result = READ_ONLY_ERROR;//fail read only property
       
@@ -494,7 +660,7 @@ failure:
       if(result != lastResult) {
         //send off the results to this point
         if(lastResult < 0) //error condition
-          dmp_tx_set_prop_fail(dstComp, srcComp, srcSession, replyAddress, (result * -1));
+          dmp_tx_set_prop_fail(local_component, foreign_compoent, srcSession, replyAddress, (result * -1));
 
         //begin a new pdu
         replyAddress.startAddress = dmpAddress.startAddress;
@@ -509,140 +675,25 @@ failure:
       dmpAddress.numProps--;
     }
     if(result < 0) {
-      dmp_tx_set_prop_fail(dstComp, srcComp, srcSession, replyAddress, (result * -1));
+      dmp_tx_set_prop_fail(local_component, foreign_compoent, srcSession, replyAddress, (result * -1));
     }
     processed += sizeofValue;
   }
+#endif
     
   return 1;
 }
 
-/*****************************************************************************/
-/* 
- */
-static void 
-dmp_tx_get_prop_reply(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t *reply, uint32_t replyLength)
-{
-  pdu_header_type replyHeader;
-  uint8_t *buffer;
-  
-  buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
-  
-  replyHeader.vector = DMP_GET_PROPERTY_REPLY;
-  replyHeader.vectorLength = 1;
-  replyHeader.headerLength = 1;
-  replyHeader.dataLength = 0;
-  formatPdu(buffer, &replyHeader);
-  
-  
-  dmp_encode_address_header(&replyHeader, address);
-  memcpy(replyHeader.data + replyHeader.dataLength, reply, replyLength);
-  replyHeader.dataLength += replyLength;
-  
-  updatePduLen(&replyHeader);
-  enqueueClientBlock(replyHeader.length);
-}
+//dmp_rx_get_prop_reply 
+//dmp_rx_event
 
-/*****************************************************************************/
-/* 
- */
-static void 
-dmp_tx_get_prop_fail(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
-{
-  pdu_header_type replyHeader;
-  uint8_t *buffer;
-  int i;
-
-  buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
-
-  replyHeader.vector = DMP_GET_PROPERTY_FAIL;
-  replyHeader.vectorLength = 1;
-  replyHeader.headerLength = 1;
-  replyHeader.dataLength = 0;  
-  formatPdu(buffer, &replyHeader);
-  
-  
-  dmp_encode_address_header(&replyHeader, address);
-  for(i=0; i< address.numProps; i++) {
-    replyHeader.dataLength += marshalU8(replyHeader.data + replyHeader.dataLength, reasonCode);
-  }
-  updatePduLen(&replyHeader);
-  enqueueClientBlock(replyHeader.length);
-}
-
-/*****************************************************************************/
-/* 
- */
-static void 
-dmp_tx_set_prop_fail(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
-{
-  pdu_header_type reply;
-  uint8_t *buffer;
-  int i;
-
-  buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
-  
-  reply.vector = DMP_SET_PROPERTY_FAIL;
-  reply.vectorLength = 1;
-  reply.headerLength = 1;
-  reply.dataLength = 0;  
-  formatPdu(buffer, &reply);
-  
-  
-  dmp_encode_address_header(&reply, address);
-  for(i=0; i< address.numProps; i++) {
-    reply.dataLength += marshalU8(reply.data + reply.dataLength, reasonCode);
-  }
-  updatePduLen(&reply);
-  enqueueClientBlock(reply.length);
-}
-
-/*****************************************************************************/
-/* 
- */
-static int 
-dmp_rx_allocate_map(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu)
-{
-  dmp_tx_allocate_map_reply(dstComp, srcComp, srcSession, (ALLOCATE_MAP_NOT_SUPPORTED * -1));
-  return 0;
-}
+#if 0
 
 /*****************************************************************************/
 /* 
  */
 static uint32_t 
-dmp_rx_deallocate_map(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu)
-{
-  return 0;
-}
-
-/*****************************************************************************/
-/* 
- */
-static void 
-dmp_tx_allocate_map_reply(component_t *localComp, component_t *foreignComp, void *relatedSession, uint8_t reasonCode)
-{
-  pdu_header_type reply;
-  uint8_t *buffer;
-  
-  buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
-  
-  reply.vector = DMP_ALLOCATE_MAP_REPLY;
-  reply.vectorLength = 1;
-  reply.headerLength = 1;
-  reply.dataLength = 0;  
-  formatPdu(buffer, &reply);
-  
-  reply.dataLength += marshalU8(reply.data, reasonCode);
-  updatePduLen(&reply);
-  enqueueClientBlock(reply.length);
-}
-
-/*****************************************************************************/
-/* 
- */
-static uint32_t 
-dmp_rx_map_property(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu)
+dmp_rx_map_property(component_t *foreign_compoent, component_t *local_component, void *srcSession, pdu_header_type *pdu)
 {
   dmp_address_t dmpAddress;
   
@@ -650,33 +701,18 @@ dmp_rx_map_property(component_t *srcComp, component_t *dstComp, void *srcSession
   
   processed += dmp_decode_address_header(pdu, pdu->data, &dmpAddress);
     
-  dmp_tx_map_prop_fail(dstComp, srcComp, srcSession, dmpAddress, (MAP_NOT_ALLOCATED * -1));
+  dmp_tx_map_prop_fail(local_component, foreign_compoent, srcSession, dmpAddress, (MAP_NOT_ALLOCATED * -1));
   
   return processed;
 }
 
-/*****************************************************************************/
-/* 
- */
-static void 
-dmp_tx_map_prop_fail(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
-{
-  pdu_header_type reply;
-  uint8_t header[6];
-  
-  reply.header = header;
-  dmp_encode_address_header(&reply, address);
-  reply.vector |= DMP_MAP_PROPERTY_FAIL;
-  reply.data = relatedSession; //doesn't matter
-  reply.dataLength = 0;
-//  enqueueClientBlock(localComp, foreignComp, &reply);
-}
+//dmp_rx_unmap_property
 
 /*****************************************************************************/
 /* 
  */
 static uint32_t 
-dmp_rx_subscribe(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu)
+dmp_rx_subscribe(component_t *foreign_compoent, component_t *local_component, void *srcSession, pdu_header_type *pdu)
 {
   dmp_address_t dmpAddress;
   dmp_address_t replyAddress;
@@ -701,7 +737,7 @@ dmp_rx_subscribe(component_t *srcComp, component_t *dstComp, void *srcSession, p
 //    dmpAddress.startAddress, dmpAddress.addressInc, dmpAddress.numProps);
   while(dmpAddress.numProps) {
     if(dmpAddress.startAddress & PROP_EVENT_BIT)
-      result = addSubscription(dstComp, dmpAddress.startAddress, srcComp, srcSession);
+      result = addSubscription(local_component, dmpAddress.startAddress, foreign_compoent, srcSession);
     else
       result = SUB_NOT_SUPPORTED;
 //acnlog(LOG_DEBUG |LOG_LOCAL4,"dmp_rx_subscribe : A:0x%08x, R:%d", dmpAddress.startAddress, result);
@@ -710,9 +746,9 @@ dmp_rx_subscribe(component_t *srcComp, component_t *dstComp, void *srcSession, p
       previousResult = result;
     if(result != previousResult) {
       if(previousResult < 0) //failure
-        dmp_tx_subscribe_fail(dstComp, srcComp, srcSession, replyAddress, (result * -1));
+        dmp_tx_subscribe_reject(local_component, foreign_compoent, srcSession, replyAddress, (result * -1));
       else //success
-        dmp_tx_subscribe_accept(dstComp, srcComp, srcSession, replyAddress);
+        dmp_tx_subscribe_accept(local_component, foreign_compoent, srcSession, replyAddress);
 
       replyAddress.startAddress = dmpAddress.startAddress;
       replyAddress.numProps = 1;
@@ -725,9 +761,9 @@ dmp_rx_subscribe(component_t *srcComp, component_t *dstComp, void *srcSession, p
 //  acnlog(LOG_DEBUG |LOG_LOCAL4,"dmp_rx_subscribe : Completed While");
   if(replyAddress.numProps) {
     if(previousResult < 0) //failure
-      dmp_tx_subscribe_fail(dstComp, srcComp, srcSession, replyAddress, (result * -1));
+      dmp_tx_subscribe_reject(local_component, foreign_compoent, srcSession, replyAddress, (result * -1));
     else //success
-      dmp_tx_subscribe_accept(dstComp, srcComp, srcSession, replyAddress);
+      dmp_tx_subscribe_accept(local_component, foreign_compoent, srcSession, replyAddress);
   }
   return processed;
 }
@@ -736,7 +772,7 @@ dmp_rx_subscribe(component_t *srcComp, component_t *dstComp, void *srcSession, p
 /* 
  */
 static uint32_t 
-dmp_rx_unsubscribe(component_t *srcComp, component_t *dstComp, void *srcSession, pdu_header_type *pdu)
+dmp_rx_unsubscribe(component_t *foreign_compoent, component_t *local_component, void *srcSession, pdu_header_type *pdu)
 {
   dmp_address_t dmpAddress;
   dmp_address_t replyAddress;
@@ -759,7 +795,7 @@ dmp_rx_unsubscribe(component_t *srcComp, component_t *dstComp, void *srcSession,
   replyAddress.startAddress = dmpAddress.startAddress;
   
   while(dmpAddress.numProps) {
-    result = removeSubscription(dstComp, dmpAddress.startAddress, srcComp, srcSession);
+    result = removeSubscription(local_component, dmpAddress.startAddress, foreign_compoent, srcSession);
     if(previousResult == 1) //unset
       previousResult = result;
     if(result != previousResult)
@@ -777,16 +813,152 @@ dmp_rx_unsubscribe(component_t *srcComp, component_t *dstComp, void *srcSession,
   return processed;
 }
 
+//dmp_rx_get_property_fail
+//dmp_rx_set_property_fail
+//dmp_rx_map_property_fail
+//dmp_rx_subscribe_accept
+//dmp_subscribe_reject
+
+/*****************************************************************************/
+/* 
+ */
+static uint32_t
+dmp_rx_allocate_map(component_t *foreign_compoent, component_t *local_component, void *srcSession, pdu_header_type *pdu)
+{
+  dmp_tx_allocate_map_reply(local_component, foreign_compoent, srcSession, (ALLOCATE_MAP_NOT_SUPPORTED * -1));
+  return 0;
+}
+
+//dmp_rx_allocate_map_reply
+
+/*****************************************************************************/
+/* 
+ */
+static uint32_t 
+dmp_rx_deallocate_map(component_t *foreign_compoent, component_t *local_component, void *srcSession, pdu_header_type *pdu)
+{
+  return 0;
+}
+
+
+//dmp_tx_get_property
+//dmp_tx_set_property
+
 /*****************************************************************************/
 /* 
  */
 static void 
-dmp_tx_subscribe_accept(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address)
+dmp_tx_get_prop_reply(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address, uint8_t *reply, uint32_t replyLength)
+{
+  pdu_header_type replyHeader;
+  uint8_t *buffer;
+  
+  buffer = sdtFormatClientBlock(foreign_compoent, PROTO_DMP, relatedSession);
+  
+  replyHeader.vector = DMP_GET_PROPERTY_REPLY;
+  replyHeader.vectorLength = 1;
+  replyHeader.headerLength = 1;
+  replyHeader.dataLength = 0;
+  formatPdu(buffer, &replyHeader);
+  
+  
+  dmp_encode_address_header(&replyHeader, address);
+  memcpy(replyHeader.data + replyHeader.dataLength, reply, replyLength);
+  replyHeader.dataLength += replyLength;
+  
+  updatePduLen(&replyHeader);
+  enqueueClientBlock(replyHeader.length);
+}
+
+//dmp_tx_event
+//dmp_tx_map_property
+//dmp_tx_unmap_property
+//dmp_tx_subscribe
+//dmp_tx_unsubscribe
+
+
+/*****************************************************************************/
+/* 
+ */
+static void 
+dmp_tx_get_prop_fail(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
+{
+  pdu_header_type replyHeader;
+  uint8_t *buffer;
+  int i;
+
+  buffer = sdtFormatClientBlock(foreign_compoent, PROTO_DMP, relatedSession);
+
+  replyHeader.vector = DMP_GET_PROPERTY_FAIL;
+  replyHeader.vectorLength = 1;
+  replyHeader.headerLength = 1;
+  replyHeader.dataLength = 0;  
+  formatPdu(buffer, &replyHeader);
+  
+  
+  dmp_encode_address_header(&replyHeader, address);
+  for(i=0; i< address.numProps; i++) {
+    replyHeader.dataLength += marshalU8(replyHeader.data + replyHeader.dataLength, reasonCode);
+  }
+  updatePduLen(&replyHeader);
+  enqueueClientBlock(replyHeader.length);
+}
+
+/*****************************************************************************/
+/* 
+ */
+static void 
+dmp_tx_set_prop_fail(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
+{
+  pdu_header_type reply;
+  uint8_t *buffer;
+  int i;
+
+  buffer = sdtFormatClientBlock(foreign_compoent, PROTO_DMP, relatedSession);
+  
+  reply.vector = DMP_SET_PROPERTY_FAIL;
+  reply.vectorLength = 1;
+  reply.headerLength = 1;
+  reply.dataLength = 0;  
+  formatPdu(buffer, &reply);
+  
+  
+  dmp_encode_address_header(&reply, address);
+  for(i=0; i< address.numProps; i++) {
+    reply.dataLength += marshalU8(reply.data + reply.dataLength, reasonCode);
+  }
+  updatePduLen(&reply);
+  enqueueClientBlock(reply.length);
+}
+
+/*****************************************************************************/
+/* 
+ */
+static void 
+dmp_tx_map_prop_fail(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
+{
+  pdu_header_type reply;
+  uint8_t header[6];
+  
+  reply.header = header;
+  dmp_encode_address_header(&reply, address);
+  reply.vector |= DMP_MAP_PROPERTY_FAIL;
+  reply.data = relatedSession; //doesn't matter
+  reply.dataLength = 0;
+//  enqueueClientBlock(localComp, foreign_compoent, &reply);
+}
+
+
+/*****************************************************************************/
+/* 
+ */
+static void 
+dmp_tx_subscribe_accept(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address)
 {
   uint8_t *buffer;
   pdu_header_type replyHeader;
     
-  buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
+  buffer = sdtFormatClientBlock(foreign_compoent, PROTO_DMP, relatedSession);
   
   replyHeader.vector = DMP_SUBSCRIBE_ACCEPT;
   replyHeader.vectorLength = 1;
@@ -804,13 +976,13 @@ dmp_tx_subscribe_accept(component_t *localComp, component_t *foreignComp, void *
 /* 
  */
 static void 
-dmp_tx_subscribe_fail(component_t *localComp, component_t *foreignComp, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
+dmp_tx_subscribe_reject(component_t *localComp, component_t *foreign_compoent, void *relatedSession, dmp_address_t address, uint8_t reasonCode)
 {
   int i;
   uint8_t *buffer;
   pdu_header_type replyHeader;
     
-  buffer = sdtFormatClientBlock(foreignComp, PROTO_DMP, relatedSession);
+  buffer = sdtFormatClientBlock(foreign_compoent, PROTO_DMP, relatedSession);
   
   replyHeader.vector = DMP_SUBSCRIBE_REJECT;
   replyHeader.vectorLength = 1;
@@ -825,6 +997,34 @@ dmp_tx_subscribe_fail(component_t *localComp, component_t *foreignComp, void *re
   updatePduLen(&replyHeader);
   enqueueClientBlock(replyHeader.length);
 }
+
+//dmp_tx_allocate_map
+
+/*****************************************************************************/
+/* 
+ */
+static void 
+dmp_tx_allocate_map_reply(component_t *localComp, component_t *foreign_compoent, void *relatedSession, uint8_t reasonCode)
+{
+  pdu_header_type reply;
+  uint8_t *buffer;
+  
+  buffer = sdtFormatClientBlock(foreign_compoent, PROTO_DMP, relatedSession);
+  
+  reply.vector = DMP_ALLOCATE_MAP_REPLY;
+  reply.vectorLength = 1;
+  reply.headerLength = 1;
+  reply.dataLength = 0;  
+  formatPdu(buffer, &reply);
+  
+  reply.dataLength += marshalU8(reply.data, reasonCode);
+  updatePduLen(&reply);
+  enqueueClientBlock(reply.length);
+}
+
+//dmp_tx_deallocate_map
+
+
 
 /*****************************************************************************/
 /* 
@@ -891,3 +1091,4 @@ dmpCompOfflineNotify(component_t *remoteComp)
 {
   removeAllSubscriptions(remoteComp);
 }
+#endif

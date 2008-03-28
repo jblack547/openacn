@@ -87,6 +87,7 @@ enum
 };
 
 void dmp_init(void);
-uint32_t dmp_rx_handler(component_t *srcComp, component_t *dstComp, void *srcSession, uint8_t *data, uint32_t dataLen);
-void dmp_comp_offline_notify(component_t *remoteComp);
+//uint32_t dmp_rx_handler(component_t *srcComp, component_t *dstComp, void *srcSession, uint8_t *data, uint32_t dataLen);
+void     dmp_client_rx_handler(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
+//void dmp_comp_offline_notify(component_t *remoteComp);
 #endif
