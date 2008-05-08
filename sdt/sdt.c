@@ -63,6 +63,9 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "dmp.h"
 #endif
 
+#define ACN_LOCK(sem)   sys_sem_wait(sem)
+#define ACN_UNLOCK(sem) sys_sem_signal(sem)
+
 /* local enums/defines */
 #if !CONFIG_RLP_SINGLE_CLIENT
 /*
@@ -114,7 +117,7 @@ static void     sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_
 static void     sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t data_len);
 static void     sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_len);
 static void     sdt_rx_nak(const cid_t foreign_cid, const uint8_t *nak, uint32_t data_len);
-static void     sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8_t *wrapper,  bool is_reliable, uint32_t data_len);
+static void     sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8_t *wrapper,  bool is_reliable, uint32_t data_len, void *ref);
 //TODO:         sdt_rx_get_sessions()
 //TODO:         sdt_rx_sessions()
 
@@ -143,14 +146,14 @@ static       uint8_t *marshal_channel_param_block(uint8_t *paramBlock);
 static const uint8_t *unmarshal_channel_param_block(sdt_member_t *member, const uint8_t *param_block);
 static       uint8_t *marshal_transport_address(uint8_t *data, const neti_addr_t *transport_addr, int type);
 static const uint8_t *unmarshal_transport_address(const uint8_t *data, const neti_addr_t *transport_addr, neti_addr_t *packet_addr, uint8_t *type);
-static       uint8_t *sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_channel, uint16_t first_mid, uint16_t last_mid, uint16_t mak_threshold);
+//static       uint8_t *sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_channel, uint16_t first_mid, uint16_t last_mid, uint16_t mak_threshold);
 static       void     sdt_client_rx_handler(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
 static       uint32_t check_sequence(sdt_channel_t *channel, bool is_reliable, uint32_t total_seq, uint32_t reliable_seq, uint32_t oldest_avail);
-static       uint8_t *sdt_format_client_block(uint8_t *client_block, uint16_t foreignlMember, uint32_t protocol, uint16_t association);
+//static       uint8_t *sdt_format_client_block(uint8_t *client_block, uint16_t foreignlMember, uint32_t protocol, uint16_t association);
 
 static uint16_t      sdt_next_member(sdt_channel_t *channel);
-static sdt_member_t *sdt_find_member_by_mid(sdt_channel_t *channel, uint16_t mid);
-static sdt_member_t *sdt_find_member_by_component(sdt_channel_t *channel, component_t *component);
+//static sdt_member_t *sdt_find_member_by_mid(sdt_channel_t *channel, uint16_t mid);
+//static sdt_member_t *sdt_find_member_by_component(sdt_channel_t *channel, component_t *component);
 
 
 //TODO: this is fake!
@@ -222,6 +225,8 @@ sdt_init(void)
 
   rlp_init();
   sdtm_init();
+  
+  //TODO: make this generic
   initializedState = 1;
   return 0;
 }
@@ -518,6 +523,13 @@ sdt_add_channel(component_t *leader, uint16_t channel_number)
     //channel->member_list     = // added when creating members
     //channel->sock;           = // default null
     //channel->listener;       = // multicast listener, default null
+//    channel->tx_sem = sys_sem_new(1);
+//    if (channel->tx_sem) {
+//      channel->tx_buf = rlpm_newtxbuf(DEFAULT_MTU, leader);
+//      channel->tx_buf_pdu = rlp_init_block(channel->tx_buf, NULL);  //pdu = pointer start of pdu
+//      channel->tx_buf_data = channel->tx_buf_pdu;                   //data = pointer into our buffer
+      //channel->tx_buf_state = bsOK;   // default                    // no open wrapper
+//    }
     leader->tx_channel = channel;
     ACN_PORT_UNPROTECT(protect);
     return channel;
@@ -556,6 +568,14 @@ sdt_del_channel(component_t *leader)
     if (channel->listener) {
       rlp_del_listener(channel->sock, channel->listener);
     }
+//    if (channel->tx_sem) {
+//      if (channel->tx_buf) {
+//        ACN_LOCK(channel->tx_sem);
+//        rlpm_freetxbuf(channel->tx_buf);
+//        ACN_UNLOCK(channel->tx_sem);
+//      }
+//      sys_sem_free(channel->tx_sem);
+//    }
   }
   /* and nuke it */
   protect = ACN_PORT_PROTECT();
@@ -676,7 +696,8 @@ sdt_next_member(sdt_channel_t *channel)
 /*
   Find member by MID
 */
-static sdt_member_t *
+//static 
+sdt_member_t *
 sdt_find_member_by_mid(sdt_channel_t *channel, uint16_t mid)
 {
   sdt_member_t *member;
@@ -696,7 +717,8 @@ sdt_find_member_by_mid(sdt_channel_t *channel, uint16_t mid)
 /*
   Find member by Component
 */
-static sdt_member_t *
+//static 
+sdt_member_t *
 sdt_find_member_by_component(sdt_channel_t *channel, component_t *component)
 {
   sdt_member_t *member;
@@ -740,6 +762,8 @@ sdt_find_component(const cid_t cid)
     ref         - value set when setting up listener (not used)
     remhost     - network address of sending (foreign) host
     foreign_cid - cid of sending component (pulled from root layer)
+
+//NOTE: for lwip, ref is not the ref made from add_listener. It is pbuf used for reference counting
  */
 void
 sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const neti_addr_t *remhost, const cid_t foreign_cid)
@@ -749,7 +773,7 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const neti_addr_t *
 	uint32_t    data_size = 0;
 	const uint8_t    *pdup, *datap;
 
-  UNUSED_ARG(ref);
+//  UNUSED_ARG(ref);
 
   LOG_FSTART();
 
@@ -835,11 +859,11 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const neti_addr_t *
         break;
       case SDT_REL_WRAPPER :
         acnlog(LOG_DEBUG | LOG_SDT,"sdtRxHandler: Dispatch to sdt_rx_wrapper as reliable");
-        sdt_rx_wrapper(foreign_cid, remhost, datap, true, data_size);
+        sdt_rx_wrapper(foreign_cid, remhost, datap, true, data_size, ref);
         break;
       case SDT_UNREL_WRAPPER :
         acnlog(LOG_DEBUG | LOG_SDT,"sdtRxHandler: Dispatch to sdt_rx_wrapper as unreliable");
-        sdt_rx_wrapper(foreign_cid, remhost, datap, false, data_size);
+        sdt_rx_wrapper(foreign_cid, remhost, datap, false, data_size, ref);
         break;
       case SDT_GET_SESSIONS :
         acnlog(LOG_DEBUG | LOG_SDT,"sdtRxHandler: Get Sessions unsupported");
@@ -1075,7 +1099,8 @@ unmarshal_transport_address(const uint8_t *data, const neti_addr_t *transport_ad
     mak_threshold  - MAK threshold
     returns        - pointer to start of client block
 */
-static uint8_t *
+//static 
+uint8_t *
 sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_channel, uint16_t first_mid, uint16_t last_mid, uint16_t mak_threshold)
 {
   LOG_FSTART();
@@ -1284,7 +1309,7 @@ check_sequence(sdt_channel_t *channel, bool is_reliable, uint32_t total_seq, uin
     association  - association
     returns      - new stream pointer (to opaque datagram)
 */
-static 
+//static 
 uint8_t *
 sdt_format_client_block(uint8_t *client_block, uint16_t foreign_mid, uint32_t protocol, uint16_t association)
 {
@@ -1454,7 +1479,7 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component)
   acnlog(LOG_DEBUG | LOG_SDT, "sdt_tx_join : channel %d", local_channel->number);
 
   /* if we have a tx_channel */
-  if (foreign_channel) {
+    if (foreign_channel) {
     rlp_send_block(tx_buffer, local_channel->sock, &foreign_channel->source_addr);
   } else {
     rlp_send_block(tx_buffer, local_channel->sock, &foreign_component->adhoc_addr);
@@ -2264,9 +2289,10 @@ sdt_resend(sdt_channel_t channel, uint16_t reliableSeq)
     is_reliable    - flag indicating if type of wrapper
     wrapper        - pointer to wrapper DATA block
     data_len       - length of data block
+    ref            - refernce pointer (LWIP pbuf)
 */
 static void
-sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8_t *wrapper,  bool is_reliable, uint32_t data_len)
+sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const uint8_t *wrapper,  bool is_reliable, uint32_t data_len, void *ref)
 {
   component_t     *foreign_component;
   sdt_channel_t   *foreign_channel;
@@ -2488,7 +2514,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const neti_addr_t *source_addr, const ui
             break;
           #if CONFIG_DMP
           case PROTO_DMP:
-            dmp_client_rx_handler(local_member->component, foreign_component, datap, data_size);
+            dmp_client_rx_handler(local_member->component, foreign_component, is_reliable, datap, data_size, ref);
           
           //TODO: replace with registered callback
 

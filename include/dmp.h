@@ -39,13 +39,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "types.h"
 #include "component.h"
+#include "sdt.h"
 
 #define ADDRESS_TYPE_MASK        0x30
 #define VIRTUAL_ADDRESS_BIT      0x80
 #define RELATIVE_ADDRESS_BIT     0x40
 #define ADDRESS_SIZE_MASK        0x03
 #define RESERVED_BIT_MASK        0x0C
-
 
 #define DMP_VECTOR_LEN 1
 #define DMP_HEADER_LEN 1
@@ -65,6 +65,23 @@ enum
   RANGE_ADDRESS_EQUAL_SIZE_DATA = 0x20,
   RANGE_ADDRESS_MIXED_SIZE_DATA = 0x30,
 };
+
+/* Reason codes [DMP spec] */
+enum 
+{
+  DMP_REASON_NONSPEC          = 1,
+  DMP_NOT_A_PROPERYT          = 2,
+  DMP_WRITE_ONLY              = 3,
+  DMP_NOT_WRITABLE            = 4,
+  DMP_DATA_ERROR              = 5,
+  DMP_MAPS_NOT_SUPPORTED      = 6,
+  DMP_SPACE_NOT_AVAILABLE     = 7,
+  DMP_PROP_NOT_MAPABLE        = 8,
+  DMP_MAP_NOT_ALLOCATED       = 9,
+  DMP_SUBSCRIPT_NOT_SUPPORTED = 10,
+  DMP_NO_SUBSCRIPT_SUPPORTED  = 11,
+};
+
 
 enum
 {
@@ -86,8 +103,9 @@ enum
   DMP_DEALLOCATE_MAP =        16,
 };
 
-void dmp_init(void);
-//uint32_t dmp_rx_handler(component_t *srcComp, component_t *dstComp, void *srcSession, uint8_t *data, uint32_t dataLen);
-void     dmp_client_rx_handler(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len);
-//void dmp_comp_offline_notify(component_t *remoteComp);
+int   dmp_init(void);
+void  dmp_client_rx_handler(component_t *local_component, component_t *foreign_component, bool is_reliable, const uint8_t *data, uint32_t data_len, void *ref);
+void  dmp_tx_allocate_map_reply(component_t *foreign_component, component_t *local_component, sdt_member_t *local_member, bool is_reliable, uint8_t reason);
+
+
 #endif

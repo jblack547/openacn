@@ -573,7 +573,7 @@ Process a packet - called by network interface layer on receipt of a packet
 */
 
 void
-rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t dest_inaddr, const neti_addr_t *remhost)
+rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t dest_inaddr, const neti_addr_t *remhost, void *ref)
 {
 	struct rlp_rxgroup_s *rxgroup;
 	struct rlp_listener_s *listener;
@@ -653,7 +653,10 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 		)
 		{
 			if (listener->callback)
-				(*listener->callback)(datap, datasize, listener->ref, remhost, src_cidp);
+        // TODO: hack.. well sort of, clipping out lister->ref and sending back ref from call back
+        // on lwip, this is pointer to pbuf so we can do reference counting on it
+//				(*listener->callback)(datap, datasize, listener->ref, remhost, src_cidp);
+				(*listener->callback)(datap, datasize, ref, remhost, src_cidp);
 		}
 	}
 }

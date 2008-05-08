@@ -102,7 +102,9 @@ This currently suffers from the Shlemeil the Painter problem
 
 struct netsocket_s sockets[MAX_RLP_SOCKETS];
 static struct rlp_listener_s listeners[MAX_LISTENERS];
-static struct rlp_txbuf_s txbufs[MAX_TXBUFS];
+//static struct rlp_txbuf_s txbufs[MAX_TXBUFS];
+struct rlp_txbuf_s txbufs[MAX_TXBUFS];
+
 
 /***********************************************************************************************/
 /*
@@ -431,7 +433,9 @@ rlp_txbuf_s *rlpm_newtxbuf(int size, component_t *owner)
 void 
 rlpm_freetxbuf(struct rlp_txbuf_s *buf)
 {
-	--(buf->usage);
+  if (buf->usage) {
+    --(buf->usage);
+  }
 }
 
 #define rlpItsData(buf) ((uint8_t *)(buf) \

@@ -63,7 +63,7 @@ struct netsocket_s * rlp_open_netsocket(localaddr_t localaddr);
 void      rlp_close_netsocket(struct netsocket_s *netsock);
 struct    rlp_listener_s * rlp_add_listener(struct netsocket_s *netsock, groupaddr_t groupaddr, protocolID_t protocol, rlpHandler_t *callback, void *ref);
 void      rlp_del_listener(struct netsocket_s *netsock, struct rlp_listener_s *listener);
-void      rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const neti_addr_t *remhost);
+void      rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const neti_addr_t *remhost, void *ref);
 
 /*
 struct rlp_txbuf_hdr {

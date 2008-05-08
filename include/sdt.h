@@ -107,6 +107,14 @@ typedef enum {
   ssCLOSING
 } sdt_state_t;
 
+/* channel buffer state */
+//typedef enum
+//{
+//  bsOK,        /* closed pdu */
+//  bsUNREL,    /* open unreliable wrapper */
+//  bsREL       /* open reliable wrapper */
+//} sdt_buf_state_t;
+
 typedef enum
 {
   msEMPTY     = 0,
@@ -114,6 +122,17 @@ typedef enum
   msJOINED    = 2,
   msCONNECTED = 3
 } member_state_t;
+
+/* buffer to use for sending */
+//typedef struct sdt_txbuf_s
+//{
+//  struct rlp_txbuf_t    *rlp_buf;      /* buffer to send data on channel */
+//  sdt_buf_state_t        buf_state;    
+//  uint8_t               *blockstart;   /* start of PDU */
+//  uint8_t               *blockend;     /* end of last PDU */
+//  uint8_t               *data;         /* current pointer in databuffer */
+//} sdt_txbuf_t;
+
 
 typedef struct sdt_member_s
 {
@@ -133,6 +152,9 @@ typedef struct sdt_member_s
   uint16_t nak_max_wait;
 } sdt_member_t;
 
+/* ok, just to make me not have to type stuct all the time */
+typedef struct rlp_txbuf_s rlp_txbuf_t;
+
 typedef struct sdt_channel_s
 {
   uint16_t      number;
@@ -145,10 +167,8 @@ typedef struct sdt_channel_s
   sdt_member_t *member_list;
   struct netsocket_s    *sock; 
   struct rlp_listener_s *listener;     // multicast listener
+//  sys_sem_t       tx_sem;                // todo: make generic
 } sdt_channel_t;
-
-/* ok, just to make me not have to type stuct all the time */
-typedef struct rlp_txbuf_s rlp_txbuf_t;
 
 /* sequence errors */
 enum
@@ -177,12 +197,18 @@ void     sdt_tick(void *arg);  /* timer call back */
 int      sdt_join(component_t *local_component, component_t *foreign_component);
 
 void     sdt_tx_reliable_data(component_t *local_component, component_t *foreign_component, uint32_t protocol, bool response, void *data, uint32_t data_len);
+uint8_t *sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_channel, uint16_t first_mid, uint16_t last_mid, uint16_t mak_threshold);
+uint8_t *sdt_format_client_block(uint8_t *client_block, uint16_t foreignlMember, uint32_t protocol, uint16_t association);
+
 
 /* add with init */
 component_t   *sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t access);
 
 sdt_channel_t *sdt_add_channel(component_t *leader, uint16_t channel_number);
 sdt_member_t  *sdt_add_member(sdt_channel_t *channel, component_t *component);
+
+sdt_member_t *sdt_find_member_by_mid(sdt_channel_t *channel, uint16_t mid);
+sdt_member_t *sdt_find_member_by_component(sdt_channel_t *channel, component_t *component);
 
 /* delete with cleanup */
 component_t   *sdt_del_component(component_t *component);

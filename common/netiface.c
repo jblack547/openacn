@@ -522,7 +522,7 @@ neti_poll(struct netsocket_s **sockps, int numsocks)
 					printf("Socket %d: packet for %8x:%u\n", netsock->nativesock, ntohl(pktaddr), ntohs(NSK_PORT(*netsock)));
 				}
 			}
-			rlp_process_packet(netsock, buf, rslt, dest_inaddr, &remhost);
+			rlp_process_packet(netsock, buf, rslt, dest_inaddr, &remhost, 0);
 		}
 
 	neti_freepacket(buf);
@@ -559,7 +559,7 @@ netihandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr
   neti_addr_t remhost;
   ip4addr_t dest_inaddr;
 
-  // arg is contains netsock
+  // arg contains a netsock
 
   UNUSED_ARG(pcb);
 
@@ -571,7 +571,8 @@ netihandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr
   // of the source address
   dest_inaddr = ((struct ip_addr*)((char*)addr + sizeof(struct ip_addr)))->addr;
 
-  rlp_process_packet(arg, p->payload, p->tot_len, dest_inaddr, &remhost);
+  /* pass pbuf up the chain so we can reference count usage */
+  rlp_process_packet(arg, p->payload, p->tot_len, dest_inaddr, &remhost, p);
   pbuf_free(p);
 }
 #endif /* CONFIG_STACK_LWIP */
@@ -593,7 +594,7 @@ netihandler(void *s, uint8 *data, int dataLen, tcp_PseudoHeader *pseudo, void *h
 		dest_inaddr = ((in_Header *)hdr)->destination;
 		NETI_INADDR(remhost) = s->hisaddr;
 		NETI_PORT(remhost) = s->hisport;
-		rlp_process_packet(rlpsock, buf, dataLen, dest_inaddr, &remhost);
+		rlp_process_packet(rlpsock, buf, dataLen, dest_inaddr, &remhost, 0);
 	}
 	return dataLen;
 }
