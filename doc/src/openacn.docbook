@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
+"http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
+<book id="book.openacn">
+  <title>OpenACN Documentation</title>
+  <bookinfo>
+    <releaseinfo>$Id$</releaseinfo>
+    <abstract>
+      <title>Note:</title>
+      <para>OpenACN documentation is a work in progress.</para>
+      <para>Documentation is generated from <ulink
+      url="http://nwalsh.com/docbook/">docbook</ulink> sources which are
+      included in the openACN source tree. PDF or other formats may also be
+      generated.</para>
+    </abstract>
+  </bookinfo>
+  <xi:include href="getting-started.docbook"
+              xmlns:xi="http://www.w3.org/2001/XInclude" xpointer="element(/1)"/>
+  <xi:include href="building-and-using-openacn.docbook"
+              xmlns:xi="http://www.w3.org/2001/XInclude" xpointer="element(/1)"/>
+</book>

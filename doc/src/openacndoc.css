@@ -1,0 +1,35 @@
+*
+{
+	font-family: serif
+}
+
+h1, h2, h3, h4, h5
+{
+	font-weight: bold;
+	font-family: sans-serif
+}
+
+h1 {font-size: 180%}
+h2 {font-size: 155%}
+h3 {font-size: 134%}
+h4 {font-size: 116%}
+h5 {font-size: 100%}
+h6 {font-size: 100%}
+h7 {font-size: 100%}
+
+code,
+pre
+{
+background-color: #ddd;
+font-family: monospace;
+padding: 3px;
+}
+
+a.co:link,
+.calloutlist a:link,
+a.co:visited,
+.calloutlist a:visited
+{
+	color: inherit;
+	text-decoration: none;
+}

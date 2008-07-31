@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
+"http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
+<chapter id="building">
+  <title>Building and Using openACN</title>
+  <section id="building.configuration">
+    <title>Configuration and Customization</title>
+    <section>
+      <title>Compile Time Options</title>
+      <para>OpenACN has a wide variety of configuration options and is unlikely
+      to fit a particular application without setting up some of these. The
+      majority (all?) of configuration is done using compile time switches of
+      the form:</para>
+      <programlisting>#define CONFIG_SOME_OPTION 1
+#define CONFIG_ANOTHER_OPTION 0
+// etc.</programlisting>
+      <para>These are all documented and default values provided in the include
+      file <emphasis role="strong">opt.h</emphasis>.</para>
+      <section>
+        <title>Setting Options for Your Build</title>
+        <para><emphasis role="strong">Do not edit opt.h</emphasis> in order to
+        configure your implementation - <emphasis>opt.h</emphasis> provides a
+        default value for each option and performs sanity checks such as
+        ensuring you have not selected two operating systems in the same build.
+        In order to build your own customized implementation you must create
+        your own header file <emphasis>user_opt.h</emphasis> where the compiler
+        will find it (its easiest to place it the same include directory, but
+        you may need to place it elsewhere if you are building multiple
+        configurations from the same source).</para>
+        <para>opt.h only provides default values for options which have not been
+        defined in user_opt.h so you need only define in user_opt.h, those
+        options for which you do not want the default value. This means that in
+        the rest of the source, every option has a defined value and for Boolean
+        options, you must explicitly set them to FALSE (or 0) if that is what
+        you want, rather than leaving them undefined.</para>
+        <example>
+          <title>Defining config options in user_opt.h</title>
+          <programlisting>#define CONFIG_SOME_OPTION FALSE   /* correct way to exclude a boolean option */
+ 
+#undef CONFIG_OTHER_OPTION     /* WRONG! opt.h will substitute a default value */</programlisting>
+        </example>
+      </section>
+      <section>
+        <title>Testing options in code</title>
+        <para>If you are writing or extending you code which needs to test
+        configuration options, bear in mind that as seen above, every option has
+        a defined value and an <literal>#ifdef</literal> test will always pass.
+        Use a simple <literal>#if</literal> test instead.</para>
+        <example>
+          <title>Testing options in C code</title>
+          <programlisting>#if CONFIG_SOME_OPTION    /* Correct way to test a boolean option */
+...
+#endif
+ 
+#ifdef CONFIG_OTHER_OPTION   /* WRONG! Test always passes */
+...
+#endif
+ 
+#if defined(CONFIG_THIRD_OPTION)   /* WRONG! Test always passes */
+...
+#endif</programlisting>
+        </example>
+      </section>
+      <section>
+        <title>Summary of Compile Time Configuration Mechanism</title>
+        <itemizedlist>
+          <listitem>
+            <para>Options are documented with default values in
+            <emphasis>opt.h</emphasis></para>
+          </listitem>
+          <listitem>
+            <para>Local customization is done in <emphasis>user_opt.h</emphasis>
+            which must be created for each build</para>
+          </listitem>
+          <listitem>
+            <para>Each option always has a defined value - booleans are TRUE or
+            FALSE (never undefined)</para>
+          </listitem>
+        </itemizedlist>
+      </section>
+    </section>
+  </section>
+</chapter>
