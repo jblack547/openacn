@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opt.h"
 
 #include "component.h"
-#include "netiface.h"
+#include "netxface.h"
 /*
   Prototypes
 */
