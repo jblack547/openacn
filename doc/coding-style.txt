@@ -237,11 +237,14 @@ Compile options and switches
 --
  - All main build time compile configuration options should have a
 defined value. In the case of a boolean option define it as 0 rather
-than leaving undefined. Configuration options go in "configure.h".
+than leaving undefined. Configuration options are defined with default
+values in "opt.h" which also includes sanity checks to prevent silly
+configuration combinations.
 
-The source file "config-check.c" contains configuration checks to ensure
-that users have not specified unreasonable or conflicting
-configurations.
+The file user_opt.h should be created and used to configure a specific
+build of openACN by providing overriding values for options as
+appropriate. Do not edit opt.h for purposes of customization or
+reconfiguration.
 
 C Library functions
 --

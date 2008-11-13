@@ -15,7 +15,8 @@
 #define CONFIG_ANOTHER_OPTION 0
 // etc.</programlisting>
       <para>These are all documented and default values provided in the include
-      file <emphasis role="strong">opt.h</emphasis>.</para>
+      file <emphasis role="strong">opt.h</emphasis>. (<emphasis>do not edit
+      opt.h</emphasis>).</para>
       <section>
         <title>Setting Options for Your Build</title>
         <para><emphasis role="strong">Do not edit opt.h</emphasis> in order to
@@ -29,10 +30,10 @@
         configurations from the same source).</para>
         <para>opt.h only provides default values for options which have not been
         defined in user_opt.h so you need only define in user_opt.h, those
-        options for which you do not want the default value. This means that in
-        the rest of the source, every option has a defined value and for Boolean
-        options, you must explicitly set them to FALSE (or 0) if that is what
-        you want, rather than leaving them undefined.</para>
+        options for which you do not want the default value. This means that
+        throughout the rest of the source, every option has a defined value and
+        for Boolean options, you must explicitly set them to FALSE (or 0) if
+        that is what you want, rather than leaving them undefined.</para>
         <example>
           <title>Defining config options in user_opt.h</title>
           <programlisting>#define CONFIG_SOME_OPTION FALSE   /* correct way to exclude a boolean option */

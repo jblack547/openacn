@@ -4,7 +4,8 @@
 <book id="book.openacn">
   <title>OpenACN Documentation</title>
   <bookinfo>
-    <releaseinfo>$Id$</releaseinfo>
+    <releaseinfo>$Id: openacn.docbook 119 2008-07-31 12:58:15Z philipnye
+    $</releaseinfo>
     <abstract>
       <title>Note:</title>
       <para>OpenACN documentation is a work in progress.</para>
@@ -17,5 +18,7 @@
   <xi:include href="getting-started.docbook"
               xmlns:xi="http://www.w3.org/2001/XInclude" xpointer="element(/1)"/>
   <xi:include href="building-and-using-openacn.docbook"
+              xmlns:xi="http://www.w3.org/2001/XInclude" xpointer="element(/1)"/>
+  <xi:include href="developers-guide.docbook"
               xmlns:xi="http://www.w3.org/2001/XInclude" xpointer="element(/1)"/>
 </book>
