@@ -42,6 +42,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opt.h"
 #include "types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
 For most purposes a UUID is simply an array of 16 octets
 */
@@ -80,6 +84,10 @@ int  uuidIsNull(const uuid_t uuid);
 #endif
 #if !defined(uuidCopy)
 void uuidCopy(uuid_t uuid1, const uuid_t uuid2);
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* __uuid_h__ */

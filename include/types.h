@@ -50,75 +50,110 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Work out what we can automatically
 */
 #include <limits.h>
-#include <stddef.h>
+//#include <stddef.h>
+
+#include "acn_port.h"
 
 #ifndef true
-#define true -1
+#define true 1
 #endif
 
 #ifndef false
 #define false 0
 #endif
 
+#ifndef OK
+#define OK 0
+#endif
+
+#ifndef FAIL
+#define FAIL -1
+#endif
+
+
 /* 8-bit types */
+#ifndef __HAVE_uint8_t
 #if (UCHAR_MAX == 255)
 typedef unsigned char uint8_t;
 #define __HAVE_uint8_t 1
 #endif
+#endif
+
+#ifndef __HAVE_sint8_t
 #if (SCHAR_MAX == 127)
 typedef signed char sint8_t;
 #define __HAVE_sint8_t 1
 #endif
+#endif
+
+#ifndef __HAVE_int8_t
+typedef sint8_t int8_t;
+#define __HAVE_int8_t 1
+#endif
 
 /* 16-bit types */
-#if (UINT_MAX == 65535)
-typedef unsigned int uint16_t;
-#define __HAVE_uint16_t 1
+#ifndef __HAVE_uint16_t
+  #if (UINT_MAX == 65535)
+  typedef unsigned int uint16_t;
+  #define __HAVE_uint16_t 1
 #elif (USHRT_MAX == 65535)
-typedef unsigned short uint16_t;
-#define __HAVE_uint16_t 1
+  typedef unsigned short uint16_t;
+  #define __HAVE_uint16_t 1
+  #endif
 #endif
-#if (INT_MAX == 32767)
-typedef int sint16_t;
-#define __HAVE_sint16_t 1
-#elif (SHRT_MAX == 32767)
-typedef short sint16_t;
-#define __HAVE_sint16_t 1
+
+#ifndef __HAVE_sint16_t
+  #if (INT_MAX == 32767)
+    typedef int sint16_t;
+    #define __HAVE_sint16_t 1
+  #elif (SHRT_MAX == 32767)
+    typedef short sint16_t;
+    #define __HAVE_sint16_t 1
+  #endif
 #endif
 
 /* 32-bit types */
-#if (UINT_MAX == 4294967295UL)
-typedef unsigned int uint32_t;
-#define __HAVE_uint32_t 1
-#elif (ULONG_MAX == 4294967295UL)
-typedef unsigned long int uint32_t;
-#define __HAVE_uint32_t 1
+#ifndef __HAVE_uint32_t
+  #ifndef uint32_t
+    #if (ULONG_MAX == 4294967295UL)
+      typedef unsigned long int uint32_t;
+      #define __HAVE_uint32_t 1
+    #elif (UINT_MAX == 4294967295UL)
+      typedef unsigned int uint32_t; // this is used for netburner
+      #define __HAVE_uint32_t 1
+    #endif
+  #endif
 #endif
-#if (INT_MAX == 2147483647L)
-typedef int sint32_t;
-#define __HAVE_sint32_t 1
-#elif (LONG_MAX == 2147483647L)
-typedef long int sint32_t;
-#define __HAVE_sint32_t 1
+
+
+#ifndef __HAVE_sint32_t
+  #if (INT_MAX == 2147483647L)
+    typedef int sint32_t;
+    #define __HAVE_sint32_t 1
+  #elif (LONG_MAX == 2147483647L)
+    typedef long int sint32_t;
+    #define __HAVE_sint32_t 1
+  #endif
 #endif
 
 /* 64-bit types */
 #if defined(NEED_INT64)
-#if (ULONG_MAX == 18446744073709551615ULL)
-typedef unsigned long int uint64_t;
-#define __HAVE_uint64_t 1
-#elif (ULLONG_MAX == 18446744073709551615ULL)
-typedef unsigned long long int uint64_t;
-#define __HAVE_uint64_t 1
-#endif
-#if (LONG_MAX == 9223372036854775807LL)
-typedef long int sint64_t;
-#define __HAVE_sint64_t 1
-#elif (LLONG_MAX == 9223372036854775807LL)
-typedef long long int sint64_t;
-#define __HAVE_sint64_t 1
-#endif
+  #if (ULONG_MAX == 18446744073709551615ULL)
+    typedef unsigned long int uint64_t;
+    #define __HAVE_uint64_t 1
+  #elif (ULLONG_MAX == 18446744073709551615ULL)
+    typedef unsigned long long int uint64_t;
+    #define __HAVE_uint64_t 1
+  #endif
+  #if (LONG_MAX == 9223372036854775807LL)
+    typedef long int sint64_t;
+    #define __HAVE_sint64_t 1
+  #elif (LLONG_MAX == 9223372036854775807LL)
+    typedef long long int sint64_t;
+    #define __HAVE_sint64_t 1
+  #endif
 #endif /* #ifdef NEED_INT64 */
+
 
 #define PACKED __attribute__((__packed__))
 #define UNUSED_ARG(x) (void)(x)
@@ -130,6 +165,6 @@ typedef struct
 	uint8_t value[0];
 } p_string_t;
 
-#include "user_types.h"
+//#include "user_types.h"
 
 #endif /* __types_h__ */

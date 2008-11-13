@@ -29,35 +29,32 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
-  
+  $Id$
+
   Description:
-    converts 32 bit unsigned integer to a IP address string.
+    Header file for netsock.c
 */
-#include <stdio.h>
-#include "opt.h"
-#include "types.h"
-#include "acn_arch.h"
+#ifndef NETSOCK_H_
+#define NETSOCK_H_
 
-#include "ntoa.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/*********************************/
-/* returns ptr to static buffer; not reentrant! */
-char ip_string[16];
-char * ntoa(uint32_t ip_addr)
-{
-  // convert an ip address number into a string
-  uint8_t a,b,c,d;
-  
-  a = (ip_addr>>24);
-  b = (ip_addr>>16);
-  c = (ip_addr>>8);
-  d = ip_addr&0xff;
- 
-  sprintf(ip_string,"%d.%d.%d.%d", a,b,c,d);
+#include "netxface.h"
 
-  return ip_string;
+void   nsk_netsocks_init(void);
+extern netxsocket_t *nsk_new_netsock(void);
+extern netxsocket_t *nsk_find_netsock(localaddr_t *localaddr);
+extern netxsocket_t *nsk_next_netsock(netxsocket_t *socket);
+extern netxsocket_t *nsk_first_netsock(void);
+extern void   nsk_free_netsock(netxsocket_t *socket);
+
+
+#ifdef __cplusplus
 }
+#endif
 
 
 
+#endif /*NETSOCK_H_*/

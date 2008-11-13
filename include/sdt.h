@@ -45,8 +45,13 @@ necessary for accessing SDT from higher layers
 
 #include "opt.h"
 #include "acn_arch.h"
-#include "netiface.h"
+#include "netxface.h"
 #include "component.h"
+#include "rlp.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* ESTA registered protocol code */
 #define SDT_PROTOCOL_ID     1
@@ -71,11 +76,11 @@ enum
   SDT_ACK             = 14,
   SDT_NAK             = 15,
   SDT_GET_SESSIONS    = 16,
-  SDT_SESSIONS        = 17, 
+  SDT_SESSIONS        = 17,
 };
 
 /* Reason codes [SDT spec Table 6] */
-enum 
+enum
 {
   SDT_REASON_NONSPEC          = 1,
   SDT_REASON_PARAMETERS       = 2,
@@ -107,33 +112,18 @@ typedef enum {
   ssCLOSING
 } sdt_state_t;
 
-/* channel buffer state */
-//typedef enum
-//{
-//  bsOK,        /* closed pdu */
-//  bsUNREL,    /* open unreliable wrapper */
-//  bsREL       /* open reliable wrapper */
-//} sdt_buf_state_t;
-
+/* member states */
 typedef enum
 {
-  msEMPTY     = 0,
-  msPENDING   = 1,
-  msJOINED    = 2,
-  msCONNECTED = 3
+  msDELETE          = -1,
+  msEMPTY           =  0,
+  msWAIT_FOR_ACCEPT =  1,
+  msWAIT_FOR_ACK    =  2,
+  msJOINED          =  3,
+  msCONNECTED       =  4
 } member_state_t;
 
-/* buffer to use for sending */
-//typedef struct sdt_txbuf_s
-//{
-//  struct rlp_txbuf_t    *rlp_buf;      /* buffer to send data on channel */
-//  sdt_buf_state_t        buf_state;    
-//  uint8_t               *blockstart;   /* start of PDU */
-//  uint8_t               *blockend;     /* end of last PDU */
-//  uint8_t               *data;         /* current pointer in databuffer */
-//} sdt_txbuf_t;
-
-
+/* member */
 typedef struct sdt_member_s
 {
   struct sdt_member_s *next;
@@ -143,8 +133,8 @@ typedef struct sdt_member_s
   member_state_t  state;
   uint8_t         expiry_time_s;
   int             expires_ms;
-  uint32_t        mak_ms;
-  
+  int             mak_retries;
+
   /* only used for local member */
   uint16_t nak_holdoff;
   //uint16_t last_acked;
@@ -152,22 +142,20 @@ typedef struct sdt_member_s
   uint16_t nak_max_wait;
 } sdt_member_t;
 
-/* ok, just to make me not have to type stuct all the time */
-typedef struct rlp_txbuf_s rlp_txbuf_t;
-
+/* channel */
 typedef struct sdt_channel_s
 {
   uint16_t      number;
   uint16_t      available_mid;
-  neti_addr_t   destination_addr;     // channel outbound address (multicast)
-  neti_addr_t   source_addr;          // channel source address
+  netx_addr_t   destination_addr;     // channel outbound address (multicast)
+  netx_addr_t   source_addr;          // channel source address
   uint32_t      total_seq;
   uint32_t      reliable_seq;
   uint32_t      oldest_avail;
+  int           mak_ms;
   sdt_member_t *member_list;
-  struct netsocket_s    *sock; 
+  netxsocket_t  *sock;
   struct rlp_listener_s *listener;     // multicast listener
-//  sys_sem_t       tx_sem;                // todo: make generic
 } sdt_channel_t;
 
 /* sequence errors */
@@ -187,21 +175,38 @@ enum
   SDT_RELIABLE = true
 };
 
+/* zero value of "association" for outbound */
+#define CHANNEL_OUTBOUND_TRAFFIC 0
+
+/* NAK on outbound */
 #define NAK_OUTBOUND 0x80
+
+/* structure to track info for resending reliable packets */
+typedef struct sdt_resend_s
+{
+  uint32_t             reliable_seq;    /* make it easy to find this */
+  int                  expires_ms;      /* expiration timer */
+  int                  blanktime_ms;    /* holdoff before allowing send (again)*/
+  rlp_txbuf_t         *tx_buffer;       /* tx buffer packet is in */
+  uint8_t             *pdup;            /* ponter to pdu in buffer */
+  uint32_t             size;            /* size of pdu */
+  component_t         *local_component; /* local component */
+  struct sdt_resend_s *next;            /* next buffer in lifo chain */
+} sdt_resend_t;
+
 
 int      sdt_init(void);
 int      sdt_startup(bool acceptAdHoc);
 int      sdt_shutdown(void);
-void     sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const neti_addr_t *remhost, const cid_t foreign_cid);
+void     sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const netx_addr_t *remhost, const cid_t foreign_cid);
 void     sdt_tick(void *arg);  /* timer call back */
 int      sdt_join(component_t *local_component, component_t *foreign_component);
-
 void     sdt_tx_reliable_data(component_t *local_component, component_t *foreign_component, uint32_t protocol, bool response, void *data, uint32_t data_len);
+
 uint8_t *sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_channel, uint16_t first_mid, uint16_t last_mid, uint16_t mak_threshold);
 uint8_t *sdt_format_client_block(uint8_t *client_block, uint16_t foreignlMember, uint32_t protocol, uint16_t association);
 
-
-/* add with init */
+/* add with initialization */
 component_t   *sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t access);
 
 sdt_channel_t *sdt_add_channel(component_t *leader, uint16_t channel_number);
@@ -219,18 +224,12 @@ sdt_member_t  *sdt_del_member(sdt_channel_t *channel, sdt_member_t *member);
 component_t   *sdt_first_component(void);
 component_t   *sdt_find_component(const cid_t cid);
 
-
-//enum
-//{
-//  SDT_EVENT_JOIN_FAILED,
-//  SDT_EVENT_JOIN_TERMINATED,
-//  SDT_EVENT_JOINED,
-//  SDT_EVENT_CONNECTED,
-//  SDT_EVENT_DISCONNECTED
-//};
-
 /* may go away, used for testing */
 int  sdt_get_adhoc_port(void);
+void sdt_stats(void);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

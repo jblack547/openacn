@@ -43,7 +43,9 @@ static const char *rcsid __attribute__ ((unused)) =
    "$Id$";
 
 #include "opt.h"
+#include "types.h"
 #include "acn_arch.h"
+
 #include "sdt.h"
 #include "sdtmem.h"
 #include "acnlog.h"
@@ -52,6 +54,8 @@ static const char *rcsid __attribute__ ((unused)) =
 static sdt_channel_t    channels_m[SDT_MAX_CHANNELS];
 static sdt_member_t     members_m[SDT_MAX_MEMBERS];
 static component_t      components_m[SDT_MAX_COMPONENTS];
+static sdt_resend_t     resends_m[SDT_MAX_RESENDS];  /* list of buffers */
+
 #endif
 
 #if CONFIG_SDTMEM_STATIC
@@ -61,10 +65,12 @@ sdtm_init(void)
 {
 	sdt_channel_t   *channel;
   sdt_member_t    *member;
-  component_t *component;
+  component_t     *component;
+  sdt_resend_t       *resend;
 	for (channel = channels_m; channel < channels_m + SDT_MAX_CHANNELS; ++channel) channel->number = 0;
 	for (member = members_m; member < members_m + SDT_MAX_MEMBERS; ++member) member->component = NULL;
 	for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; ++component) uuidNull(component->cid);
+	for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; ++resend) resend->expires_ms = 0;
 }    
 
 /*****************************************************************************/
@@ -173,7 +179,44 @@ sdtm_free_component(component_t *component)
   acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_component");
   uuidNull(component->cid); /* mark it empty */
 }
-#endif
+
+/*****************************************************************************/
+/*
+  Create a new resend buffer
+*/
+sdt_resend_t *
+sdtm_new_resend(void)
+{
+	sdt_resend_t *resend;
+
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_resend");
+
+  /* find and empty one */
+  for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; resend++) {
+		if (resend->tx_buffer == NULL) {
+      /* clear values */
+      memset(resend, 0, sizeof(sdt_resend_t));
+      return resend;
+    }
+  }
+  acnlog(LOG_ERR | LOG_SDTM,"sdtm_new_resend: none left");
+  return NULL; /* none left */
+}
+
+/*****************************************************************************/
+/*
+  Free an unused resend
+*/
+void
+sdtm_free_resend(sdt_resend_t *resend)
+{
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_resend");
+  
+  resend->tx_buffer = NULL;                           /* mark it empty */
+}
+
+#endif // of CONFIG_SDTMEM_STATIC 
+
 
 #if CONFIG_SDTMEM_MALLOC
 /*****************************************************************************/

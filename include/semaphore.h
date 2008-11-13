@@ -32,32 +32,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	$Id$
   
   Description:
-    converts 32 bit unsigned integer to a IP address string.
+    Header file for semaphore.c
 */
-#include <stdio.h>
-#include "opt.h"
-#include "types.h"
-#include "acn_arch.h"
+#ifndef __SEMAPHORE_H__
+#define __SEMAPHORE_H__
 
-#include "ntoa.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/*********************************/
-/* returns ptr to static buffer; not reentrant! */
-char ip_string[16];
-char * ntoa(uint32_t ip_addr)
-{
-  // convert an ip address number into a string
-  uint8_t a,b,c,d;
-  
-  a = (ip_addr>>24);
-  b = (ip_addr>>16);
-  c = (ip_addr>>8);
-  d = ip_addr&0xff;
- 
-  sprintf(ip_string,"%d.%d.%d.%d", a,b,c,d);
+void *get_semephore(void);
 
-  return ip_string;
+#ifdef __cplusplus
 }
+#endif
 
+	
 
-
+#endif /*__SEMAPHORE_H__*/

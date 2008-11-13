@@ -37,31 +37,32 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //Under the well known DCID (D1F6F109-8A48-4435-8157-A226604DEA89):
 
 //5.1.2.	RFRs
-//Under the well known DCID (CAB91A8C-CC44-49b1-9398-1EF5C07C31C9): 
+//Under the well known DCID (CAB91A8C-CC44-49b1-9398-1EF5C07C31C9):
 
-/* Scheduler includes. */
-#include "FreeRTOS.h"
-#include "task.h"
+/* Lib includes */
+#include <stdlib.h>
 
-/* lwIP includes. */
-#include "lwip/netifapi.h"
-
-/* ACN includes */
-#include "user_opt.h"
+/* General ACN includes */
+#include "opt.h"
 #include "types.h"
-#include "uuid.h"
+#include "acn_arch.h"
 #include "acnlog.h"
+
+#include "netxface.h"
+#include "inet.h"
+#include "uuid.h"
 #include "epi18.h"
 #include "slp.h"
-#include "ntoa.h"
 #include "sdt.h"
 #include "component.h"
 
-/* DISCOVER include */
+/* this module */
 #include "discover.h"
 
-// these (at least my_cid) should be user configuratble...
-static char my_dmp[] = "c";  // c = ctl-access, d = dev-access, or cd = both
+
+
+// these (at least my_cid) should be user configurable...
+//static char my_dmp[] = "c";  // c = ctl-access, d = dev-access, or cd = both
 
 /* examples of data... */
 /*
@@ -87,14 +88,15 @@ static const char predicate_fmt[]  = "(csl-esta.dmp=*%s)";
 
 /* Local variables */
 
-/* Create a attribute list based on current parameters */
+/* Create an attribute list based on current parameters */
 static void create_attr_list(char *new_attr_list, component_t *component) 
 {
-	char    *ip_str;
+  char *ip_str;
   char cid_str[UUID_STR_SIZE];
   char dcid_str[UUID_STR_SIZE];
   char access_str[3] = {'\0'};
 
+  // if we received a non-zero pointer to the destination string
   if (new_attr_list) {
     uuidToText(component->cid, cid_str);
     uuidToText(component->dcid, dcid_str);
@@ -112,9 +114,12 @@ static void create_attr_list(char *new_attr_list, component_t *component)
       case accUNKNOWN:
         break;
     }
-
-    ip_str = ntoa(netif_default->ip_addr.addr);
-    sprintf(new_attr_list, attr_list_fmt, cid_str, component->fctn, component->uacn, ip_str, SDT_MULTICAST_PORT, access_str, dcid_str, ip_str);
+		
+    // convert the IP string
+    ip_str = inet_ntoa(netx_getmyip(0));
+    
+    // create the attribute string for SLP discovery
+    sprintf(new_attr_list, attr_list_fmt, cid_str, component->fctn, component->uacn, ip_str, SDT_ADHOC_PORT, access_str, dcid_str, ip_str);
     //                                    %s       %s               %s               %s      %d                 %s           %s        %s
   }
 }
@@ -124,7 +129,9 @@ static void create_url(char *new_url, component_t *component)
 {
   char cid_str[UUID_STR_SIZE];
 
+  // convert the CID to a string
   uuidToText(component->cid, cid_str);
+  // put the CID string into the URL string
   sprintf(new_url, acn_reg_fmt, cid_str);
 }
 
@@ -146,6 +153,7 @@ static void create_url(char *new_url, component_t *component)
                    $:tftp://192.169.3.100/$.ddl)
 */
 /* Callback when we receive a reply from our attribute request */
+// for DA builds
 static void attrrqst_callback(int error, char *attr_list)
 {
   uuid_t  cid;
@@ -159,8 +167,8 @@ static void attrrqst_callback(int error, char *attr_list)
 
   component_t *comp = NULL;
 
-  uint32_t  ip;
-  uint32_t  port;
+  uint32_t  ip = 0;
+  uint32_t  port = 0;
 
   char *next_attr;
   char *attr_str;
@@ -239,8 +247,8 @@ static void attrrqst_callback(int error, char *attr_list)
           } else {
             /* get ip */
             strncpy(ip_str, s, e-s);
-            ip = inet_addr(ip_str);
-            /* go ip, now get port */
+            ip = inet_aton(ip_str);
+            /* got ip, now get port */
             s = e+1;
             e = strchr(s, ';');
             if (!e) {
@@ -251,10 +259,7 @@ static void attrrqst_callback(int error, char *attr_list)
               strncpy(port_str, s, e-s);
               port = atoi(port_str);
             }
-            //printf("  ip:    %8x\n", ip);
-            //printf("myip:    %8x\n", netif_default->ip_addr.addr);
-            //printf("mask:    %8x\n", netif_default->netmask.addr);
-            if ((netif_default->netmask.addr & netif_default->ip_addr.addr) == (netif_default->netmask.addr & ip)) {
+            if ((netx_getmyipmask(0) & netx_getmyip(0)) == (netx_getmyipmask(0) & ip)) {
               printf("reachable ip: %s, %s\n",ip_str, port_str);
               /* got what we need - move on */
               break;  /* from while(p) */
@@ -278,70 +283,89 @@ static void attrrqst_callback(int error, char *attr_list)
     printf("attrrqst callback: error %d\n",error);
   }
 
-  /* create a component */
+  /* create a component for this CID */
   if (!uuidIsNull(cid)) {
-    comp = sdt_find_component(cid);
+  	// use the CID to get the address of the component structure 
+    //comp = sdt_find_component(cid);  // COMMENTED OUT
+    // if it was found
     if (comp) {
       uuidCopy(comp->dcid, dcid);
-      NETI_PORT(&comp->adhoc_addr) = port;
-      NETI_INADDR(&comp->adhoc_addr) = ip;
+      netx_PORT(&comp->adhoc_addr) = port;
+      netx_INADDR(&comp->adhoc_addr) = ip;
     } else {
-      /* create a new one */
-      comp = sdt_add_component(cid, dcid, false, accUNKNOWN);
+      /* create a new component struct at the end of the list */
+      comp = sdt_add_component(cid, dcid, false, accUNKNOWN); 
       if (!comp) {
         return;
       }
     }
-    NETI_PORT(&comp->adhoc_addr) = port;
-    NETI_INADDR(&comp->adhoc_addr) = ip;
+    netx_PORT(&comp->adhoc_addr) = port;
+    netx_INADDR(&comp->adhoc_addr) = ip;
     strcpy(comp->fctn, fctn_str);
     strcpy(comp->uacn, uacn_str);
   }
 }
 
+#if SLP_IS_UA
+// for directory agent builds
 static void srvrqst_callback(int error, char *url)
 {
   if (!error) {
     printf("srvrqs callback: %s\n",url);
-    //TODO: do we want to get all attrutes or just the ones we know about
+    //TODO: do we want to get all attributes or just the ones we know about
 //    slp_send_attrrqst(0, url,"cid,csl-esta.dmp,acn-fctn,acn-uacn", attrrqst_callback); 
     // this will get all
-    slp_send_attrrqst(0, url, NULL, attrrqst_callback); 
+    slp_send_attrrqst(0, url, NULL, attrrqst_callback);
   } else {
     printf("srvrqs callback: error %d\n",error);
   }
 }
+#endif
 
+#if SLP_IS_UA
+// starting point if we are a directory agent build
 void discover_acn(char *dcid_str)
 {
   char predicate_str[100];
 
   sprintf(predicate_str, predicate_fmt, dcid_str);
     
-  // TODO: used dcid, not hard coded...
+    // TODO: used dcid, not hard coded...
   slp_send_srvrqst(0, "service:acn.esta", predicate_str, srvrqst_callback);
 }
-
+#endif
 
 //(cid=01000000-0000-0000-0000-000000000001),(acn-fctn=),(acn-uacn=),(acn-services=esta.dmp),(csl-esta.dmp=esta.sdt/192.168.1.201:5568;esta.dmp/cd:02000000-0000-0000-0000-000000000002),(device-description=$:tftp://192.168.1.2)
 char  acn_attr_list[500] = {'\0'};
 char  acn_srv_url[100] = {'\0'};
 //TODO: support for multiple componets
 //      prevent duplicate calls
+// starting point if we are a device build (not a directory agent)
 void discover_register(component_t *component)
 {
-  // Create URL
+  /* passed in component must have defined: 
+     .cid
+     .dcid
+     .acccess = accDEVICE
+     .uacn
+     .fctn
+  */
+
+  /* Create the URL string */
   create_url(acn_srv_url, component);
   
-  // Create attribute list
+  /* Create our attribute list */
   create_attr_list(acn_attr_list, component);
-  // register our list
+  
+  /* register our list with a directory agent */
   slp_reg(acn_srv_url, (char*)acn_service_str, acn_attr_list);
+
 }
 
+/*
 void discover_deregister(void)
 {
   slp_dereg();
 }
-
+*/
 

@@ -40,7 +40,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "types.h"
 
 /*********************************/
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 char * ntoa(uint32_t n);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__NTOA_H__
 

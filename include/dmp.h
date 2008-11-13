@@ -37,19 +37,37 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __dmp_h__
 #define __dmp_h__ 1
 
+#include "opt.h"
+#include "acn_arch.h"
 #include "types.h"
 #include "component.h"
-#include "sdt.h"
+//#include "sdt.h"
 
-#define ADDRESS_TYPE_MASK        0x30
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Address/Data Encoded byte fields (header)
 #define VIRTUAL_ADDRESS_BIT      0x80
 #define RELATIVE_ADDRESS_BIT     0x40
+#define ADDRESS_TYPE_MASK        0x30
 #define ADDRESS_SIZE_MASK        0x03
 #define RESERVED_BIT_MASK        0x0C
 
 #define DMP_VECTOR_LEN 1
 #define DMP_HEADER_LEN 1
 
+/* ESTA registered protocol code */
+#define DMP_PROTOCOL_ID     2
+#define PROTO_DMP           DMP_PROTOCOL_ID
+// DMP reliable flag
+enum
+{
+	NOT_RELIABLE,
+	RELIABLE
+};
+
+// address_size field
 enum
 {
   ONE_OCTET_ADDRESS  = 0,
@@ -58,6 +76,7 @@ enum
   RESERVED           = 3,
 };
 
+// address_type field
 enum
 {
   SINGLE_ADDRESS_SINGLE_DATA    = 0x00,
@@ -69,8 +88,9 @@ enum
 /* Reason codes [DMP spec] */
 enum 
 {
+  DMP_REASON_SUCCESS          = 0,
   DMP_REASON_NONSPEC          = 1,
-  DMP_NOT_A_PROPERYT          = 2,
+  DMP_NOT_A_PROPERTY          = 2,
   DMP_WRITE_ONLY              = 3,
   DMP_NOT_WRITABLE            = 4,
   DMP_DATA_ERROR              = 5,
@@ -82,7 +102,7 @@ enum
   DMP_NO_SUBSCRIPT_SUPPORTED  = 11,
 };
 
-
+// DMP messsage types (commands)
 enum
 {
   DMP_GET_PROPERTY =          1,
@@ -103,9 +123,56 @@ enum
   DMP_DEALLOCATE_MAP =        16,
 };
 
-int   dmp_init(void);
-void  dmp_client_rx_handler(component_t *local_component, component_t *foreign_component, bool is_reliable, const uint8_t *data, uint32_t data_len, void *ref);
-void  dmp_tx_allocate_map_reply(component_t *foreign_component, component_t *local_component, sdt_member_t *local_member, bool is_reliable, uint8_t reason);
+typedef enum {
+  DMP_SUB_EMPTY,
+  DMP_SUB_PENDING,
+  DMP_SUB_ACCEPTED,
+  DMP_SUB_FAIL
+} dmp_subscription_state_t;  
 
 
+typedef struct dmp_address_s
+{
+	uint32_t address_type; /* address type; SINGLE_ADDRESS_SINGLE_DATA... */
+  uint32_t address_size; /* enumeration value: ONE_OCTET_ADDRESS...*/
+	uint32_t address_start;
+	uint32_t address_inc;
+  uint32_t num_props;
+	bool     is_single_value;  /* else it is a range */
+	bool     is_virtual;       /* else it is Absolute */
+} dmp_address_t;
+
+typedef struct dmp_property_s {
+  uint32_t        address;
+  uint32_t        ref_count;
+  //dmp_property_t  *next;
+} dmp_property_t;
+
+typedef struct dmp_subscription_s {
+  dmp_property_t             *property;
+  dmp_subscription_state_t    state;
+  uint32_t                    expires_ms;            
+  struct dmp_subscription_s  *next;
+} dmp_subscription_t;
+
+
+int      dmp_init(void);
+void     dmp_client_rx_handler(component_t *local_component, component_t *foreign_component, bool is_reliable, const uint8_t *data, uint32_t data_len, void *ref);
+void     dmp_tx_pdu(component_t *local_component, component_t *foreign_component, bool is_reliable, uint8_t *datap, int data_len);
+
+void     dmp_tx_get_prop_reply(component_t *local_component, component_t *foreign_component, dmp_address_t *address, uint8_t *ptrProperty, uint16_t sizeofProperty);
+void     dmp_tx_get_prop_fail(component_t *local_component, component_t *foreign_component, dmp_address_t *address, int8_t result);
+void     dmp_tx_set_prop_fail(component_t *local_component, component_t *foreign_component, dmp_address_t *address, int8_t result);
+void     dmp_tx_subscribe_accept(component_t *local_component, component_t *foreign_component, dmp_address_t *address);
+void     dmp_tx_subscribe_reject(component_t *local_component, component_t *foreign_component, dmp_address_t *address, int8_t result);
+void     dmp_tx_event(component_t *local_component, component_t *foreign_component, dmp_address_t *address, uint8_t *ptrProperty, uint16_t sizeofProperty);
+
+int      dmp_decode_address_header(uint8_t address_type, uint8_t *data, dmp_address_t *dmp_address);
+uint8_t* dmp_encode_address_header(dmp_address_t *dmp_address, uint8_t *encodeByte, uint8_t *datap);
+
+
+#ifdef __cplusplus
+}
 #endif
+
+#endif //__dmp_h__

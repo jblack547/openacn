@@ -1,6 +1,5 @@
 /*--------------------------------------------------------------------*/
 /*
-
 Copyright (c) 2007, Pathway Connectivity Inc.
 
 All rights reserved.
@@ -37,20 +36,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*
 This module is separated from the main RLP to allow customization of memory
 handling. See rlp.c for description of 3-level structure.
-
 */
 static const char *rcsid __attribute__ ((unused)) =
    "$Id$";
 
 #include <string.h>
 #include "opt.h"
+#include "types.h"
+#include "acnlog.h"
 #include "acn_arch.h"
 
+#include "netxface.h"
+#include "netsock.h"
+#include "marshal.h"
 #include "acn_rlp.h"
-#include "netiface.h"
 #include "rlp.h"
 #include "rlpmem.h"
-#include "marshal.h"
 
 #if CONFIG_RLPMEM_MALLOC
 #include <stdlib.h>
@@ -64,140 +65,215 @@ implementation.
 
 API
 --
-rlpm_netsocks_init(), rlpFindSocket(), rlpNewSocket(), rlpFreeSocket()
-void rlpm_listeners_init(void);
-struct rlp_rxgroup_s *rlp_new_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
-void rlp_free_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup)
-struct rlp_rxgroup_s *rlpm_find_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
-int rlpm_netsock_has_rxgroups(struct netsocket_s *netsock)
+rlp_rxgroup_t *rlpm_find_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr)
+void           rlpm_free_rxgroup(netxsocket_t *netsock, rlp_rxgroup_t *rxgroup)
+rlp_rxgroup_t *rlpm_new_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr)
 
-struct rlp_listener_s *rlpm_new_listener(struct rlp_rxgroup_s *rxgroup)
-void rlpm_free_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener)
-struct rlp_listener_s *rlpm_first_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol)
-struct rlp_listener_s *rlpNextChannel(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener, pduProtocol)
-int rlpm_rxgroup_has_listeners(struct rlp_rxgroup_s *rxgroup)
+rlp_listener_t *rlpm_new_listener(rlp_rxgroup_t *rxgroup)
+void            rlpm_free_listener(rlp_listener_t *listener)
+rlp_listener_t *rlpm_next_listener(rlp_listener_t *listener, protocolID_t pdu_protocol)
+rlp_listener_t *rlpm_first_listener(rlp_rxgroup_t *rxgroup, protocolID_t pdu_protocol)
 
-struct rlp_rxgroup_s *rlpm_get_rxgroup(struct rlp_listener_s *listener)
-struct netsocket_s *rlpm_get_netsock(struct rlp_rxgroup_s *rxgroup)
+int             rlpm_netsock_has_rxgroups(netxsocket_t *netsock)
+int             rlpm_rxgroup_has_listeners(rlp_rxgroup_t *rxgroup)
+rlp_rxgroup_t  *rlpm_get_rxgroup(rlp_listener_t *listener)
+netxsocket_t   *rlpm_get_netsock(rlp_rxgroup_t *rxgroup)
+void            rlpm_init(void)
+
+
+
+
 */
 /***********************************************************************************************/
-
+static rlp_listener_t *listeners = NULL;
+static rlp_rxgroup_t  *rxgroups  = NULL;
 
 #if CONFIG_RLPMEM_STATIC
-
-/***********************************************************************************************/
-/*
-socket/group/listener memory as static array
-
-This very simplistic (and inefficient for large numbers) implementation
-simply maintains an array of channels which are associated with sockets
-and groups only by their content. There is really no independent struct
-rlp_rxgroup_s - channelGroup is simply the first listener in the array
-with the correct group and socket association
-
-This currently suffers from the Shlemeil the Painter problem
-*/
-
-/***********************************************************************************************/
-
-struct netsocket_s sockets[MAX_RLP_SOCKETS];
-static struct rlp_listener_s listeners[MAX_LISTENERS];
-//static struct rlp_txbuf_s txbufs[MAX_TXBUFS];
-struct rlp_txbuf_s txbufs[MAX_TXBUFS];
-
-
-/***********************************************************************************************/
-/*
-  find the socket (if any) with matching local address 
-*/
-struct netsocket_s *
-rlpm_find_netsock(localaddr_t localaddr)
-{
-	struct netsocket_s *sockp;
-
-	sockp = sockets;
-#if CONFIG_LOCALIP_ANY
-	while (NSK_PORT(*sockp) != LCLAD_PORT(localaddr))
-#else
-	while (NSK_PORT(*sockp) != LCLAD_PORT(localaddr) || NSK_INADDR(*sockp) != LCLAD_INADDR(localaddr))
+static rlp_txbuf_t     txbufs_m[MAX_TXBUFS];
+static rlp_listener_t  listeners_m[MAX_LISTENERS];
+static rlp_rxgroup_t   rxgroups_m[MAX_RXGROUPS];
 #endif
-		if (++sockp >= sockets + MAX_RLP_SOCKETS) return NULL;
-	return sockp;
+
+/************************************************************************************************
+ *
+ * The following routines are alternate memory management routines for static or malloc desires!
+ */
+#if CONFIG_RLPMEM_STATIC
+/***********************************************************************************************/
+void __init_txbufs(void)
+{
+  rlp_txbuf_t  *txbuf;
+
+  for (txbuf = txbufs_m; txbuf < txbufs_m + MAX_TXBUFS; ++txbuf) {
+    txbuf->usage = 0;
+  }
 }
 
 /***********************************************************************************************/
-struct netsocket_s *
-rlpm_new_netsock(void)
+rlp_txbuf_t * __new_txbuf(void)
 {
-	struct netsocket_s *sockp;
+  static int bufnum = 0;
+  int        i;
 
-	sockp = sockets;
-	while (NSK_PORT(*sockp) != NETI_PORT_NONE)
-		if (++sockp >= sockets + MAX_RLP_SOCKETS) return NULL;
-	return sockp;
+  /* start with last one */
+  i = bufnum;
+  while (txbufs_m[i].usage != 0) {
+    /* try next */
+    ++i;
+    /* deal with wrapping */
+    if (i >= MAX_TXBUFS) i = 0;
+    /* have come back to the start */
+    if (i == bufnum) return NULL;
+  }
+  /* track the last one we used */
+  bufnum = i;
+
+  return &txbufs_m[i];
 }
 
 /***********************************************************************************************/
-void 
-rlpm_free_netsock(struct netsocket_s *sockp)
+void __free_txbuf(rlp_txbuf_t *txbuf)
 {
-	NSK_PORT(*sockp) = NETI_PORT_NONE;
+  txbuf->usage = 0;
+  txbuf->owner = NULL;
+  txbuf->datap = NULL;
+  txbuf->owner = NULL;
+  txbuf->datasize = 0;
+  txbuf->netbuf = NULL;
 }
 
 /***********************************************************************************************/
-void
-rlpm_netsocks_init(void)
+void __init_rxgroups(void)
 {
-	struct netsocket_s *sockp;
+  rlp_rxgroup_t *rxgroup;
 
-	for (sockp = sockets; sockp < sockets + MAX_RLP_SOCKETS; ++sockp)
-		NSK_PORT(*sockp) = NETI_PORT_NONE;
+  for (rxgroup = rxgroups_m; rxgroup < rxgroups_m + MAX_RXGROUPS; ++rxgroup) {
+    rxgroup->socket = NULL;
+  }
 }
 
 /***********************************************************************************************/
-struct netsocket_s *
-rlpm_next_netsock(struct netsocket_s *sockp)
+rlp_rxgroup_t *__new_rxgroup(void)
 {
-	while (++sockp < sockets + MAX_RLP_SOCKETS)
-		if (NSK_PORT(*sockp) != NETI_PORT_NONE) return sockp;
-	return NULL;
+  rlp_rxgroup_t *rxgroup;
+
+  for (rxgroup = rxgroups_m; rxgroup < rxgroups_m + MAX_RXGROUPS; ++rxgroup) {
+    if (rxgroup->socket == NULL)  { /* NULL socket marks unused listener */
+      return rxgroup;
+    }
+  }
+  return NULL;
 }
 
 /***********************************************************************************************/
-struct netsocket_s *
-rlpm_first_netsock(void)
+void __free_rxgroup(rlp_rxgroup_t *rxgroup)
 {
-	return rlpm_next_netsock(sockets - 1);
+  rxgroup->socket = NULL;
 }
+
+
+/***********************************************************************************************/
+void __init_listeners(void)
+{
+  rlp_listener_t *listener;
+
+  for (listener = listeners_m; listener < listeners_m + MAX_LISTENERS; ++listener) {
+    listener->protocol = PROTO_NONE;
+  }
+}
+
+/***********************************************************************************************/
+rlp_listener_t *__new_listener(void)
+{
+  rlp_listener_t *listener;
+
+  for (listener = listeners_m; listener < listeners_m + MAX_LISTENERS; ++listener) {
+    if (listener->protocol == PROTO_NONE)  { /* PROTO_NONE marks unused listener */
+      return listener;
+    }
+  }
+  return NULL;
+}
+
+/***********************************************************************************************/
+void __free_listener(rlp_listener_t *listener)
+{
+  listener->protocol = PROTO_NONE;
+}
+
+#elif CONFIG_RLPMEM_MALLOC
+
+/***********************************************************************************************/
+#define __init_txbufs()
+
+/***********************************************************************************************/
+rlp_txbuf_t * __new_txbuf(void)
+{
+  return malloc(sizeof (rlp_txbuf_t));
+}
+
+/***********************************************************************************************/
+void __free_txbuf(rlp_txbuf_t *txbuf)
+{
+  free((void*)txbuf);
+}
+
+/***********************************************************************************************/
+#define __init_rxgroups()
+
+/***********************************************************************************************/
+rlp_rxgroup_t *__new_rxgroup(void)
+{
+  return malloc(sizeof (rlp_rxgroup_t));
+}
+
+/***********************************************************************************************/
+void __free_rxgroup(rlp_rxgroup_t *rxgroup)
+{
+  free((void*)rxgroup);
+}
+
+/***********************************************************************************************/
+#define __init_listeners()
+
+/***********************************************************************************************/
+rlp_listener_t *__new_listener(void)
+{
+  return malloc(sizeof (rlp_listener_t));
+}
+
+/***********************************************************************************************/
+void __free_listener(rlp_listener_t *listener)
+{
+  free((void*)listener);
+}
+#endif /* #elif CONFIG_RLPMEM_MALLOC */
+
 
 /***********************************************************************************************/
 /*
-find a rxgroup associated with this socket which has the correct groupaddr
-*/
-struct rlp_rxgroup_s *
-rlpm_find_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
+ * find a rxgroup associated with this socket which has the correct groupaddr
+ */
+rlp_rxgroup_t *
+rlpm_find_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr)
+/* groupaddr is IP address of the dest of the UDP msg we received */
 {
-	struct rlp_rxgroup_s *rxgroup;
-	int sockix;
+  rlp_rxgroup_t *rxgroup;
 
-	sockix = netsock - sockets;	// index of our socket
-
-  // treat all non-multicast the as the same
+  /* treat all non-multicast as the same */
   if (!is_multicast(groupaddr)) {
-    groupaddr = NETI_GROUP_UNICAST;
+    groupaddr = netx_GROUP_UNICAST; /* set to zero */
   }
 
-	for (rxgroup = listeners; rxgroup < listeners + MAX_LISTENERS; ++rxgroup)
-	{
-		if (
-			rxgroup->socketNum == sockix
-			&& rxgroup->groupaddr == groupaddr
-			)
-		{
-			return rxgroup;	// return first matching listener
-		}
-	}
-	return NULL;
+  rxgroup = rxgroups;
+  while (rxgroup) {
+    if (rxgroup->socket == netsock && rxgroup->groupaddr == groupaddr )  {
+      return rxgroup; /* return first matching listener */
+    }
+    rxgroup = rxgroup->next;
+  }
+
+  return NULL;
 }
 
 /***********************************************************************************************/
@@ -205,197 +281,252 @@ rlpm_find_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 Free a listener group
 Only call if group is empty (no listeners exist)
 */
-void 
-rlpm_free_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup)
+void
+rlpm_free_rxgroup(netxsocket_t *netsock, rlp_rxgroup_t *rxgroup)
 {
-	UNUSED_ARG(netsock);
-	rxgroup->socketNum = -1;
+  rlp_rxgroup_t  *this_rxgroup;
+  rlp_listener_t *listener;
+
+  UNUSED_ARG(netsock);
+
+  /* if, for some reason, we have listeners, set their rxgroup to NULL */
+  listener = rxgroup->listeners;
+  while(listener) {
+    listener->rxgroup = NULL;
+    listener = listener->next;
+  }
+
+  /* see if its the first one */
+  if (rxgroup == rxgroups) {
+    rxgroups = rxgroup->next;
+    __free_rxgroup(rxgroup);
+  } else {
+    /* start from the top */
+    this_rxgroup = rxgroups;
+    while (this_rxgroup){
+      if (this_rxgroup->next == rxgroup) {
+        /* skip around the one we about to free */
+        this_rxgroup->next = rxgroup->next;
+        __free_rxgroup(rxgroup);
+        return;
+      }
+      this_rxgroup = this_rxgroup->next;
+    }
+  }
 }
 
 /***********************************************************************************************/
 /*
-"Create" a new empty listener group and associate it with a socket and groupaddr
-*/
-struct rlp_rxgroup_s *
-rlpm_new_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
+ * "Create" a new empty listener group and associate it with a socket and groupaddr
+ */
+rlp_rxgroup_t *
+rlpm_new_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr)
 {
-	struct rlp_rxgroup_s *rxgroup;
+  rlp_rxgroup_t *rxgroup;
 
-	for (rxgroup = listeners; rxgroup < listeners + MAX_LISTENERS; ++rxgroup)
-	{
-		if (rxgroup->socketNum < 0)		// negative socket marks unused listener
-		{
-			rxgroup->socketNum = netsock - sockets;
-			rxgroup->groupaddr = groupaddr;
-			rxgroup->protocol = PROTO_NONE;
-			return rxgroup;
-		}
-	}
-	return NULL;
+  /* see if we already have it */
+  if ((rxgroup = rlpm_find_rxgroup(netsock, groupaddr))) {
+    return rxgroup;  /* found existing matching group */
+  }
+
+  /* allocate memory */
+  rxgroup = __new_rxgroup();
+
+  /* did get memory fail */
+  if (!rxgroup) {
+    return NULL;
+  }
+
+  /* set our values */
+  rxgroup->socket = netsock;
+  rxgroup->groupaddr = groupaddr; /* IP address, zero for unicast */
+
+  /* put it at the head or our list */
+  rxgroup->next = rxgroups;
+  rxgroups = rxgroup;
+
+  /* return pointer to new listeners[] entry */
+  return rxgroup;
 }
 
 /***********************************************************************************************/
 /*
-"Create" a new empty (no associated protocol) listener within a group
-*/
-struct rlp_listener_s *
-rlpm_new_listener(struct rlp_rxgroup_s *rxgroup)
+ * "Create" a new empty (no associated protocol) listener within a group
+ */
+rlp_listener_t *
+rlpm_new_listener(rlp_rxgroup_t *rxgroup)
 {
-	int sockix;
+  rlp_listener_t *listener;
 
-	if (rxgroup->protocol == PROTO_NONE) return rxgroup;	// first is unused
-	
-	sockix = rxgroup->socketNum;
-	while (++rxgroup < listeners + MAX_LISTENERS)
-	{
-		if (rxgroup->socketNum < 0)		// negative socket marks unused listener
-		{
-			rxgroup->socketNum = sockix;
-			rxgroup->protocol = PROTO_NONE;
-			return rxgroup;
-		}
-	}
-	return NULL;
+  listener = __new_listener();
+
+  /* did get memory fail fail */
+  if (!listener) {
+    return NULL;
+  }
+
+  /* set our values */
+  listener->rxgroup = rxgroup;
+  listener->protocol = PROTO_NONE;
+
+  /* put it at the head of the list */
+  listener->next = rxgroup->listeners;
+  rxgroup->listeners = listener;
+
+  return listener;
 }
 
 /***********************************************************************************************/
 /*
-Free an unused listener
-*/
-void 
-rlpm_free_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener)
+ * Free an unused listener
+ */
+void
+rlpm_free_listener(rlp_listener_t *listener)
 {
-	if (listener == rxgroup) listener->protocol = PROTO_NONE;
-	else listener->socketNum = -1;
+  rlp_listener_t  *this_listener;
+  rlp_rxgroup_t   *rxgroup;
+
+  rxgroup = listener->rxgroup;
+
+  if (rxgroup) {
+    /* take the listener out of the list */
+    if (listener == rxgroup->listeners) {
+      rxgroup->listeners = listener->next;
+      __free_listener(listener);
+    } else {
+      this_listener = rxgroup->listeners;
+      /* find the one in front of this one and skip around it */
+      while (this_listener) {
+        if (this_listener->next == listener) {
+          this_listener->next = listener->next;
+          /* now free ours */
+          __free_listener(listener);
+          return;
+        }
+        this_listener = this_listener->next;
+      }
+    }
+  } else {
+    /* it is possible that someone freed the group first, in that case, we can just nuke the listener */
+    __free_listener(listener);
+  }
 }
 
 /***********************************************************************************************/
 /*
-Find the next listener in a group with a given protocol
-*/
-static
-struct rlp_listener_s *
-__next_listener(struct rlp_rxgroup_s *rxgroup, int socketNum, groupaddr_t groupaddr, protocolID_t pduProtocol)
+ * Find the next listener in a group with a given protocol
+ */
+rlp_listener_t *
+rlpm_next_listener(rlp_listener_t *listener, protocolID_t pdu_protocol)
 {
-	while (++rxgroup < listeners + MAX_LISTENERS)
-	{
-		if (
-			rxgroup->socketNum == socketNum
-			&& rxgroup->groupaddr == groupaddr
-			&& rxgroup->protocol == pduProtocol
-			)
-			return rxgroup;
-	}
-	return NULL;
+  rlp_listener_t *alistener;
+
+  alistener = listeners->next;
+  while (alistener) {
+    if (alistener->protocol == pdu_protocol) {
+      return alistener;
+    }
+    alistener = alistener->next;
+  }
+  return NULL;
 }
 
 /***********************************************************************************************/
 /*
-Find the next listener in a group with a given protocol
-*/
-struct rlp_listener_s *
-rlpm_next_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener, protocolID_t pduProtocol)
+ * Find the first listener in a group with a given protocol
+ */
+rlp_listener_t *
+rlpm_first_listener(rlp_rxgroup_t *rxgroup, protocolID_t pdu_protocol)
 {
-	UNUSED_ARG(rxgroup);
-	return __next_listener(listener, listener->socketNum, listener->groupaddr, pduProtocol);
+  rlp_listener_t *listener;
+
+  listener = rxgroup->listeners;
+  while (listener) {
+    if (listener->protocol == pdu_protocol) {
+      return listener;
+    }
+    listener = listener->next;
+  }
+  return NULL;
 }
 
 /***********************************************************************************************/
 /*
-Find the first listener in a group with a given protocol
-*/
-struct rlp_listener_s *
-rlpm_first_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol)
+ * true if a socket has channelgroups
+ */
+int
+rlpm_netsock_has_rxgroups(netxsocket_t *netsock)
 {
-	if (rxgroup->protocol == pduProtocol) return rxgroup;
-	return __next_listener(rxgroup, rxgroup->socketNum, rxgroup->groupaddr, pduProtocol);
+  rlp_rxgroup_t *rxgroup;
+
+  rxgroup = rxgroups;
+  while (rxgroup) {
+    if (rxgroup->socket == netsock) {
+      return RLP_OK;
+    }
+    rxgroup = rxgroup->next;
+  }
+  return RLP_FAIL;
 }
 
 /***********************************************************************************************/
 /*
-Initialize channels and groups
-*/
-void 
-rlpm_listeners_init(void)
+ * true if a rxgroup is not empty
+ */
+int
+rlpm_rxgroup_has_listeners(rlp_rxgroup_t *rxgroup)
 {
-	struct rlp_listener_s *listener;
-
-	for (listener = listeners; listener < listeners + MAX_LISTENERS; ++listener) listener->socketNum = -1;
+  if (rxgroup->listeners) {
+    return RLP_OK;
+  }
+  return RLP_FAIL;
 }
 
 /***********************************************************************************************/
 /*
-true if a socket has channelgroups
-*/
-int 
-rlpm_netsock_has_rxgroups(struct netsocket_s *netsock)
-{
-	struct rlp_listener_s *listener;
-	int sockix;
-
-	sockix = netsock - sockets;	// index of our socket
-	for (listener = listeners; listener < listeners + MAX_LISTENERS; ++listener)
-		if (listener->socketNum == sockix) return 1;
-	return 0;
-}
+ * Get the group containing a given listener
+ */
+#define rlpm_get_rxgroup(listener) (listener->rx_group)
 
 /***********************************************************************************************/
 /*
-true if a rxgroup is not empty
-*/
-int 
-rlpm_rxgroup_has_listeners(struct rlp_rxgroup_s *rxgroup)
-{
-	int sockix;
-	groupaddr_t groupaddr;
-
-	if (rxgroup->protocol != PROTO_NONE) return 1;
-
-	sockix = rxgroup->socketNum;
-	groupaddr = rxgroup->groupaddr;
-	
-	while (++rxgroup < listeners + MAX_LISTENERS)
-		if (
-			rxgroup->socketNum == sockix
-			&& rxgroup->groupaddr == groupaddr
-			&& rxgroup->protocol != PROTO_NONE
-			)
-			return 1;
-	return 0;
-}
-
-/***********************************************************************************************/
-/*
-Get the group containing a given listener
-*/
-#define rlpm_get_rxgroup(listener) rlpm_find_rxgroup(sockets + (listener)->socketNum, (listener)->groupaddr)
-
-/***********************************************************************************************/
-/*
-Get the netSocket containing a given group
-*/
-#define rlpm_get_netsock(rxgroup) (sockets + (rxgroup)->socketNum)
+ * Get the netSocket containing a given group
+ */
+#define rlpm_get_netsock(rxgroup) (rxgroup->socket)
 
 
 /***********************************************************************************************/
-void 
+void
 rlpm_init(void)
 {
-	rlpm_netsocks_init();
-	rlpm_listeners_init();
+  static bool initialized = 0;
+
+  acnlog(LOG_DEBUG|LOG_RLPM, "rlpm_init");
+
+  if (!initialized) {
+
+    /* initialize sub modules */
+    nsk_netsocks_init();
+    netx_init();
+
+    /* and our memory */
+    __init_txbufs();
+    __init_rxgroups();
+    __init_listeners();
+
+    initialized = 1;
+  }
 }
 
 /***********************************************************************************************/
 /*
 Transmit network buffer API
 (note receive buffers may be the same thing internally but are not externally treated the same)
-Network buffers are struct rlp_txbuf_s {...};
-Client protocols obtain network buffers using rlpm_newtxbuf() and rlpm_freetxbuf()
-The can obtain a pointer to the data area of the buffer using a macro:
+Actual Network buffers are platform dependent are referenced as void pointers here
+Client protocols obtain network buffers using rlpm_newtxbuf(), rlpm_freetxbuf() and rlpm_releasetxbuf()
+A pointer to the data inside the network buffer in maintained in the "datap" member.
 
-  rlpItsData(buf)
-
-When calling RLP to transmit data, they pass both the pointer to the buffer and a pointer to the 
+When calling RLP to transmit data, they pass both the pointer to the buffer and a pointer to the
 data to send which need not start at the beginning of the buffers data area.
 This allows for example, a higher protocol to re-transmit only a part of a former packet.
 However, in this case, the content of the data area before that passed may be overwritten by rlp.
@@ -407,58 +538,78 @@ rlpm_freetxbuf will only actually free the buffer if usage is zero.
 
 */
 /***********************************************************************************************/
-static int bufnum = 0;
-
-struct 
-rlp_txbuf_s *rlpm_newtxbuf(int size, component_t *owner)
+rlp_txbuf_t *
+rlpm_new_txbuf(int size, component_t *owner)
 {
-	int i;
-	UNUSED_ARG(size);
-	
-	i = bufnum;
-	while (txbufs[i].usage != 0)
-	{
-		++i;
-		if (i >= MAX_TXBUFS) i = 0;
-		if (i == bufnum) return NULL;
-	}
+  uint8_t     *datap;
+  void        *netbuf; /*void to keep it platform dependent */
+  rlp_txbuf_t *txbuf;
 
-	txbufs[i].usage = 1;
-	txbufs[i].owner = owner;
-	bufnum = i;
-	return txbufs + i;
+  /* get one of our managment structures */
+  txbuf = __new_txbuf();
+  if (!txbuf) {
+    return NULL;
+  }
+  /* Get network buffer */
+  netbuf = netx_new_txbuf(size);
+  if (!netbuf) {
+    /* free buffer */
+    __free_txbuf(txbuf);
+    return NULL;
+  }
+
+  /* Get pointer to data in network buffe*/
+  datap = (uint8_t*)netx_txbuf_data(netbuf);
+  if (!datap) {
+    /* didn't use it, free it what we created*/
+    netx_free_txbuf(netbuf);
+    __free_txbuf(txbuf);
+    return NULL;
+  }
+
+  /* all set, now set the data values */
+  txbuf->netbuf = netbuf;
+  txbuf->datap = datap;
+  txbuf->owner = owner;
+  txbuf->datasize = MAX_MTU;
+  txbuf->usage = 1;
+
+  return txbuf;
 }
 
 /***********************************************************************************************/
-void 
-rlpm_freetxbuf(struct rlp_txbuf_s *buf)
+/* called if data is not sent and we need to free the network memory */
+void
+rlpm_free_txbuf(rlp_txbuf_t *txbuf)
 {
-  if (buf->usage) {
-    --(buf->usage);
+  /* release memory back to stack */
+  netx_free_txbuf(txbuf->netbuf);
+  /*free our memory */
+  __free_txbuf(txbuf);
+}
+
+/***********************************************************************************************/
+/* called after data is sent. network memory release is dealt with at the platform level*/
+void
+rlpm_release_txbuf(rlp_txbuf_t *txbuf)
+{
+  rlp_decuse(txbuf);
+  /*free network buffer if no longer used */
+  if (txbuf->usage == 0) {
+    __free_txbuf(txbuf);
   }
 }
 
-#define rlpItsData(buf) ((uint8_t *)(buf) \
-			+ sizeof(struct rlpTxbufhdr_s) \
-			+ RLP_PREAMBLE_LENGTH \
-			+ sizeof(protocolID_t) \
-			+ sizeof(cid_t))
 
-#define rlp_getuse(buf) (((struct rlpTxbufhdr_s *)(buf))->usage)
-#define rlp_incuse(buf) (++rlp_getuse(buf))
-#define rlp_decuse(buf) (--rlp_getuse(buf))
-
+#ifdef NEVER /* (save, may need for static implemention of netx) */
 /***********************************************************************************************/
-
-#elif CONFIG_RLPMEM_MALLOC
-
-/***********************************************************************************************/
-struct rlp_txbuf_s *rlpm_newtxbuf(int size, component_t *owner)
+struct
+rlp_txbuf_s *rlpm_new_txbuf(int size, component_t *owner)
 {
 	uint8_t *buf;
-	
+
 	buf = malloc(
-			sizeof(struct rlp_txbuf_s) 
+			sizeof(struct rlp_txbuf_s)
 			+ RLP_PREAMBLE_LENGTH
 			+ sizeof(protocolID_t)
 			+ sizeof(cid_t)
@@ -480,8 +631,9 @@ struct rlp_txbuf_s *rlpm_newtxbuf(int size, component_t *owner)
 }
 
 /***********************************************************************************************/
-void rlpm_freetxbuf(struct rlp_txbuf_s *buf)
+void rlpm_free_txbuf(struct rlp_txbuf_s *buf)
 {
+  rlp_decuse(buf);
 	if (!rlp_getuse(buf)) free(buf);
 }
 
@@ -490,15 +642,7 @@ void rlpm_freetxbuf(struct rlp_txbuf_s *buf)
 			+ RLP_PREAMBLE_LENGTH \
 			+ sizeof(protocolID_t) \
 			+ sizeof(cid_t))
+#endif
 
-#define rlp_getuse(buf) (((struct rlpTxbufhdr_s *)(buf))->usage)
-#define rlp_incuse(buf) (++rlp_getuse(buf))
-#define rlp_decuse(buf) (--rlp_getuse(buf))
-
-/***********************************************************************************************/
-/*
-
-*/
-
-#endif	/* #elif CONFIG_RLPMEM_MALLOC */
+//#endif	/* #elif CONFIG_RLPMEM_MALLOC */
 

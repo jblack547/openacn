@@ -29,35 +29,32 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
-  
-  Description:
-    converts 32 bit unsigned integer to a IP address string.
+  $Id$
 */
-#include <stdio.h>
+
+/******************************************************************************
+ * Simple platfrom specific BLOCKING sleep routine
+ */
+
 #include "opt.h"
+
+#ifdef CONFIG_STACK_NETBURNER
 #include "types.h"
 #include "acn_arch.h"
 
-#include "ntoa.h"
+#include "constants.h"
 
-/*********************************/
-/* returns ptr to static buffer; not reentrant! */
-char ip_string[16];
-char * ntoa(uint32_t ip_addr)
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void sleep(int mseconds)
 {
-  // convert an ip address number into a string
-  uint8_t a,b,c,d;
-  
-  a = (ip_addr>>24);
-  b = (ip_addr>>16);
-  c = (ip_addr>>8);
-  d = ip_addr&0xff;
- 
-  sprintf(ip_string,"%d.%d.%d.%d", a,b,c,d);
-
-  return ip_string;
+  OSTimeDly(1000/TICKS_PER_SECOND/mseconds); /* delay 500mS */
 }
 
-
+#ifdef __cplusplus
+}
+#endif
+#endif /* CONFIG_STACK_NETBURNER */
 

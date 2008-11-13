@@ -35,8 +35,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #include "opt.h"
+#include "types.h"
 #include "acn_arch.h"
 #include "mcast_util.h"
+
+#include "netxface.h"
 
 #if CONFIG_EPI10
 #include "epi10.h"
@@ -103,17 +106,17 @@ From epi10 r4:
 	HostShift  = 24 - ScopeBits
 	ScopeBits  = bitcount(ScopeMask)
 
-	Library function ffs (in strings.h) finds LS bit set
+	Function ffs_1 finds LS bit set
 	with lsb numbered as 1
 */
-	HostShift = ffs_1(ntohl(scopemask)) - 9;
-	HostPart = ntohl(neti_getmyip(NULL));
-	HostPart &= EPI10_HOST_PART_MASK;
-	HostPart <<= HostShift;
+	HostShift = ffs_1(ntohl(scopemask)) - 9;  // 10
+	HostPart = ntohl(netx_getmyip(NULL)); // 216.253.200.200
+	HostPart &= EPI10_HOST_PART_MASK; // & 0xff  = 200 == 0xc8
+	HostPart <<= HostShift; // TBD THIS CAME TO 0x32000
 
-	dyn_mask = (1 << HostShift) - 1;
+	dyn_mask = (1 << HostShift) - 1; // 0x3FF
 
-	scope_and_host = scopeaddr | htonl(HostPart);
+	scope_and_host = scopeaddr | htonl(HostPart); // 0xEFC32000
 
 /*
 */

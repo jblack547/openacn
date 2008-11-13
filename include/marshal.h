@@ -73,7 +73,7 @@ static inline uint8_t *marshalU32(uint8_t *data, uint32_t u32)
 
 static inline uint8_t *marshalUUID(uint8_t *data, const uint8_t *uuid)
 {
-	return memcpy(data, uuid, sizeof(uuid_t)) + sizeof(uuid_t);
+	return (uint8_t *)memcpy(data, uuid, sizeof(uuid_t)) + sizeof(uuid_t);
 }
 
 static inline uint8_t *marshalVar(uint8_t *data, const uint8_t *src, uint16_t size)
@@ -104,7 +104,7 @@ static inline uint32_t unmarshalU32(const uint8_t *data)
 
 static inline uint8_t *unmarshalUUID(const uint8_t *data, uint8_t *uuid)
 {
-	return memcpy(uuid, data, sizeof(uuid_t));
+	return (uint8_t *)memcpy(uuid, data, sizeof(uuid_t));
 }
 
 static inline uint16_t unpackVar(const uint8_t *data, uint8_t *dest)

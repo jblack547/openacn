@@ -1,6 +1,7 @@
 /*--------------------------------------------------------------------*/
 /*
-Copyright (c) 2008, Electronic Theatre Controls, Inc.
+
+Copyright (c) 2008, Electronic Theatre Controls, Inc
 
 All rights reserved.
 
@@ -13,7 +14,7 @@ met:
  * Redistributions in binary form must reproduce the above copyright
    notice, this list of conditions and the following disclaimer in the
    documentation and/or other materials provided with the distribution.
- * Neither the name of Electronic Theatre Controls, Inc. nor the names of its
+ * Neither the name of Engineering Arts nor the names of its
    contributors may be used to endorse or promote products derived from
    this software without specific prior written permission.
 
@@ -30,34 +31,30 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 	$Id$
-  
-  Description:
-    converts 32 bit unsigned integer to a IP address string.
+
 */
-#include <stdio.h>
+/*--------------------------------------------------------------------*/
+
+#ifndef __acn_port_h__
+#define __acn_port_h__ 1
+
 #include "opt.h"
-#include "types.h"
-#include "acn_arch.h"
 
-#include "ntoa.h"
+#if CONFIG_STACK_NETBURNER
+#include "includes.h"       // netburner types
+#include "have_types.h"
 
-/*********************************/
-/* returns ptr to static buffer; not reentrant! */
-char ip_string[16];
-char * ntoa(uint32_t ip_addr)
-{
-  // convert an ip address number into a string
-  uint8_t a,b,c,d;
-  
-  a = (ip_addr>>24);
-  b = (ip_addr>>16);
-  c = (ip_addr>>8);
-  d = ip_addr&0xff;
- 
-  sprintf(ip_string,"%d.%d.%d.%d", a,b,c,d);
+extern OS_CRIT DASemaphore; // semaphore to protect directory agent list
+#define ACN_PORT_PROTECT()        0;OSLock()//OSCritEnter(&DASemaphore, 0)
+#define ACN_PORT_UNPROTECT(pval)  OSUnlock()//OSCritLeave(&DASemaphore)
+#define acn_protect_t int  // this is not used
+#endif /* CONFIG_STACK_NETBURNER */
 
-  return ip_string;
-}
+#if CONFIG_STACK_LWIP
+#include "lwip/sys.h"
+#define acn_protect_t sys_prot_t
+#define ACN_PORT_PROTECT() sys_arch_protect()
+#define ACN_PORT_UNPROTECT(pval) sys_arch_unprotect(pval)
+#endif
 
-
-
+#endif

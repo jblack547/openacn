@@ -42,86 +42,76 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acn_arch.h"
 #include "component.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef int usage_t;
 
-#if CONFIG_RLPMEM_STATIC
+#define RLP_FAIL 0
+#define RLP_OK   1
 
-extern struct netsocket_s sockets[MAX_RLP_SOCKETS];
+typedef  struct rlp_listener_s rlp_listener_t;
+typedef  struct rlp_rxgroup_s  rlp_rxgroup_t;
+typedef  struct rlp_txbuf_s    rlp_txbuf_t;
 
 struct rlp_listener_s {
-	int socketNum;			// negative for no association
-	ip4addr_t groupaddr;
-	protocolID_t protocol;	// PROTO_NONE if this listener within the group is not used
-	rlpHandler_t *callback;
-	void *ref;
+  struct rlp_rxgroup_s  *rxgroup;    /* group this listener references */
+	protocolID_t           protocol;	 /* PROTO_NONE if this listener within the group is not used */
+	rlpHandler_t          *callback;   /* callback when data is available*/
+  struct rlp_listener_s *next;       /* next listener in group list*/
+	void                  *ref;        /* reference */
 };
 
-#define rlp_rxgroup_s rlp_listener_s
+struct rlp_rxgroup_s {
+  netxsocket_t          *socket;     /* NULL for no association */
+  ip4addr_t              groupaddr;  /* multicast address */
+  struct rlp_listener_s *listeners;  /* first listener in group*/
+  struct rlp_rxgroup_s  *next;       /* next receive group */
+};
 
 struct rlp_txbuf_s {
-	usage_t usage;
-	unsigned int datasize;
-	uint8_t *blockstart;
-	uint8_t *blockend;
-	protocolID_t protocol;
-	component_t *owner;
-	uint8_t data[MAX_MTU];
+	usage_t             usage;         /* usage counter */
+	unsigned int        datasize;      /* size of data block */
+	uint8_t            *blockstart;
+	uint8_t            *blockend;
+	protocolID_t        protocol;      /* protocol of data */
+	component_t        *owner;         /* component that registered the callback */
+  void               *netbuf;        /* pointer to network buffer */
+  uint8_t            *datap;         /* pointer to data inside of network buffer*/
 };
-
-#endif
-
-
-#if CONFIG_RLPMEM_MALLOC
-
-struct rlp_txbuf_s;
-
-struct rlp_txbuf_s {
-	struct rlp_txbuf_s *next;
-	usage_t usage;
-	unsigned int datasize;
-	uint8_t *blockstart;
-	uint8_t *blockend;
-	protocolID_t protocol;
-	uint8_t data[];
-};
-
-#endif
 
 extern void rlpm_init(void);
-extern void rlpm_netsocks_init(void);
-extern void rlpm_listeners_init(void);
+//extern void rlpm_netsocks_init(void);
+//extern void rlpm_listeners_init(void);
 
-extern struct netsocket_s *rlpm_new_netsock(void);
-extern struct netsocket_s *rlpm_find_netsock(localaddr_t localaddr);
-extern struct netsocket_s *rlpm_next_netsock(struct netsocket_s *sockp);
-extern struct netsocket_s *rlpm_first_netsock(void);
-extern void rlpm_free_netsock(struct netsocket_s *sockp);
+//extern netxsocket_t *rlpm_new_netsock(void);
+//extern netxsocket_t *rlpm_find_netsock(localaddr_t localaddr);
+//extern netxsocket_t *rlpm_next_netsock(netxsocket_t *sockp);
+//extern netxsocket_t *rlpm_first_netsock(void);
+//extern void rlpm_free_netsock(netxsocket_t *sockp);
 
-extern struct rlp_listener_s *rlpm_new_listener(struct rlp_rxgroup_s *rxgroup);
-extern void  rlpm_free_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener);
-extern struct rlp_listener_s *rlpm_first_listener(struct rlp_rxgroup_s *rxgroup, protocolID_t pduProtocol);
-extern struct rlp_listener_s *rlpm_next_listener(struct rlp_rxgroup_s *rxgroup, struct rlp_listener_s *listener, protocolID_t pduProtocol);
+extern rlp_listener_t *rlpm_new_listener(rlp_rxgroup_t *rxgroup);
+extern void            rlpm_free_listener(rlp_listener_t *listener);
+extern rlp_listener_t *rlpm_first_listener(rlp_rxgroup_t *rxgroup, protocolID_t pdu_protocol);
+extern rlp_listener_t *rlpm_next_listener(rlp_listener_t *listener, protocolID_t pduProtocol);
 
-extern struct rlp_rxgroup_s *rlpm_new_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr);
-extern struct rlp_rxgroup_s *rlpm_find_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr);
-extern void  rlpm_free_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup);
+extern rlp_rxgroup_t *rlpm_new_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr);
+extern rlp_rxgroup_t *rlpm_find_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr);
+extern void           rlpm_free_rxgroup(netxsocket_t *netsock, rlp_rxgroup_t *rxgroup);
 
-extern int rlpm_netsock_has_rxgroups(struct netsocket_s *netsock);
-extern int rlpm_rxgroup_has_listeners(struct rlp_rxgroup_s *rxgroup);
-extern struct rlp_rxgroup_s *rlpm_get_rxgroup(struct rlp_listener_s *listener);
-extern struct netsocket_s *rlpm_get_netsock(struct rlp_rxgroup_s *rxgroup);
+extern int            rlpm_netsock_has_rxgroups(netxsocket_t *netsock);
+extern int            rlpm_rxgroup_has_listeners(rlp_rxgroup_t *rxgroup);
+extern rlp_rxgroup_t *rlpm_get_rxgroup(rlp_listener_t *listener);
+extern netxsocket_t  *rlpm_get_netsock(rlp_rxgroup_t *rxgroup);
 
-extern struct rlp_txbuf_s *rlpm_newtxbuf(int size, component_t *owner);
-extern void rlpm_freetxbuf(struct rlp_txbuf_s *buf);
+extern rlp_txbuf_t   *rlpm_new_txbuf(int size, component_t *owner);
+extern void           rlpm_free_txbuf(rlp_txbuf_t *txbuf);
+extern void           rlpm_release_txbuf(rlp_txbuf_t *txbuf);
 
-#define bufhdrp(buf) ((struct rlp_txbuf_s *)(buf))
-#define bufdatap(buf) (((struct rlp_txbuf_s *)(buf))->data)
-
-#if CONFIG_RLPMEM_STATIC
-#define rlpm_get_rxgroup(listener) rlpm_find_rxgroup(sockets + (listener)->socketNum, (listener)->groupaddr)
-#define rlpm_get_netsock(rxgroup) (sockets + (rxgroup)->socketNum)
-
-
+#ifdef __cplusplus
+}
 #endif
 
 

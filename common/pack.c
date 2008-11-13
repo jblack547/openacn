@@ -37,6 +37,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <string.h>
 
+#include "opt.h"
+#include "types.h"
+#include "acn_arch.h"
+
 #include "pack.h"
 
 // PACK ********************************************************************************
@@ -105,30 +109,30 @@ char *packUINT32(char *charptr, uint32_t val)
 // UNPACK ******************************************************************************
 char *unpackUINT8(char *charptr, uint8_t *val) 
 {
-  *val = charptr[0];//*((uint8_t*)charptr++);
+  *val = (uint8_t)charptr[0];//*((uint8_t*)charptr++);
   return charptr+1;
 }
 
 char *unpackUINT16(char *charptr, uint16_t *val) 
 {
-  *val  = charptr[0]<<8;
-  *val |= charptr[1];
+  *val  = (uint16_t)((uint8_t)charptr[0])<<8;
+  *val |= (uint16_t)(uint8_t)charptr[1];
   return charptr + 2;
 }
 
 char *unpackUINT24(char *charptr, uint32_t *val) 
 {
-  *val  = charptr[0]<<16;
-  *val |= charptr[1]<<8;
-  *val |= charptr[2];
+  *val  = (uint16_t)((uint8_t)charptr[0])<<16;
+  *val |= (uint16_t)((uint8_t)charptr[1])<<8;
+  *val |= (uint16_t)((uint8_t)charptr[2]);
   return charptr + 3;
 }
    
 char *unpackUINT32(char *charptr, uint32_t *val)
 {
-  *val  = charptr[0]<<24;
-  *val |= charptr[1]<<16;
-  *val |= charptr[2]<<8;
-  *val |= charptr[3];
+  *val  = (uint32_t)((uint8_t)charptr[0])<<24;
+  *val |= (uint32_t)((uint8_t)charptr[1])<<16;
+  *val |= (uint32_t)((uint8_t)charptr[2])<<8;
+  *val |= (uint32_t)((uint8_t)charptr[3]);
   return charptr + 4;
 }

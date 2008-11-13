@@ -41,6 +41,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opt.h"
 #include "acn_arch.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void sdtm_init(void);
 
 extern sdt_channel_t *sdtm_new_channel(void);
@@ -49,7 +53,15 @@ extern void           sdtm_free_channel(sdt_channel_t *channel);
 extern sdt_member_t  *sdtm_new_member(void);
 extern void           sdtm_free_member(sdt_member_t *member);
 
-extern component_t *sdtm_new_component(void);
-extern void         sdtm_free_component(component_t *component);
+extern component_t   *sdtm_new_component(void);
+extern void           sdtm_free_component(component_t *component);
+
+extern sdt_resend_t  *sdtm_new_resend(void);
+extern void           sdtm_free_resend(sdt_resend_t *resend);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

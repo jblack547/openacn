@@ -39,7 +39,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opt.h"
 #include "acn_arch.h"
 #include "component.h"
+#include "dmp.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+#ifdef USE_QUEUE
 typedef struct dmp_queue_s 
 {
   component_t  *local_component;
@@ -49,12 +56,22 @@ typedef struct dmp_queue_s
   uint32_t      data_len;
   void         *ref;
 } dmp_queue_t;
+#endif
 
 void dmpm_init(void);
 void dmpm_close(void);
+dmp_subscription_t *dmpm_new_subscription();
+void                dmpm_free_subscription(dmp_subscription_t *subscription);
+
+#ifdef USE_QUEUE
 void dmpm_add_queue(component_t *local_component, component_t *foreign_component, bool is_reliable, const uint8_t *data, uint32_t data_len, void *ref);
 dmp_queue_t *dmpm_get_queue(void);
 void dmpm_free_queue(void);
+#endif
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

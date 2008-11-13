@@ -29,35 +29,64 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
-  
+  $Id$
+
   Description:
-    converts 32 bit unsigned integer to a IP address string.
+    Header file for ntoa.c
 */
-#include <stdio.h>
+#ifndef __INET_H__
+#define __INET_H__
+
 #include "opt.h"
 #include "types.h"
 #include "acn_arch.h"
-
 #include "ntoa.h"
 
-/*********************************/
-/* returns ptr to static buffer; not reentrant! */
-char ip_string[16];
-char * ntoa(uint32_t ip_addr)
-{
-  // convert an ip address number into a string
-  uint8_t a,b,c,d;
-  
-  a = (ip_addr>>24);
-  b = (ip_addr>>16);
-  c = (ip_addr>>8);
-  d = ip_addr&0xff;
- 
-  sprintf(ip_string,"%d.%d.%d.%d", a,b,c,d);
+#include "ip_addr.h"
 
-  return ip_string;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef CONFIG_STACK_NETBURNER
+
+/* ascii to network */
+uint32_t inet_aton(const char *cp);
+
+/* network to ascii */
+//char *   inet_ntoa(uint32_t n);
+#define inet_ntoa(x) ntoa(x)
+
+#ifdef htons
+#undef htons
+#endif /* htons */
+
+#ifdef htonl
+#undef htonl
+#endif /* htonl */
+
+#ifdef ntohs
+#undef ntohs
+#endif /* ntohs */
+
+#ifdef ntohl
+#undef ntohl
+#endif /* ntohl */
+
+
+#if BYTE_ORDER == BIG_ENDIAN
+ #define htons(x) (x)
+ #define ntohs(x) (x)
+ #define htonl(x) (x)
+ #define ntohl(x) (x)
+#else /* BYTE_ORDER != BIG_ENDIAN */
+ #error !BIG_INDIAN NOT SUPPORTED YET
+#endif /* BYTE_ORDER == BIG_ENDIAN */
+
+#endif /* CONFIG_STACK_NETBURNER */
+
+#ifdef __cplusplus
 }
+#endif
 
-
-
+#endif /* __INET_H__ */

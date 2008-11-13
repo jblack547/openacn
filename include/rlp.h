@@ -37,13 +37,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __rlp_h__
 #define __rlp_h__ 1
 
-#include "netiface.h"
+#include "netxface.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef void rlpHandler_t(
 	const uint8_t *data,
 	int datasize,
 	void *ref,
-	const neti_addr_t *remhost,
+	const netx_addr_t *remhost,
 	const cid_t remcid
 );
 
@@ -58,12 +62,14 @@ uint8_t  *rlp_add_pdu(struct rlp_txbuf_s *buf, uint8_t *pdudata, int size, proto
 #else
 uint8_t  *rlp_add_pdu(struct rlp_txbuf_s *buf, uint8_t *pdudata, int size, uint8_t **packetdatap);
 #endif
-int       rlp_send_block(struct rlp_txbuf_s *buf, struct netsocket_s *netsock, const neti_addr_t *destaddr);
-struct netsocket_s * rlp_open_netsocket(localaddr_t localaddr);
-void      rlp_close_netsocket(struct netsocket_s *netsock);
-struct    rlp_listener_s * rlp_add_listener(struct netsocket_s *netsock, groupaddr_t groupaddr, protocolID_t protocol, rlpHandler_t *callback, void *ref);
-void      rlp_del_listener(struct netsocket_s *netsock, struct rlp_listener_s *listener);
-void      rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const neti_addr_t *remhost, void *ref);
+int       rlp_send_block(struct rlp_txbuf_s *buf, netxsocket_t *netsock, const netx_addr_t *destaddr);
+netxsocket_t * rlp_open_netsocket(localaddr_t *localaddr);
+void      rlp_close_netsocket(netxsocket_t *netsock);
+struct    rlp_listener_s * rlp_add_listener(netxsocket_t *netsock, groupaddr_t groupaddr, protocolID_t protocol, rlpHandler_t *callback, void *ref);
+void      rlp_del_listener(netxsocket_t *netsock, struct rlp_listener_s *listener);
+//void      rlp_process_packet(netxsocket_t *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netx_addr_t *remhost, void *ref);
+void      rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref);
+
 
 /*
 struct rlp_txbuf_hdr {
@@ -80,5 +86,13 @@ struct rlp_txbuf_hdr {
 #endif
 };
 */
+
+#define rlp_getuse(buf) (((struct rlp_txbuf_s *)(buf))->usage)
+#define rlp_incuse(buf) (++rlp_getuse(buf))
+#define rlp_decuse(buf) if (rlp_getuse(buf)) --rlp_getuse(buf)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

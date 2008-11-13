@@ -1,4 +1,3 @@
-/*--------------------------------------------------------------------*/
 /*
 
 Copyright (c) 2007, Pathway Connectivity Inc.
@@ -41,6 +40,7 @@ static const char *rcsid __attribute__ ((unused)) =
 
 #include <string.h>
 #include "opt.h"
+#include "types.h"
 #include "acn_arch.h"
 
 #include "rlp.h"
@@ -49,8 +49,15 @@ static const char *rcsid __attribute__ ((unused)) =
 #include "rlpmem.h"
 #include "acnlog.h"
 
+#include "netsock.h"
+#include "netxface.h"
+
 #define NUM_PACKET_BUFFERS	16
 #define BUFFER_ROLLOVER_MASK  (NUM_PACKET_BUFFERS - 1)
+
+/* some handy macros */
+#define LOG_FSTART() acnlog(LOG_DEBUG | LOG_RLP, "%s :...", __func__)
+
 
 #if CONFIG_EPI17
 
@@ -135,7 +142,7 @@ structures:
 	multicast destination address of every incoming packet early on and
 	finds the associated rlp_rxgroup_s If none is found, the packet is
 	dropped. There is one rlp_rxgroup_s lookup per packet.
-	
+
 	struct rlp_listener_s represents a single callback to the client
 	component. For each rxgroup there may be multiple filters. rxgroups
 	are filtered for protocol (e.g. SDT) on a PDU by PDU basis. It is
@@ -175,15 +182,17 @@ Initialize RLP (if not already done)
 */
 int
 rlp_init(void)
-{	
+{
 	static bool initialized = 0;
-  
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_init");
+
+  LOG_FSTART();
 
 	if (!initialized)
 	{
+    /* initialize sub modules */
+    nsk_netsocks_init();
+    netx_init();
 		rlpm_init();
-		neti_init();
 
 		initialized = 1;
 	}
@@ -224,11 +233,11 @@ Start an RLP PDU block
   If a non-NULL pointer into the txbuffer is provided as datap, then the
   block is initialized to place the first PDU data in that position. The
   purpose of this is to facilitate re-sending PDUs.
-  
+
   Following the example above, if we now want to resend the second PDU
   only (and we have retained mybuf) we can do:
 
-	pduptr = rlp_init_block(mybuf, savedDataPtr); 
+	pduptr = rlp_init_block(mybuf, savedDataPtr);
 	pduptr = rlp_add_pdu(mybuf, pduptr, PDU2size, PROTO_ABC, &savedDataPtr);
 	rlp_send_block(mybuf);
 
@@ -238,29 +247,33 @@ rlp_init_block(struct rlp_txbuf_s *buf, uint8_t *datap)
 {
 	uint8_t *blockstart;
 
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_init_block");
-	
-	blockstart = bufdatap(buf);
+  LOG_FSTART();
+
+	blockstart = buf->datap;
 
 	if (datap != NULL)
 	{
 		uint8_t *trystart;
-		
-		if (datap > blockstart + bufhdrp(buf)->datasize) return NULL;
-		
+
+		if (datap > blockstart + buf->datasize) {
+      acnlog(LOG_WARNING|LOG_RLP, "rlp_init_block: block overrun");
+      return NULL;
+    }
+
 		trystart = datap - RLP_PREAMBLE_LENGTH - 2 - sizeof(protocolID_t) - sizeof(cid_t);
 
-		if (trystart < blockstart) return NULL;
+		if (trystart < blockstart) {
+      acnlog(LOG_WARNING|LOG_RLP, "rlp_init_block: block underrun");
+      return NULL;
+    }
 
 		blockstart = trystart;
-	}
-	else
-	{
+	} else {
 		datap = blockstart + RLP_PREAMBLE_LENGTH + 2 + sizeof(protocolID_t) + sizeof(cid_t);
 	}
 
-	bufhdrp(buf)->blockend = NULL;
-	bufhdrp(buf)->blockstart = blockstart;
+	buf->blockend = NULL;
+	buf->blockstart = blockstart;
 	return datap;
 }
 
@@ -279,7 +292,7 @@ rlp_init_block(struct rlp_txbuf_s *buf, uint8_t *datap)
   We always suppress header (source CID) after the first PDU since this
   implementation forbids the highly esoteric case of packing PDUs from
   separate local components into the same packet.
-  
+
   Data
   --
   Unless CONFIG_RLP_OPTIMIZE_PACK is set we don't bother to check for
@@ -291,7 +304,7 @@ rlp_init_block(struct rlp_txbuf_s *buf, uint8_t *datap)
   when CONFIG_RLP_OPTIMIZE_PACK is set and we do not know whether the
   next PDU will be of the same protocol. At present we guess that it
   will be - if it isn't we will have to move the data up.
-  
+
   If packetdatap is not NULL its target is filled in with the actual
   address of the data after packing.
 */
@@ -310,29 +323,25 @@ rlp_add_pdu(
 	uint16_t flags;
 	uint8_t *pdup, *pduend;
 
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_add_pdu");
+  LOG_FSTART();
 
-	pdup = bufhdrp(buf)->blockend;	/* end of last PDU if any */
-	if (pdup == NULL)	/* first PDU of block? */
-	{
-		pdup = bufhdrp(buf)->blockstart + RLP_PREAMBLE_LENGTH + 2 + sizeof(protocolID_t) + sizeof(cid_t);
+	pdup = buf->blockend;	/* end of last PDU if any */
+	if (pdup == NULL)	{/* first PDU of block? */
+		pdup = buf->blockstart + RLP_PREAMBLE_LENGTH + 2 + sizeof(protocolID_t) + sizeof(cid_t);
 		flags = VECTOR_FLAG | HEADER_FLAG | DATA_FLAG;
-	}
-	else
-	{
+	} else {
 #if CONFIG_RLP_OPTIMIZE_PACK
 		pdup += 2;	/* allow for length/flags field */
 		flags = 0;
 #if !CONFIG_RLP_SINGLE_CLIENT
-		if (protocol != bufhdrp(buf)->protocol)
-		{
+		if (protocol != buf->protocol) {
 			flags |= VECTOR_FLAG;
 			pdup += sizeof(protocolID_t);
 		}
 #endif
 		if (!(
-				bufhdrp(buf)->curdatalen == size
-				&& memcmp(pdudata, bufhdrp(buf)->curdata, size) == 0
+				buf->curdatalen == size
+				&& memcmp(pdudata, buf->curdata, size) == 0
 			))
 		{
 			flags |= DATA_FLAG;
@@ -354,56 +363,55 @@ rlp_add_pdu(
 	  but have set flags and pdup points to where the data is to go
 	*/
 #if CONFIG_RLP_OPTIMIZE_PACK
-	if ((flags & DATA_FLAG))
-	{
+	if ((flags & DATA_FLAG)) {
 		/* is data in the right place already? */
-		if (pdudata != pdup)
-		{
+		if (pdudata != pdup) {
 			/* move data into position */
 			memmove(pdup, pdudata, size)
 		}
-		bufhdrp(buf)->curdata = pdup;
-		bufhdrp(buf)->curdatalen = size;
+		buf->curdata = pdup;
+		buf->curdatalen = size;
 		pdup += size;
 	}
-	if (packetdatap) *packetdatap = bufhdrp(buf)->curdata;
+	if (packetdatap) {
+    *packetdatap = buf->curdata;
+  }
 	pduend = pdup;
 #else
 	/* is data in the right place already? */
-	if (pdudata != pdup)
-	{
+	if (pdudata != pdup) {
 		/* move data into position */
 		memmove(pdup, pdudata, size);
 	}
-	if (packetdatap) *packetdatap = pdup;
+	if (packetdatap) {
+    *packetdatap = pdup;
+  }
 	pduend = pdup + size;
 #endif
 
 	/* now put the preamble (if first PDU) length and flags, vector and header in place */
-	pdup = bufhdrp(buf)->blockend;
-	if (pdup == NULL)
-	{
-		pdup = bufhdrp(buf)->blockstart;
+	pdup = buf->blockend;
+	if (pdup == NULL) {
+		pdup = buf->blockstart;
 		memcpy(pdup, rlpPreamble, RLP_PREAMBLE_LENGTH);
 		pdup += RLP_PREAMBLE_LENGTH;
 		/* add the source CID */
-		marshalUUID(pdup + 2 + sizeof(protocolID_t), bufhdrp(buf)->owner->cid);
+		marshalUUID(pdup + 2 + sizeof(protocolID_t), buf->owner->cid);
 	}
 
 	/* PDU length and flags */
 	pdup = marshalU16(pdup, (uint16_t)(pduend - pdup) | flags);
 
-	if ((flags & VECTOR_FLAG))
-	{
+	if ((flags & VECTOR_FLAG))	{
 #if CONFIG_RLP_SINGLE_CLIENT
 		marshalU32(pdup, CONFIG_RLP_SINGLE_CLIENT);
 #else
 		marshalU32(pdup, protocol);
-		bufhdrp(buf)->protocol = protocol;
+		buf->protocol = protocol;
 #endif
 	}
 
-	bufhdrp(buf)->blockend = pduend;
+	buf->blockend = pduend;
 #if CONFIG_RLP_SINGLE_CLIENT || CONFIG_RLP_OPTIMIZE_PACK
 	return pduend + 2;	/* guess next PDU will repeat protocol */
 #else
@@ -418,14 +426,15 @@ rlp_add_pdu(
 
 int
 rlp_send_block(
-	struct rlp_txbuf_s *buf, 
-	struct netsocket_s *netsock,
-	const neti_addr_t *destaddr
+	struct rlp_txbuf_s *buf,
+	netxsocket_t      *netsock,
+	const netx_addr_t *destaddr
 )
 {
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_send_block");
+  LOG_FSTART();
 
-	return neti_send_to(netsock, destaddr, bufhdrp(buf)->blockstart, bufhdrp(buf)->blockend - bufhdrp(buf)->blockstart);
+  return netx_send_to(netsock, destaddr, buf->netbuf, buf->blockend - buf->blockstart);
+
 }
 
 /************************************************************************/
@@ -433,39 +442,52 @@ rlp_send_block(
 Find a matching netsocket or create a new one if necessary
 */
 
-struct netsocket_s *
-rlp_open_netsocket(localaddr_t localaddr)
+netxsocket_t *
+rlp_open_netsocket(localaddr_t *localaddr)
 {
-	struct netsocket_s *netsock;
+	netxsocket_t *netsock;
 
-	acnlog(LOG_RLP, "rlp_open_netsocket: calling rlpm_find_netsock: %d", LCLAD_PORT(localaddr));
-	if (LCLAD_PORT(localaddr) != NETI_PORT_EPHEM && (netsock = rlpm_find_netsock(localaddr))) return netsock;	/* found existing matching socket */
+  LOG_FSTART();
 
-	acnlog(LOG_RLP, "rlp_open_netsocket: calling rlpm_new_netsock");
-	if ((netsock = rlpm_new_netsock()) == NULL) return NULL;		/* cannot allocate a new one */
+  /* see if a netsocket already exists for the given port */
+	if (LCLAD_PORT(*localaddr) != netx_PORT_EPHEM && (netsock = nsk_find_netsock(localaddr))) {
+	  return netsock;	/* found existing matching socket */
+	}
 
-	acnlog(LOG_RLP, "rlp_open_netsocket: calling neti_udp_open");
-	if (neti_udp_open(netsock, localaddr) != 0)
-	{
-		acnlog(LOG_RLP, "rlp_open_netsocket: calling rlpm_free_netsock");
-		rlpm_free_netsock(netsock);	/* UDP open fails */
+  /* create a new netsocket structure for this port */
+	if ((netsock = nsk_new_netsock()) == NULL) {
+    acnlog(LOG_ERR|LOG_RLP, "rlp_open_netsocket: failed to create netsocket");
+	  return NULL;		/* cannot allocate a new one */
+	}
+
+  /* open a UDP socket for this port */
+	if (netx_udp_open(netsock, localaddr) != 0) {
+		acnlog(LOG_ERR|LOG_RLP, "rlp_open_netsocket: failed to open netsocket");
+		nsk_free_netsock(netsock);	/* UDP open fails */
 		return NULL;
 	}
-  acnlog(LOG_RLP, "rlp_open_netsocket: port=%d", NSK_PORT(*netsock));
+
+  netsock->data_callback = rlp_process_packet;
+
+  acnlog(LOG_DEBUG|LOG_RLP, "LOG_INFO|rlp_open_netsocket: port=%d", NSK_PORT(netsock));
 
 	return netsock;
 }
 
 /************************************************************************/
-void 
-rlp_close_netsocket(struct netsocket_s *netsock)
+void
+rlp_close_netsocket(netxsocket_t *netsock)
 {
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_close_netsocket: port=%d", NSK_PORT(*netsock));
+  LOG_FSTART();
 
-	if (rlpm_netsock_has_rxgroups(netsock)) return;
+	if (rlpm_netsock_has_rxgroups(netsock)) {
+    acnlog(LOG_WARNING|LOG_RLP,"rlp_close_netsocket: not closed, active groups");
+    return;
+  }
 
-	neti_udp_close(netsock);
-	rlpm_free_netsock(netsock);
+	netx_udp_close(netsock);
+	nsk_free_netsock(netsock);
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_close_netsocket: closed port=%d", NSK_PORT(netsock));
 }
 
 /************************************************************************/
@@ -474,13 +496,13 @@ Find a matching rxgroup or create a new one if necessary
 */
 static
 struct rlp_rxgroup_s *
-rlp_open_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
+rlp_open_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr)
 {
-	struct rlp_rxgroup_s *rxgroup;
+  struct rlp_rxgroup_s *rxgroup;
 
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_open_rxgroup");
+  LOG_FSTART();
 
-	if (!is_multicast(groupaddr) && groupaddr != NETI_GROUP_UNICAST)
+	if (!is_multicast(groupaddr) && groupaddr != netx_GROUP_UNICAST)
 	{
 		/* a specific non-multicast address has been provided - dangerous */
 		/* FIXME should we check for broadcast here? Otherwise it is dropped */
@@ -490,17 +512,25 @@ rlp_open_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 		there a way to get the stack to check?
 		For now just assume a single valid address.
 		*/
-		if (groupaddr != neti_getmyip(NETI_INADDR_ANY)) return NULL;	/* illegal address */
-		groupaddr = NETI_GROUP_UNICAST;		/* force generic unicast */
+		if (groupaddr != netx_getmyip(netx_INADDR_ANY)) {
+      acnlog(LOG_WARNING|LOG_RLP, "LOG_DEBUG|rlp_open_rxgroup: illegal address");
+      return NULL;	/* illegal address */
+    }
+		groupaddr = netx_GROUP_UNICAST;		/* force generic unicast */
 	}
 
+    // see if this entry already exists
 	if ((rxgroup = rlpm_find_rxgroup(netsock, groupaddr))) return rxgroup;	/* found existing matching group */
-	if ((rxgroup = rlpm_new_rxgroup(netsock, groupaddr)) == NULL) return NULL;	/* cannot allocate a new one */
 
-	if (groupaddr != NETI_GROUP_UNICAST)
-	{
-		if (neti_change_group(netsock, groupaddr, NETI_JOINGROUP) != 0)
-		{
+	// create a new entry in the listeners[] table and get the pointer to the new entry
+	if ((rxgroup = rlpm_new_rxgroup(netsock, groupaddr)) == NULL) {
+    acnlog(LOG_ERR|LOG_RLP, "LOG_DEBUG|rlp_open_rxgroup: failed to create listener");
+    return NULL;	/* cannot allocate a new one */
+  }
+
+	if (groupaddr != netx_GROUP_UNICAST) {
+		if (netx_change_group(netsock, groupaddr, netx_JOINGROUP) != 0) {
+      acnlog(LOG_ERR|LOG_RLP, "LOG_DEBUG|rlp_open_rxgroup: failed to join multicast address");
 			rlpm_free_rxgroup(netsock, rxgroup);
 			return NULL;
 		}
@@ -511,42 +541,48 @@ rlp_open_rxgroup(struct netsocket_s *netsock, groupaddr_t groupaddr)
 
 /************************************************************************/
 static
-void 
-rlp_close_rxgroup(struct netsocket_s *netsock, struct rlp_rxgroup_s *rxgroup)
+void
+rlp_close_rxgroup(netxsocket_t *netsock, struct rlp_rxgroup_s *rxgroup)
 {
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_close_rxgroup");
+  LOG_FSTART();
 
-	if (rlpm_rxgroup_has_listeners(rxgroup)) return;
+	if (rlpm_rxgroup_has_listeners(rxgroup)) {
+    acnlog(LOG_WARNING|LOG_RLP, "LOG_DEBUG|rlp_close_rxgroup: can't close, has listeners");
+    return;
+  }
 
-	if (rxgroup->groupaddr != NETI_GROUP_UNICAST)
-	{
-	neti_change_group(netsock, rxgroup->groupaddr, NETI_LEAVEGROUP);
+	if (rxgroup->groupaddr != netx_GROUP_UNICAST) {
+	  netx_change_group(netsock, rxgroup->groupaddr, netx_LEAVEGROUP);
   }
 	rlpm_free_rxgroup(netsock, rxgroup);
 }
 
 /************************************************************************/
 /*
-Add a new listener
+Add a new listener for a protocol, port number given in netsock, and multicast IP or 0 for unicast
 */
-
 struct rlp_listener_s *
-rlp_add_listener(struct netsocket_s *netsock, groupaddr_t groupaddr, protocolID_t protocol, rlpHandler_t *callback, void *ref)
+rlp_add_listener(netxsocket_t *netsock, groupaddr_t groupaddr, protocolID_t protocol, rlpHandler_t *callback, void *ref)
 {
 	struct rlp_listener_s *listener;
 	struct rlp_rxgroup_s *rxgroup;
 
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_add_listener");
+  LOG_FSTART();
 
-	if ((rxgroup = rlp_open_rxgroup(netsock, groupaddr)) == NULL) return NULL;
+   /* get a new element in the listeners[] table */
+	if ((rxgroup = rlp_open_rxgroup(netsock, groupaddr)) == NULL) {
+    acnlog(LOG_ERR|LOG_RLP, "LOG_DEBUG|rlp_add_listener: failed to open listener group");
+		return NULL;
+	}
 
-	if ((listener = rlpm_new_listener(rxgroup)) == NULL)
-	{
+  /* get address of a new listener entry */
+	if ((listener = rlpm_new_listener(rxgroup)) == NULL) {
+    acnlog(LOG_ERR|LOG_RLP, "LOG_DEBUG|rlp_add_listener: failed get new listener");
 		rlp_close_rxgroup(netsock, rxgroup);
 		return NULL;
 	}
 
-	listener->groupaddr = groupaddr;
+    // save data for this listener
 	listener->protocol = protocol;
 	listener->callback = callback;
 	listener->ref = ref;
@@ -554,16 +590,20 @@ rlp_add_listener(struct netsocket_s *netsock, groupaddr_t groupaddr, protocolID_
 	return listener;
 }
 
-/************************************************************************/
-void 
-rlp_del_listener(struct netsocket_s *netsock, struct rlp_listener_s *listener)
+void
+rlp_del_listener(netxsocket_t *netsock, struct rlp_listener_s *listener)
 {
 	struct rlp_rxgroup_s *rxgroup;
 
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_del_listener");
+  LOG_FSTART();
 
-	rxgroup = rlpm_get_rxgroup(listener);
-	rlpm_free_listener(rxgroup, listener);
+  /* save the group */
+  rxgroup = listener->rxgroup;
+
+  /* free the listener */
+	rlpm_free_listener(listener);
+
+	/* close and free the group if now empty */
 	rlp_close_rxgroup(netsock, rxgroup);
 }
 
@@ -573,46 +613,48 @@ Process a packet - called by network interface layer on receipt of a packet
 */
 
 void
-rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen, ip4addr_t dest_inaddr, const neti_addr_t *remhost, void *ref)
+rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref)
 {
 	struct rlp_rxgroup_s *rxgroup;
 	struct rlp_listener_s *listener;
 	const uint8_t *src_cidp;
 	protocolID_t pduProtocol;
-	const uint8_t *pdup, *datap;
-	int datasize;
+	const uint8_t *pdup, *datap = NULL;
+	int datasize = 0;
 
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_process_packet");
+  LOG_FSTART();
 
 	pdup = data;
-	if(dataLen < (int)(RLP_PREAMBLE_LENGTH + RLP_FIRSTPDU_MINLENGTH + RLP_POSTAMBLE_LENGTH))
-	{
-		acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: Packet too short to be valid");
-		return;	
+	if(length < (int)(RLP_PREAMBLE_LENGTH + RLP_FIRSTPDU_MINLENGTH + RLP_POSTAMBLE_LENGTH)) {
+		acnlog(LOG_DEBUG|LOG_RLP,"rlp_process_packet: Packet too short to be valid");
+		return;
 	}
+
 	/* Check and strip off EPI 17 preamble  */
-	if(memcmp(pdup, rlpPreamble, RLP_PREAMBLE_LENGTH))
-	{
-		acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: Invalid Preamble");
+	if(memcmp(pdup, rlpPreamble, RLP_PREAMBLE_LENGTH)) {
+		acnlog(LOG_DEBUG|LOG_RLP,"rlp_process_packet: Invalid Preamble");
 		return;
 	}
 	pdup += RLP_PREAMBLE_LENGTH;
+
 	/* Find if we have a handler */
-	
-	if ((rxgroup = rlpm_find_rxgroup(netsock, dest_inaddr)) == NULL) return;	/* No handler for this dest address */
+	rxgroup = rlpm_find_rxgroup(socket, netx_INADDR(dest));
+	if (rxgroup == NULL) {
+    acnlog(LOG_DEBUG|LOG_RLP,"rlp_process_packet: No handler for this dest address");
+	  return;	/* No handler for this dest address */
+	}
 
 	src_cidp = NULL;
 	pduProtocol = PROTO_NONE;
 
 	/* first PDU must have all fields */
-	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG))
-	{
-		acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: illegal first PDU flags");
+	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
+		acnlog(LOG_DEBUG|LOG_RLP,"rlp_process_packet: illegal first PDU flags");
 		return;
 	}
 
 	/* pdup points to start of PDU */
-	while (pdup < data + dataLen)
+	while (pdup < data + length)
 	{
 		uint8_t flags;
 		const uint8_t *pp;
@@ -620,43 +662,39 @@ rlp_process_packet(struct netsocket_s *netsock, const uint8_t *data, int dataLen
 		flags = *pdup;
 		pp = pdup + 2;
 		pdup += getpdulen(pdup);	/* pdup now points to end */
-		if (pdup > data + dataLen)	/* sanity check */
-		{
-			acnlog(LOG_ERR|LOG_RLP,"rlp_process_packet: packet length error");
+		if (pdup > data + length)	{ /* sanity check */
+		  acnlog(LOG_DEBUG|LOG_RLP,"rlp_process_packet: packet length error");
 			return;
 		}
-		if (flags & VECTOR_bFLAG)
-		{
-			pduProtocol = unmarshalU32(pp);
+		if (flags & VECTOR_bFLAG) {
+			pduProtocol = unmarshalU32(pp); // get protocol type
 			pp += sizeof(uint32_t);
 		}
-		if (flags & HEADER_bFLAG)
-		{
-			src_cidp = pp;
+		if (flags & HEADER_bFLAG) {
+			src_cidp = pp; // get pointer to source CID
 			pp += sizeof(cid_t);
 		}
-		if (pp > pdup)
-		{
-			acnlog(LOG_ERR|LOG_RLP, "rlp_process_packet: pdu length error");
+		if (pp > pdup) {// if there is no following PDU in the message
+			acnlog(LOG_DEBUG|LOG_RLP, "rlp_process_packet: pdu length error");
 			return;
 		}
-		if (flags & DATA_bFLAG)
-		{
-			datap = pp;
-			datasize = pdup - pp;
+		if (flags & DATA_bFLAG)	{
+			datap = pp; // get pointer to start of the PDU
+			datasize = pdup - pp; // get size of the PDU
 		}
 		/* there may be multiple channels registered for this PDU */
 		for (
 			listener = rlpm_first_listener(rxgroup, pduProtocol);
 			listener != NULL;
-			listener = rlpm_next_listener(rxgroup, listener, pduProtocol)
+			listener = rlpm_next_listener(listener, pduProtocol)
 		)
 		{
-			if (listener->callback)
+			if (listener->callback) {
         // TODO: hack.. well sort of, clipping out lister->ref and sending back ref from call back
         // on lwip, this is pointer to pbuf so we can do reference counting on it
 //				(*listener->callback)(datap, datasize, listener->ref, remhost, src_cidp);
-				(*listener->callback)(datap, datasize, ref, remhost, src_cidp);
+				(*listener->callback)(datap, datasize, ref, source, src_cidp);
+      }
 		}
 	}
 }

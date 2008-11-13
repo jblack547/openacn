@@ -33,40 +33,44 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   Description:
   Header file for slp.c
-*/  
+*/
 
 #ifndef SLP_H
 #define SLP_H
 
+#include "opt.h"
 #include "types.h"
+#include "netxface.h"
 
 /*=========================================================================*/
 /* defines */
 /*=========================================================================*/
 #define SLP_UNUSED_ARG(x) (void)x
+
 #define SLP_RESERVED_PORT       427
-#define SLP_MCAST_ADDRESS       0xeffffffd  /* 239.255.255.253 */
+#define SLP_MCAST_ADDRESS       0xeffffffd  // 239.255.255.253
 
 #define SLP_VERSION             2
-#define SLP_TTL									16
+#define SLP_TTL					        16
 
-#define SLP_THREAD_PRIO         3
-#define SLP_THREAD_STACK        600 // FIXME What should this be?
+//#define SLP_THREAD_PRIO         3
+//#define SLP_THREAD_STACK        600 // FIXME What should this be?
 
-#define SLP_IS_SA               1
-#define SLP_IS_UA               1
+#define SLP_IS_SA               1  // service agent, provides services
+#define SLP_IS_UA               1  // user agent, looks for services
 
 #define SLP_MTU                 600 // Max SLP data packet (not including 44 bytes for header)
 
 /*=========================================================================*/
 /* SLP Constants                                                           */
 /*=========================================================================*/
-#define SLP_TMR_INTERVAL  100     // in ms
-#define SLP_TMR_TPS       10      // inverse of SLP_TMR_INTERVAL
+#define SLP_TMR_INTERVAL  100  // ms
+#define SLP_TMR_TPS       (1000/SLP_TMR_INTERVAL) // 10, inverse of SLP_TMR_INTERVAL
 
 // TPS = number of times the timer is hit per second
 // Max time to wait for a complete multicast query response (all values.)
 #define CONFIG_MC_MAX     ( 15 * SLP_TMR_TPS ) // default: 15 seconds
+#define CONFIG_MC_RETRY_COUNT (3)              // number of times we should retry a multicast message)
 
 // Wait to perform DA discovery on reboot.
 #define CONFIG_START_WAIT	( 3 * SLP_TMR_TPS ) // default: 3 seconds
@@ -81,7 +85,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CONFIG_DA_BEAT    (  3*60*60 * SLP_TMR_TPS ) // default: 3 hours
 
 // Minimum interval to wait before repeating Active DA discovery.
-#define CONFIG_DA_FIND	( 15*60 * SLP_TMR_TPS ) // default: 15 minutes
+#define CONFIG_DA_FIND	( 15*60*60 * SLP_TMR_TPS ) // default: 15 minutes
 
 // Wait to register services on passive DA discovery.
 #define CONFIG_REG_PASSIVE	( 3 * SLP_TMR_TPS ) // default: 1-3 seconds
@@ -90,7 +94,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CONFIG_REG_ACTIVE	( 3 * SLP_TMR_TPS ) // default: 1-3 seconds
 
 // DAs and SAs close idle connections.
-#define CONFIG_CLOSE_CONN	( 5*60 * SLP_TMR_TPS ) // default: 5 minutes
+#define CONFIG_CLOSE_CONN	( 5*60*60 * SLP_TMR_TPS ) // default: 5 minutes
 
 #define SLP_DA_SERVICE_TYPE       "service:directory-agent"
 #define SLP_SA_SERVICE_TYPE       "service:service-agent"
@@ -100,7 +104,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SLP_REGIGISTION_REFRESH	(5*60 * SLP_TMR_TPS) // must be less than SLP_REGIGRATION_LIFETIME (value is TPS )
 
 /* SLP Function ID constants                                               */
-#define SLP_FUNCT_SRVRQST         1  //Service Request 
+#define SLP_FUNCT_SRVRQST         1  //Service Request
 #define SLP_FUNCT_SRVRPLY         2  //Service Reply
 #define SLP_FUNCT_SRVREG          3  //Service Registration
 #define SLP_FUNCT_SRVDEREG        4  //Service Deregister
@@ -145,7 +149,7 @@ typedef enum {
   SLP_NETWORK_ERROR                = -3,
   SLP_NOT_IMPLEMENTED              = -2,
   SLP_HANDLE_IN_USE                = -1,
-  
+
   // external errors
   SLP_OK                           = 0,
   SLP_LANGUAGE_NOT_SUPPORTED       = 1,
@@ -155,14 +159,14 @@ typedef enum {
   SLP_AUTHENTICATION_UNKNOWN       = 5,
   SLP_AUTHENTICATION_ABSENT        = 6,
   SLP_AUTHENTICATION_FAILED        = 7,
-  SLP_VERSION_NOT_SUPPORTED				 = 9,
+  SLP_VERSION_NOT_SUPPORTED		   = 9,
   SLP_INTERNAL_ERROR               = 10,
   SLP_DA_BUSY                      = 11,
   SLP_OPTION_NOT_UNDERSTOOD        = 12,
   SLP_INVALID_UPDATE               = 13,
   SLP_MSG_NOT_SUPPORTED            = 14,
   SLP_REFRESH_REJECTED             = 15
-  
+
 } SLPError ;
 
 
@@ -171,8 +175,6 @@ typedef enum {
    SLP_TRUE = 1
 } SLPBoolean;
 
-#define FAIL  1
-#define OK    0
 
 /*=========================================================================*/
 /* Misc "adjustable" constants (I would not adjust the if I were you)      */
@@ -180,7 +182,7 @@ typedef enum {
 //#define SLPD_CONFIG_MAX_RECONN      2    /* max number tcp of reconnects   */
 //                                         /* to complete an outgoing        */
 //                                         /* transaction                    */
-//                                         
+//
 //#define SLPD_MAX_SOCKETS            128  /* maximum number of sockets      */
 //
 //#define SLPD_COMFORT_SOCKETS        64   /* a "comfortable" number of      */
@@ -190,10 +192,10 @@ typedef enum {
 //
 //#define SLPD_CONFIG_CLOSE_CONN      900  /* max idle time (60 min) when    */
 //                                         /* not busy                       */
-//                                         
+//
 //#define SLPD_CONFIG_BUSY_CLOSE_CONN 30   /* max idle time (30 sec) when    */
 //                                         /* busy                           */
-//                                         
+//
 //#define SLPD_CONFIG_DA_FIND         900  /* minimum delay between active   */
 //                                         /* discovery requests (15 min)    */
 
@@ -204,7 +206,7 @@ typedef enum {
 #define DA_SEND_DEREG   4  // waiting for ack from deregistration
 #define DA_WAIT_DEREG   5  // send deregister message
 
-typedef struct _SLPDa_list 
+typedef struct _SLPDa_list
 {
   uint32_t    ip;
   uint32_t    state;      // for ack from da after registration
@@ -218,13 +220,13 @@ typedef struct _SLPdda_timer
 {
   uint8_t     discover;			// set to TRUE to start discovery
   uint32_t    counter;  		// counter
-  uint8_t			xmits;        // number of times we have sent message
-  uint16_t		xid;          // xid of the message 
+  uint8_t	    xmits;        // number of times we have sent message
+  uint16_t	  xid;          // xid of the message
 } SLPdda_timer;
 
 /*=========================================================================*/
 // NOTE, do NOT use string functions on SLPString structures, they do NOT contain a terminating NULL!
-typedef struct _SLPString 
+typedef struct _SLPString
 {
   uint16_t  len;
   char     *str;
@@ -247,9 +249,9 @@ typedef struct _SLPHeader
 {
   uint8_t       version;
   uint8_t       function_id;
-  uint32_t      length;       
+  uint32_t      length;
   uint16_t      flags;
-  uint32_t      ext_offset;    
+  uint32_t      ext_offset;
   uint16_t      xid;
   SLPString     lang_tag;
 }SLPHeader;
@@ -289,7 +291,7 @@ typedef struct _SLPSrvRequest
 }SLPSrvRequest;
 
 /*=========================================================================*/
-typedef struct _SLPSrvAck 
+typedef struct _SLPSrvAck
 {
 	uint16_t	error_code;
 }SLPSrvAck;
@@ -297,23 +299,34 @@ typedef struct _SLPSrvAck
 /*=========================================================================*/
 /* GlobalDeclarations                                                            */
 /*=========================================================================*/
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* slp thread */
 void slp_thread( void *pvParameters );
+
 /* slp init routine */
 void slp_init(void);
+
 /* close slp */
 void slp_close(void);
+void slp_close2(void);
+
 /* open slp */
 SLPError slp_open(void);
+
 /* slp timer callback */
 void slp_tick(void *arg);
-/* slp registration */
+
 
 #if SLP_IS_SA
-SLPError slp_reg(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list) ;
+/* slp registration */
+SLPError slp_reg(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list);
 /* slp de-registration */
 SLPError slp_dereg(void);
-#endif  //SLP_IS_SA 
+#endif  //SLP_IS_SA
+
 
 #if SLP_IS_UA
 SLPError slp_send_srvrqst(unsigned long ip, char *req_srv_type, char *reg_predicate,
@@ -322,9 +335,20 @@ SLPError slp_send_attrrqst(unsigned long ip, char *req_url, char *tags,
   void (*callback) (int error, char *attributes));
 #endif
 
+
 // UA and SA functions
 #if SLP_IS_UA || SLP_IS_SA
-void     slp_active_discovery_start(void);
+void    slp_active_discovery_start(void);
+void		slp_print_stat(void);
+
+#endif
+
+// call back for UDP SLP receive
+//void slp_recv(char *slp_data, int length, uint32_t ip_addr, int port);
+void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref);
+
+#ifdef __cplusplus
+}
 #endif
 
 

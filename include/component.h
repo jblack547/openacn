@@ -40,9 +40,22 @@ Information structures and handling relating to components
 #ifndef __component_h__
 #define __component_h__ 1
 
+#include "opt.h"
 #include "types.h"
+#include "acn_arch.h"
+
 #include "uuid.h"
-#include "netiface.h"
+#include "netxface.h"
+#include "inet.h"
+
+#if CONFIG_DMP
+//#include "dmp.h"
+#endif
+
+#if CONFIG_SDT
+//#include "sdt.h"
+#endif
+
 
 /************************************************************************/
 /*
@@ -56,6 +69,7 @@ Information structures and handling relating to components
   as pointers to it may be stored and dereferenced at a later time.
 */
 
+// my device type
 typedef enum
 {
   accUNKNOWN,
@@ -67,39 +81,41 @@ typedef enum
 #if CONFIG_SDT
 typedef enum
 {
-  SDT_EVENT_JOIN,
-  SDT_EVENT_LEAVE,
   SDT_EVENT_CONNECT,
   SDT_EVENT_DISCONNECT,
   SDT_EVENT_DATA
 } component_event_t;
 
 typedef void component_callback_t (
-	component_event_t state,
-  void *param
+  component_event_t state,
+  void *param1,  // does not seem to be used but might hold the addr of the callback routine
+  void *param2
 );
-
 #endif
 
 typedef struct component_s
 {
-	cid_t cid;
-	cid_t dcid;
+  cid_t cid;  // component ID
+  cid_t dcid; // discoverer CID?
   char  fctn[ACN_FCTN_SIZE];  
   char  uacn[ACN_UACN_SIZE];
-  access_t   access;
+  access_t   access;  // if I am device or controller
   bool       is_local;
-#if CONFIG_EPI10
-	uint16_t dyn_mcast;
-#endif
-#if CONFIG_SDT
-  neti_addr_t   adhoc_addr;
-	int           adhoc_expires_at;
-  bool          auto_created;
-	struct component_s   *next;
-  struct sdt_channel_s *tx_channel;
-  component_callback_t *callback;
-#endif
+  #if CONFIG_EPI10
+	  uint16_t dyn_mcast;
+  #endif
+  #if CONFIG_SDT
+    netx_addr_t   adhoc_addr;
+	  int           adhoc_expires_at;
+    bool          auto_created;
+	  struct component_s   *next;  // pointer to next component in linked list
+    struct sdt_channel_s *tx_channel;
+    component_callback_t *callback; 
+  #endif
+  #if CONFIG_DMP
+    struct dmp_subscription_s   *subscriptions;
+  #endif
+  
 } component_t;
 
 #if CONFIG_SINGLE_COMPONENT

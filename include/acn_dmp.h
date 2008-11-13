@@ -49,20 +49,6 @@ Code which sits on top of DMP should not really have to use this header
 #define DMP_PROTOCOL_ID     2
 #define PROTO_DMP           DMP_PROTOCOL_ID
 
-enum 
-{
-  DMP_REASON_NONSPEC          = 1,
-  DMP_REASON_NOT_A_PROP       = 2,
-  DMP_REASON_NOT_READABLE     = 3,
-  DMP_REASON_NOT_WRITEABLE    = 4,
-  DMP_REASON_BAD_DATA         = 5,
-  DMP_REASON_MAPS_UNSUPPORTED = 6,
-  DMP_REASON_NO_MAP_SPACE     = 7,
-  DMP_REASON_PROP_CANNOT_MAP  = 8,
-  DMP_REASON_MAP_UNALLOCATED  = 9,
-  DMP_REASON_PROP_NO_EVENTS   = 10,
-  DMP_REASON_DEVICE_NO_EVENTS = 11,
-};
 
 
 #endif

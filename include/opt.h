@@ -43,7 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*
   IMPORTANT
   YOU SHOULD NOT NEED TO EDIT THIS HEADER
-  
+
   If you just want to create your own tailored build of OpenACN you
   should put all your local configuration options into the header
   "user_opt.h" where the compiler will find it.
@@ -59,11 +59,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /**************************************************************************/
 /*
   C Compiler
-  
+
   Sort this out first since a lot else depends on it
 
   we can autodetect this from predefined macros
-  but these vary from system to system so use our own macro 
+  but these vary from system to system so use our own macro
   names and allow user override in user_opt.h
 */
 
@@ -79,7 +79,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   Inline functions for marshaling data are efficient and typecheck
   the code. If the compiler supports inline code then they are
   preferable.
-  
+
   If you do not want to compile inline, then setting this false
   uses macros instead, but these eveluate their arguments multiple times
   and do not check their types so beware.
@@ -93,7 +93,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   Basic CPU Architecture
 
   we can autodetect a lot of this from predefined macros
-  but these vary from system to system so use our own macro 
+  but these vary from system to system so use our own macro
   names and allow user override in user_opt.h
 */
 #ifndef ARCH_AMD64
@@ -150,7 +150,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /* BSD sockets */
 #ifndef CONFIG_STACK_BSD
-#define	CONFIG_STACK_BSD       1
+#define	CONFIG_STACK_BSD       0
 #endif
 /* Winsock sockets */
 #ifndef CONFIG_STACK_WINSOCK
@@ -163,6 +163,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* Pathway Connectivity stack - derived from Waterloo stack */
 #ifndef CONFIG_STACK_PATHWAY
 #define	CONFIG_STACK_PATHWAY  0
+#endif
+/* Netburner sockets */
+#ifndef CONFIG_STACK_NETBURNER
+#define CONFIG_STACK_NETBURNER 0
 #endif
 
 /*
@@ -189,7 +193,7 @@ as required.
 /************************************************************************/
 /*
   Memory management
-  
+
   RLP models - pick one
 */
 #ifndef CONFIG_RLPMEM_MALLOC
@@ -204,59 +208,66 @@ as required.
   #define MAX_RLP_SOCKETS 50
   #endif
   #ifndef MAX_LISTENERS
-  #define MAX_LISTENERS 100
+  #define MAX_LISTENERS 50
+  #endif
+  #ifndef MAX_RXGROUPS
+  #define MAX_RXGROUPS 50
   #endif
   #ifndef MAX_TXBUFS
   #define MAX_TXBUFS 10
   #endif
 #endif
 
+#ifndef MAX_NSK_SOCKETS
+#define MAX_NSK_SOCKETS 50
+#endif
+
 /************************************************************************/
 /*
   Logging
-  
+
   Set CONFIG_ACNLOG to determine how messages are logged.
   Set CONFIG_LOGLEVEL to determine what level of messages are logged.
-  
+
   CONFIG_ACNLOG options are:
-  
+
   ACNLOG_NONE		//Logging is compiled out
   ACNLOG_SYSLOG		//Log using POSIX Syslog
   ACNLOG_STDOUT		//Log to standard output (default)
   ACNLOG_STDERR		//Log to standard error
-  
-  Syslog handles logging levels itself and CONFIG_LOGLEVEL is ignored.
-  For other options Messages up to CONFIG_LOGLEVEL are logged & levels 
-  beyond this are ignored. Possible values are (in increasing order). 
 
-  LOG_EMERG   
-  LOG_ALERT   
-  LOG_CRIT    
-  LOG_ERR     
-  LOG_WARNING 
-  LOG_NOTICE  
-  LOG_INFO    
-  LOG_DEBUG  
+  Syslog handles logging levels itself and CONFIG_LOGLEVEL is ignored.
+  For other options Messages up to CONFIG_LOGLEVEL are logged & levels
+  beyond this are ignored. Possible values are (in increasing order).
+
+  LOG_EMERG
+  LOG_ALERT
+  LOG_CRIT
+  LOG_ERR
+  LOG_WARNING
+  LOG_NOTICE
+  LOG_INFO
+  LOG_DEBUG
 
   The syslog() macro is formated to match the POSIX version:
     extern void syslog(int, const char *, ...);
   Where int is the combination of facility and error level (or'd),
   const * is a formating string and ... is a list of argument.
   This allows for a function simialr to the standard printf
-  
+
   The normal facility values have been extended with LOG_NONE which
   will disable logging. This allows module level control.
 
-  Log are disable by default (LOG_NONE).  To enable them, changed the module 
+  Log are disable by default (LOG_NONE).  To enable them, changed the module
   level define to the desired facility in user_opt.h
-  
+
   #define RLP_LOG LOCAL0
 
   Then to send messages:
 
     acn_log(RLP_LOG, "I got an error")'
     anc_log(RLP_LOG, "I got %d errors", error_count);
-  
+
   Log levels can still be added:
     acn_log(RLP_LOG | LOG_INFO, "I do not like errors");
   and would only print if CONFIG_LOGLEVEL was LOG_INFO or higher.
@@ -273,14 +284,20 @@ as required.
 #ifndef LOG_RLP
   #define LOG_RLP LOG_NONE
 #endif
+#ifndef LOG_RLPM
+  #define LOG_RLPM LOG_NONE
+#endif
 #ifndef LOG_SDT
   #define LOG_SDT LOG_NONE
 #endif
 #ifndef LOG_SDTM
   #define LOG_SDTM LOG_NONE
 #endif
-#ifndef LOG_NETI
-  #define LOG_NETI LOG_NONE
+#ifndef LOG_NSK
+  #define LOG_NSK LOG_NONE
+#endif
+#ifndef LOG_NETX
+  #define LOG_NETX LOG_NONE
 #endif
 #ifndef LOG_SLP
   #define LOG_SLP LOG_NONE
@@ -290,6 +307,9 @@ as required.
 #endif
 #ifndef LOG_MISC
   #define LOG_MISC LOG_NONE
+#endif
+#ifndef LOG_STAT
+  #define LOG_STAT LOG_NONE
 #endif
 #ifndef LOG_ASSERT
   #define LOG_ASSERT LOG_NONE
@@ -305,7 +325,7 @@ as required.
 Protocols to build
 */
 #ifndef CONFIG_SDT
-#define CONFIG_SDT	   1
+#define CONFIG_SDT	   0
 #endif
 #ifndef CONFIG_DMP
 #define CONFIG_DMP     0
@@ -314,7 +334,7 @@ Protocols to build
 #define CONFIG_E131    0
 #endif
 #ifndef CONFIG_SLP
-#define CONFIG_SLP     1
+#define CONFIG_SLP     0
 #endif
 
 
@@ -355,7 +375,7 @@ Protocols to build
 /************************************************************************/
 /*
   Component Model
-  
+
   If there is only ever one component in the host using openACN things
   get simpler.
 */
@@ -365,10 +385,10 @@ Protocols to build
 
 /* See EIP 19, standard allows these to be bigger but to keep memory usage and avoid malloc */
 /* we are making them static. Default of 64 should work (see EPI 19, section 3.2) */
-#ifndef ACN_FCTN_SIZE 
+#ifndef ACN_FCTN_SIZE
 #define ACN_FCTN_SIZE 64  /* be sure to include one for a null terminator */
 #endif
-#ifndef ACN_UACN_SIZE 
+#ifndef ACN_UACN_SIZE
 #define ACN_UACN_SIZE 64  /* be sure to include one for a null terminator */
 #endif
 
@@ -415,6 +435,7 @@ Protocols to build
 #ifndef CONFIG_SDTMEM_MALLOC
 #define CONFIG_SDTMEM_MALLOC  0
 #endif
+
 #ifndef CONFIG_SDTMEM_STATIC
 #define	CONFIG_SDTMEM_STATIC   1
 #endif
@@ -440,6 +461,24 @@ Protocols to build
 #define SDT_MAX_SESSIONS            4
 #endif
 
+/* Must be less than MAX_TXBUFS */
+#ifndef SDT_MAX_RESENDS
+#define SDT_MAX_RESENDS             4
+#endif
+
+#ifndef SDT_RESEND_TIMEOUT_ms
+#define SDT_RESEND_TIMEOUT_ms      5000
+#endif
+
+/************************************************************************/
+/*
+
+  DMP
+*/
+#ifndef DMP_MAX_SUBSCRIPTIONS
+#define DMP_MAX_SUBSCRIPTIONS       100
+#endif
+
 /************************************************************************/
 /*
   The following are sanity checks on preceding options and some
@@ -459,7 +498,7 @@ Protocols to build
 
 /************************************************************************/
 /* checks on network stack */
-#if (CONFIG_STACK_BSD + CONFIG_STACK_WINSOCK + CONFIG_STACK_PATHWAY + CONFIG_STACK_LWIP) != 1
+#if (CONFIG_STACK_BSD + CONFIG_STACK_WINSOCK + CONFIG_STACK_PATHWAY + CONFIG_STACK_LWIP + CONFIG_STACK_NETBURNER) != 1
 #error Need to select exactly one network stack
 #endif
 

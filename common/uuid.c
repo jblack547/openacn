@@ -36,6 +36,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*--------------------------------------------------------------------*/
 
 #include "opt.h"
+#include "types.h"
+#include "acn_arch.h"
 #include "uuid.h"
 #include <ctype.h>  /* POSSIBLE COMPILER DEPENDENDENCY */
 

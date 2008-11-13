@@ -38,13 +38,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __mcast_util_h__ 1
 
 /************************************************************************/
+#include "opt.h"
+
 #include "component.h"
 #include "netiface.h"
 /*
   Prototypes
 */
 #if CONFIG_EPI10
-extern int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, component_t *comp);
+int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, component_t *comp);
+//extern int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, component_t *comp);
 /*
   mcast_alloc_new can be a macro
 */
