@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "types.h"
 #include "acn_arch.h"
 #include "ntoa.h"
+#include "aton.h"
 
 #include "ip_addr.h"
 
@@ -55,24 +56,7 @@ uint32_t inet_aton(const char *cp);
 
 /* network to ascii */
 //char *   inet_ntoa(uint32_t n);
-#define inet_ntoa(x) ntoa(x)
-
-#ifdef htons
-#undef htons
-#endif /* htons */
-
-#ifdef htonl
-#undef htonl
-#endif /* htonl */
-
-#ifdef ntohs
-#undef ntohs
-#endif /* ntohs */
-
-#ifdef ntohl
-#undef ntohl
-#endif /* ntohl */
-
+//#define inet_ntoa(x) ntoa(x)
 
 #if BYTE_ORDER == BIG_ENDIAN
  #define htons(x) (x)

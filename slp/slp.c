@@ -169,7 +169,7 @@ uint16_t      attrrqst_xid = 0; /* xid of attribute request sent */
 void      da_ip_list(char *str);
 
 #if SLP_IS_SA
-SLPError  da_service_ack(unsigned long ip);
+SLPError  da_service_ack(ip4addr_t ip);
 void      da_reg_idx(int idx);
 void      da_dereg(void);
 void      da_reg(void);
@@ -178,11 +178,11 @@ void      da_reg(void);
 /* UA and SA functions */
 #if SLP_IS_SA || SLP_IS_UA
 SLPError  da_add(SLPDAAdvert *daadvert);
-SLPError  da_delete(unsigned long ip);
+SLPError  da_delete(ip4addr_t ip);
 int       da_count(void);
 void      da_clear(void);
 void      da_close(void);
-SLPError  slp_receive_daadvert(unsigned long ip, SLPHeader *header, char *data);
+SLPError  slp_receive_daadvert(ip4addr_t ip, SLPHeader *header, char *data);
 SLPError  slp_discover_da(void);
 #endif
 
@@ -197,35 +197,34 @@ char *unpackURL_ENTRY(char* data, SLPUrlEntry *urlentry);
 
 /* UA only functions (also see header file) */
 #if SLP_IS_UA
-//SLPError slp_send_srvrqst(unsigned long ip, char *req_srv_type, char *reg_predicate,
+//SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
 //  void (*callback) (int error, char *url));
-SLPError slp_receive_srvrply(unsigned long ip, SLPHeader *header, char *data);
-//SLPError slp_send_attrrqst(unsigned long ip, char *req_url, char *tags,
+SLPError slp_receive_srvrply(ip4addr_t ip, SLPHeader *header, char *data);
+//SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags,
 //  void (*callback) (int error, char *attributes));
-SLPError slp_receive_attrrply(unsigned long ip, SLPHeader *header, char *data);
+SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data);
 #endif
 
 /* SA only functions */
 #if SLP_IS_SA
-SLPError slp_send_saadvert(unsigned long ip, uint16_t reply_xid);
-SLPError slp_send_reg(unsigned long ip, bool fresh);
-SLPError slp_send_dereg(unsigned long ip);
-SLPError slp_receive_srvrqst(unsigned long ip, SLPHeader *header, char *data);
-SLPError slp_send_srvrply(unsigned long ip, uint16_t reply_xid, uint16_t error_code);
-SLPError slp_receive_svrack(unsigned long ip, SLPHeader *header, char *data);
+SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid);
+SLPError slp_send_reg(ip4addr_t ip, bool fresh);
+SLPError slp_send_dereg(ip4addr_t ip);
+SLPError slp_receive_srvrqst(ip4addr_t ip, SLPHeader *header, char *data);
+SLPError slp_send_srvrply(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code);
+SLPError slp_receive_svrack(ip4addr_t ip, SLPHeader *header, char *data);
 #endif
 
 /* DA only functions (not supported) */
 #if SLP_IS_DA
-SLPError  slp_send_svrack(unsigned long ip, uint16_t reply_xid, uint16_t error_code);
+SLPError  slp_send_svrack(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code);
 #endif
 
 /****************************************************************/
 // TODO: move this to utility
 // This function compares the two strings, disregarding case.
 // note: GCC has a builtin function of the same name that can be access via __builtin_strcasecmp()
-/*
-static int strcasecmp (const char *s1, const char *s2)
+static int __strcasecmp (const char *s1, const char *s2)
 {
   char  c1, c2;
   int    result = 0;
@@ -245,7 +244,6 @@ static int strcasecmp (const char *s1, const char *s2)
   }
   return result;
 }
-*/
 
 /*
 The following is a list of the major SLP API function calls of openSLP:
@@ -309,7 +307,7 @@ SLPError SLPFindSrvTypes( SLPHandle hslp,
 void da_ip_list(char *str)
 {
   int       x;
-  uint32_t  ip;
+  ip4addr_t ip;
   int       first = SLP_TRUE;
 
   ip = netx_getmyip(0);
@@ -318,9 +316,9 @@ void da_ip_list(char *str)
     ip = da_list[x].ip;
     if (ip) {
       if (first) {
-        sprintf(str, "%s", inet_ntoa(ip));
+        sprintf(str, "%s", ntoa(ip));
       } else {
-        sprintf(str, "%s, %s", str, inet_ntoa(ip));
+        sprintf(str, "%s, %s", str, ntoa(ip));
       }
       first = SLP_FALSE;
     }
@@ -336,8 +334,9 @@ void da_ip_list(char *str)
  */
 void da_clear(void)
 {
-  int x;
-  int protect;
+  int           x;
+  acn_protect_t protect;
+
   protect = ACN_PORT_PROTECT();
   for (x=0;x<MAX_DA;x++) {
     da_delete(da_list[x].ip);
@@ -372,7 +371,7 @@ void da_close(void)
  * params : ip - 32 bit ip address to ack to
  * returns: SLP_OK if OK, or SLP_DA_NOT_FOUND if address was not in our list
  */
-SLPError da_service_ack(unsigned long ip)
+SLPError da_service_ack(ip4addr_t ip)
 {
   int x;
 
@@ -409,14 +408,14 @@ SLPError da_add(SLPDAAdvert *daadvert)
 {
   int     x;
   char    *ip_str;
-  unsigned long ip;
+  ip4addr_t ip;
   int     open = -1;
 
   /* Get ip */
   ip_str = getSLP_STR(&daadvert->url);
   if (ip_str) {
     /* convert string to ip (string MUST be: service:directory-agent://<ip>) */
-    ip = inet_aton(&ip_str[da_req_len + 3]);
+    ip = aton((char *)&ip_str[da_req_len + 3]);
     SLP_FREE(ip_str);
   } else
     ip = -1;
@@ -450,7 +449,7 @@ SLPError da_add(SLPDAAdvert *daadvert)
   /* we should only get here if id did not find one */
   if (open != -1) {
     da_list[open].ip = ip;
-    acnlog(LOG_DEBUG | LOG_SLP , "slp da_add: added DA: %s", inet_ntoa(ip));
+    acnlog(LOG_DEBUG | LOG_SLP , "slp da_add: added DA: %s", ntoa(ip));
     da_list[open].state = DA_CLOSED;
     da_list[open].timeout = CONFIG_DA_BEAT;
     /* if we have an attribute list, then set it to register */
@@ -474,7 +473,7 @@ SLPError da_add(SLPDAAdvert *daadvert)
  * params : ip - 32 bit IP address
  * returns: SLP_OK if OK, or SLP_DA_NOT_FOUND if not found
  */
-SLPError da_delete(unsigned long ip)
+SLPError da_delete(ip4addr_t ip)
 {
   int  x;
 
@@ -578,17 +577,16 @@ void da_dereg(void)
 
   /* now wait for all of them to close */
   /* perhaps this should be non-blocking */
-  // TODO: possbible endless loop
-  do {
-    sleep(500); /* delay 500 ms */
-    valid = 0;
-    for (x=0;x<MAX_DA;x++) {
-      if (da_list[x].state != DA_CLOSED) {
-        valid = 1;
-        break;
-      }
+  // TODO: Timeout should allow for retries.
+  sleep(500); /* delay 500 ms */
+  valid = 0;
+  for (x=0;x<MAX_DA;x++) {
+    if (da_list[x].state != DA_CLOSED) {
+      valid = 1;
+      break;
     }
-  } while (valid);
+  }
+  //TODO: log ones not closed?
 }
 #endif /* SLP_SA */
 
@@ -796,8 +794,8 @@ char *unpackURL_ENTRY(char* data, SLPUrlEntry *urlentry)
 /* called once per SLP_TMR_INTERVAL */
 void slp_tick(void *arg)
 {
-  int  x;
-  int  protect;
+  int            x;
+  acn_protect_t  protect;
 
   SLP_UNUSED_ARG(arg);
 
@@ -945,7 +943,7 @@ void slp_tick(void *arg)
  */
 /******************************************************************************/
 /* FUNCTION TESTED */
-SLPError slp_send_srvrqst(unsigned long ip, char *req_srv_type, char *reg_predicate,
+SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
   void (*callback) (int error, char *url))
 {
   uint32_t     length;
@@ -1080,7 +1078,7 @@ SLPError slp_send_srvrqst(unsigned long ip, char *req_srv_type, char *reg_predic
 // We need to check on partial compare on service type'
 // we need to compare on predicate string
 // May have problems with long pr_list....(wrf)
-SLPError slp_receive_srvrqst(unsigned long ip, SLPHeader *header, char *data)
+SLPError slp_receive_srvrqst(ip4addr_t ip, SLPHeader *header, char *data)
 {
   SLPSrvRequest srv_req;
   char *our_ip;
@@ -1103,7 +1101,7 @@ SLPError slp_receive_srvrqst(unsigned long ip, SLPHeader *header, char *data)
   }
 
   /* convert our IP from ascii to an int */
-  our_ip = inet_ntoa(netx_getmyip(0));
+  our_ip = ntoa(netx_getmyip(0));
 
   /* copy previous response string to a real string. */
   pr_list = getSLP_STR(&srv_req.pr_list);
@@ -1118,21 +1116,21 @@ SLPError slp_receive_srvrqst(unsigned long ip, SLPHeader *header, char *data)
       scope_list = getSLP_STR(&srv_req.scope_list);
       if (scope_list) { /* if we have a string (may be empty) */
         /* check to see if scope is correct or blank */
-        if (scope_list[0] == 0 || (!strcasecmp(scope_list, acn_scope_str))) {
+        if (scope_list[0] == 0 || (!__strcasecmp(scope_list, acn_scope_str))) {
           SLP_FREE(scope_list); /* return the string buffer */
           /* copy service type string to a real string. */
           service_type = getSLP_STR(&srv_req.service_type);
           if (service_type) { /* if we have a string (may be empty) */
             /* check service type */
             /* if service type string = "service:service-agent" */
-            if (!strcasecmp(sa_reg_str, service_type)) {
+            if (!__strcasecmp(sa_reg_str, service_type)) {
               SLP_FREE(service_type); /* return the string buffer */
               /* SEND SAAdvert */
               slp_send_saadvert(ip, header->xid);
             } else {
               /* if service type string = "service:acn.esta" */
-              /* if (!strcasecmp("service:acn.esta", service_type)) { */
-              if (!strcasecmp(srv_type, service_type)) {
+              /* if (!__strcasecmp("service:acn.esta", service_type)) { */
+              if (!__strcasecmp(srv_type, service_type)) {
                 /* yep, that's us... */
                 SLP_FREE(service_type); /* return the string buffer */
                 if (!(header->flags & SLP_FLAG_MCAST)) {
@@ -1297,7 +1295,7 @@ SLPError slp_discover_da(void)
  returns: SLP_OK if sent
 ******************************************************************************/
 /* FUNCTION NOT TESTED (for use without DA) */
-SLPError slp_send_srvrply(unsigned long ip, uint16_t reply_xid, uint16_t error_code)
+SLPError slp_send_srvrply(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code)
 {
   uint32_t     length;
   char        *data;
@@ -1387,7 +1385,7 @@ SLPError slp_send_srvrply(unsigned long ip, uint16_t reply_xid, uint16_t error_c
  params :
  returns: SLP_OK if valid
 ******************************************************************************/
-SLPError slp_receive_srvrply(unsigned long ip, SLPHeader *header, char *data)
+SLPError slp_receive_srvrply(ip4addr_t ip, SLPHeader *header, char *data)
 {
   /* Unpack error code, if OK, unpack URLs and call callback, for each URL?
    * In non-DA mode, these may arrive in multiple packets (multicast request).
@@ -1474,7 +1472,7 @@ SLPError slp_receive_srvrply(unsigned long ip, SLPHeader *header, char *data)
         : non-zero if not valid
 ******************************************************************************/
 /* FUNCTION TESTED */
-SLPError slp_send_reg(unsigned long ip, bool fresh)
+SLPError slp_send_reg(ip4addr_t ip, bool fresh)
 {
   uint32_t     length;
   char        *data;
@@ -1579,7 +1577,7 @@ SLPError slp_send_reg(unsigned long ip, bool fresh)
         : non-zero if not valid
 ******************************************************************************/
 /* FUNCTION TESTED */
-SLPError slp_send_dereg(unsigned long ip)
+SLPError slp_send_dereg(ip4addr_t ip)
 {
   uint32_t     length;
   char        *data;
@@ -1668,7 +1666,7 @@ SLPError slp_send_dereg(unsigned long ip)
         : non-zero if not success
 ******************************************************************************/
 /* FUNCTION NOT TESTED - (for use as DA) */
-SLPError slp_send_svrack(unsigned long ip, uint16_t reply_xid, uint16_t error_code)
+SLPError slp_send_svrack(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code)
 {
   uint32_t     length;
   char        *data;
@@ -1749,7 +1747,7 @@ SLPError slp_send_svrack(unsigned long ip, uint16_t reply_xid, uint16_t error_co
  returns: SLP_OK if success
         : non-zero if not success
 ******************************************************************************/
-SLPError slp_send_attrrqst(unsigned long ip, char *req_url, char *tags,
+SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags,
   void (*callback) (int error, char *attributes))
 {
   uint32_t     length;
@@ -1866,7 +1864,7 @@ SLPError slp_send_attrrqst(unsigned long ip, char *req_url, char *tags,
         :
  returns: SLP_OK
 ******************************************************************************/
-SLPError slp_receive_attrrply(unsigned long ip, SLPHeader *header, char *data)
+SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data)
 {
   /* Unpack error code, if OK, unpack URLs and call callback, for each URL?
    * In non-DA mode, these may arrive in multiple packets (multicast request).
@@ -1935,7 +1933,7 @@ SLPError slp_receive_attrrply(unsigned long ip, SLPHeader *header, char *data)
  returns: SLP_OK
 ******************************************************************************/
 /* FUNCTION TESTED */
-SLPError slp_receive_svrack(unsigned long ip, SLPHeader *header, char *data)
+SLPError slp_receive_svrack(ip4addr_t ip, SLPHeader *header, char *data)
 {
   uint16_t error_code;
 
@@ -1983,7 +1981,7 @@ SLPError slp_receive_svrack(unsigned long ip, SLPHeader *header, char *data)
         : non-zero if not valid
 ******************************************************************************/
 /* FUNCTION TESTED */
-SLPError slp_receive_daadvert(unsigned long ip, SLPHeader *header, char *data)
+SLPError slp_receive_daadvert(ip4addr_t ip, SLPHeader *header, char *data)
 {
 SLPDAAdvert daadvert;
 char       *scope_list;
@@ -2058,7 +2056,7 @@ char       *scope_list;
   /* verify scope */
   scope_list = getSLP_STR(&daadvert.scope_list); /* move scope list to a real string */
   if (scope_list) {
-    if (strcasecmp(scope_list, acn_scope_str)) { /* if != "ACN-DEFAULT" */
+    if (__strcasecmp(scope_list, acn_scope_str)) { /* if != "ACN-DEFAULT" */
       SLP_FREE(scope_list);
       acnlog(LOG_WARNING | LOG_SLP , "slp_receive_daadvert: exit, not scope != %s", acn_scope_str);
       return SLP_OK;
@@ -2124,7 +2122,7 @@ char       *scope_list;
         : non-zero if not valid
 ******************************************************************************/
 /* FUNCTION NOT TESTED (should not be needed for ACN) */
-SLPError slp_send_saadvert(unsigned long ip, uint16_t reply_xid)
+SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
 {
   uint32_t     length;
   char        *data;
@@ -2133,6 +2131,10 @@ SLPError slp_send_saadvert(unsigned long ip, uint16_t reply_xid)
   /* struct ip_addr ipaddr; */
   void        *pkt;
   netx_addr_t  dest_addr;
+
+  /* char        *url; */
+  SLPString   slp_string;
+  SLPHeader   slp_header;
 
   LOG_FSTART();
 
@@ -2146,9 +2148,6 @@ SLPError slp_send_saadvert(unsigned long ip, uint16_t reply_xid)
     return SLP_INTERNAL_SYSTEM_ERROR;
   }
 
-  /* char        *url; */
-  SLPString   slp_string;
-  SLPHeader   slp_header;
   /* SLPUrlEntry slp_urlentry; */
 
   /* create a new udp packet */
@@ -2215,24 +2214,26 @@ SLPError slp_send_saadvert(unsigned long ip, uint16_t reply_xid)
 //static void slp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr, uint16_t port)
 //void slp_recv(char *slp_data, int length, uint32_t ip_addr, int port)
 void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref)
-
 {
   /* slp_data* points to the data in the received UDP message */
   /* length is length of UDP data */
   /* ip_addr is that of the msg source */
   SLPHeader   slp_header;
-  uint32_t    ip_addr;
+  ip4addr_t   ip_addr;
   char        *slp_data;
 
   LOG_FSTART();
 
+  SLP_UNUSED_ARG(dest);
+
   ip_addr = netx_INADDR(source);
+
   slp_data = (char*)data;
 
   /* make sure we have enough bytes.. */
   if (length > 4) {               /* need at least 4 bytes for SLP header */
     if (slp_data[0] == 2) {         /* verify version */
-      /* acnlog(LOG_DEBUG | LOG_SLP , ("slp_recv: from %s: ", inet_ntoa(ip_addr) ) );  */
+      /* acnlog(LOG_DEBUG | LOG_SLP , ("slp_recv: from %s: ", ntoa(ip_addr) ) );  */
 
       /* pass ptr to start of rx SLP msg and load 7 fields of header data into SLPHeader struct */
       slp_data = unpackSLP_HEADER(slp_data, &slp_header);
@@ -2409,12 +2410,16 @@ SLPError slp_open(void)
     /* open port */
     if (netx_udp_open(slp_socket, &localaddr) != 0) {
       acnlog(LOG_DEBUG | LOG_SLP , "slp_open: could not open socket");
+      nsk_free_netsock(slp_socket);
+      slp_socket = NULL;
       return SLP_NETWORK_ERROR;
     }
 
     /* join multicast address */
     if (netx_change_group(slp_socket, slpmcast, netx_JOINGROUP) != 0) {
       netx_udp_close(slp_socket);
+      nsk_free_netsock(slp_socket);
+      slp_socket = NULL;
       acnlog(LOG_DEBUG | LOG_SLP , "slp_open: could not change group addres");
       return SLP_NETWORK_ERROR;
     }
@@ -2435,9 +2440,9 @@ SLPError slp_open(void)
 /* FUNCTION TESTED */
 void slp_close(void)
 {
-  LOG_FSTART();
-
   netxsocket_t *hold_socket;
+
+  LOG_FSTART();
 
   /* can only open once */
   if (!slp_socket) {
@@ -2460,6 +2465,8 @@ void slp_close(void)
   hold_socket = slp_socket;
   /* mark use closed */
   slp_socket = NULL;
+  /* close it */
+  netx_udp_close(hold_socket);
   /* now get rid of it */
   nsk_free_netsock(hold_socket);
 

@@ -51,8 +51,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   */
 /*--------------------------------------------------------------------*/
-static const char *rcsid __attribute__ ((unused)) =
-   "$Id$";
+//static const char *rcsid __attribute__ ((unused)) =
+//   "$Id$";
 
 /* System includes */
 #include <string.h>
@@ -194,20 +194,20 @@ dmp_client_rx_handler(component_t *local_component, component_t *foreign_compone
 	switch(vector) {
 	  case DMP_GET_PROPERTY:
 	    acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_GET_PROPERTY");
-	    app_rx_get_property(local_component, foreign_component, header, datap, data_size);
+	    //app_rx_get_property(local_component, foreign_component, header, datap, data_size);
 	    break;
 	  case DMP_SET_PROPERTY:
 	    acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_SET_PROPERTY");
 	    //app_rx_subscribe(local_component, foreign_component, header, datap, data_size); // DEBUG
-	    app_rx_set_property(local_component, foreign_component, header, datap, data_size);
+	    //app_rx_set_property(local_component, foreign_component, header, datap, data_size);
 	    break;
 	  case DMP_SUBSCRIBE:
 	    acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_SUBSCRIBE");
-	    app_rx_subscribe(local_component, foreign_component, header, datap, data_size);
+	    //app_rx_subscribe(local_component, foreign_component, header, datap, data_size);
 	    break;
 	  case DMP_UNSUBSCRIBE:
 	    acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_UNSUBSCRIBE");
-	    app_rx_unsubscribe(local_component, foreign_component, header, datap, data_size);
+	    //app_rx_unsubscribe(local_component, foreign_component, header, datap, data_size);
 	    break;
 	  case DMP_GET_PROPERTY_REPLY:
 	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_GET_PROPERTY_REPLY not supported..");
@@ -275,7 +275,7 @@ uint8_t* dmp_encode_address_header(dmp_address_t *dmp_address, uint8_t *encode_b
   // TODO: Relative addressing bit..?
 
   // write the Address/Data encoded byte
-  *encode_byte = dmp_address->address_size | dmp_address->address_type;
+  *encode_byte = (uint8_t)(dmp_address->address_size | dmp_address->address_type);
   if (dmp_address->is_virtual) {
   	*encode_byte |= VIRTUAL_ADDRESS_BIT;
   }
@@ -283,13 +283,13 @@ uint8_t* dmp_encode_address_header(dmp_address_t *dmp_address, uint8_t *encode_b
   // write the start address
   switch (dmp_address->address_size) {
     case ONE_OCTET_ADDRESS :
-	  	datap = marshalU8(datap , dmp_address->address_start);
+	  	datap = marshalU8(datap , (uint8_t)dmp_address->address_start);
     	break;
     case TWO_OCTET_ADDRESS :
-	  	datap = marshalU16(datap , dmp_address->address_start);
+	  	datap = marshalU16(datap , (uint8_t)dmp_address->address_start);
     	break;
     case FOUR_OCTET_ADDRESS :
-	  	datap = marshalU32(datap , dmp_address->address_start);
+	  	datap = marshalU32(datap , (uint8_t)dmp_address->address_start);
     	break;
     default:
       acnlog(LOG_WARNING | LOG_DMP,"dmp_encode_address_header: Address length not valid... %x", dmp_address->address_size);
@@ -300,12 +300,12 @@ uint8_t* dmp_encode_address_header(dmp_address_t *dmp_address, uint8_t *encode_b
   	// write the address increment and number of properties
   	switch (dmp_address->address_size) {
   		case ONE_OCTET_ADDRESS:
-		  	datap = marshalU8(datap , dmp_address->address_inc);
-		  	datap = marshalU8(datap , dmp_address->num_props);
+		  	datap = marshalU8(datap , (uint8_t)dmp_address->address_inc);
+		  	datap = marshalU8(datap , (uint8_t)dmp_address->num_props);
   			break;
   		case TWO_OCTET_ADDRESS:
-		  	datap = marshalU16(datap , dmp_address->address_inc);
-		  	datap = marshalU16(datap , dmp_address->num_props);
+		  	datap = marshalU16(datap , (uint16_t)dmp_address->address_inc);
+		  	datap = marshalU16(datap , (uint16_t)dmp_address->num_props);
 	  		break;
   		case FOUR_OCTET_ADDRESS:
 		  	datap = marshalU32(datap , dmp_address->address_inc);

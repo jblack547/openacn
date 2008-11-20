@@ -168,6 +168,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CONFIG_STACK_NETBURNER
 #define CONFIG_STACK_NETBURNER 0
 #endif
+/* Windows (msvcc) stack */
+#ifndef CONFIG_WIN32
+#define CONFIG_WIN32 0
+#endif
+
 
 /*
 In hosts with multiple interfaces (including the loopback interface) it
@@ -324,6 +329,9 @@ as required.
 /*
 Protocols to build
 */
+#ifndef CONFIG_RLP
+#define CONFIG_RLP	   0
+#endif
 #ifndef CONFIG_SDT
 #define CONFIG_SDT	   0
 #endif
@@ -498,7 +506,7 @@ Protocols to build
 
 /************************************************************************/
 /* checks on network stack */
-#if (CONFIG_STACK_BSD + CONFIG_STACK_WINSOCK + CONFIG_STACK_PATHWAY + CONFIG_STACK_LWIP + CONFIG_STACK_NETBURNER) != 1
+#if (CONFIG_STACK_BSD + CONFIG_STACK_WINSOCK + CONFIG_STACK_PATHWAY + CONFIG_STACK_LWIP + CONFIG_STACK_NETBURNER + CONFIG_WIN32) != 1
 #error Need to select exactly one network stack
 #endif
 

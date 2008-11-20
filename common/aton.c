@@ -35,30 +35,44 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     converts 32 bit unsigned integer to a IP address string.
 */
 #include <stdio.h>
+#include <stdlib.h>
 #include "opt.h"
 #include "types.h"
 #include "acn_arch.h"
 #include "inet.h"
 
-#include "ntoa.h"
+#include "aton.h"
 
 /*********************************/
-/* returns ptr to static buffer; not reentrant! */
-char ip_string[16];
-char * ntoa(ip4addr_t ip_addr)
+/* return ip network address from dotted notation */
+/* Note, this very strict. it requres x.x.x.x format. where x is 1 to 3 digits. */
+ip4addr_t aton(char *ip_str)
 {
-  // convert an ip address number into a string
-  uint8_t a,b,c,d;
-  ip_addr = ntohl(ip_addr);
+  // convert an ip string to network order
+  int i;
+  unsigned int ip=0;
+  char *tmp=(char*)ip_str;
 
-  a = (uint8_t)(ip_addr>>24);
-  b = (uint8_t)(ip_addr>>16);
-  c = (uint8_t)(ip_addr>>8);
-  d = (uint8_t)(ip_addr&0xff);
+  for (i=24; ;) {
+    long j;
+    j=strtoul(tmp,&tmp,0);
+    if (*tmp==0) {
+      ip|=j;
+      break;
+    }
+    if (*tmp=='.') {
+      if (j>255) return 0;
+      ip|=(j<<i);
+      if (i>0) i-=8;
+      ++tmp;
+      continue;
+    }
+    return 0;
+  }
+  return htonl(ip);
 
-  sprintf(ip_string,"%d.%d.%d.%d", a,b,c,d);
-
-  return ip_string;
+  //safer but not as portable
+  //return (inet_addr(ip_str));
 }
 
 

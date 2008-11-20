@@ -45,7 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "udp.h"
 #include "multicast.h"
 #include "system.h"  // this is needed for ConfigRecord
-#include "ip_addr.h" 
+#include "ip_addr.h"
 
 #include <startnet.h>
 #include <netinterface.h>
@@ -65,7 +65,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /************************************************************************/
 /* local memory */
 OS_FIFO netx_fifo;    // FIFO to store all incoming UPD packets
-int native_sock = 0;  // we dont really have socket but we need some marker...         
+int native_sock = 0;  // we dont really have socket but we need some marker...
 
 
 #ifdef __cplusplus
@@ -79,9 +79,9 @@ extern "C" {
 void netx_init(void)
 {
   static bool initialized = 0;
-  
+
   acnlog(LOG_DEBUG|LOG_NETX,"netx_init");
-  
+
   if (!initialized) {
     /* init required sub modules */
     nsk_netsocks_init();
@@ -132,27 +132,27 @@ char *netx_txbuf_data(void *pkt)
 */
 int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 {
-  /* open a unicast socket */ 
+  /* open a unicast socket */
   LOG_FSTART();
-    
+
   /* if this socket is already open */
   if (netsock->nativesock) {
     acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : already open");
     return -1;
   }
-  
+
   /* flag that the socket is open */
-  netsock->nativesock = &native_sock;
+  netsock->nativesock = native_sock;
 
   /* save the passed in address/port number into the passed in netxsocket_s struct */
   NSK_PORT(netsock) = LCLAD_PORT(*localaddr);
-  
+
   /* Register for rx UDP packets on this port and put them in this fifo. */
   /* The same fifo is used for each call to this routine. */
   RegisterUDPFifo(NSK_PORT(netsock), &netx_fifo);
-  
+
   acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : open port:%d", NSK_PORT(netsock));
-  
+
   /* Note: A separate thread will call netx_poll() to look for received messages */
   return 0;
 }
@@ -172,11 +172,11 @@ void netx_udp_close(netxsocket_t *netsock)
     acnlog(LOG_WARNING | LOG_NETX, "netx_udp_close : upd not open");
     return;
   }
-  
+
   /* unregister fifo */
   UnregisterUDPFifo(NSK_PORT(netsock));
 
-  /* clear flag that it's in use */ 
+  /* clear flag that it's in use */
   netsock->nativesock = NULL;
 }
 
@@ -196,10 +196,10 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
   if (!is_multicast(local_group)) {
 	 return -1;
   }
-  
-  acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group, port, %d, group: %s", NSK_PORT(netsock), inet_ntoa(local_group));
 
-  /* result = ERR_OK which is defined as zero so return value is consistent */ 
+  acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group, port, %d, group: %s", NSK_PORT(netsock), ntoa(local_group));
+
+  /* result = ERR_OK which is defined as zero so return value is consistent */
   if (operation == netx_JOINGROUP) {
     /* Register to listen for UDP packets on the ACN port with this fifo */
     RegisterMulticastFifo(local_group, NSK_PORT(netsock), &netx_fifo);
@@ -215,7 +215,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
 /*
   netx_send_to()
     Send message to given address
-    The call returns the number of characters sent, or negitive if an error occurred. 
+    The call returns the number of characters sent, or negitive if an error occurred.
 */
 int netx_send_to(
 	netxsocket_t      *netsock,    // contains a flag if port is open and the local port number
@@ -238,32 +238,32 @@ int netx_send_to(
     acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: !nativesock");
     return -1;
   }
-    
+
   if (!pkt) {
     acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: !pkt");
     return -1;
   }
-  
-  
+
+
   /* get dest IP and port from the calling routine */
   dest_addr = netx_INADDR(destaddr);
   dest_port = netx_PORT(destaddr);
 
   /* create a new UDP packet */
-  /* Note: we don' need to copy as we are passing in a UDPPacket  
+  /* Note: we don' need to copy as we are passing in a UDPPacket
    *   get buffer
-   * UDPPacket pkt;	            
+   * UDPPacket pkt;
    *   get address of where data will go in the packet
    * UdpBuffer = pkt.GetDataBuffer();
    *   copy data into packet
    * memcpy(UdpBuffer, data, datalen);
    */
-  
-  ((UDPPacket*)pkt)->SetSourcePort(NSK_PORT(netsock));      
+
+  ((UDPPacket*)pkt)->SetSourcePort(NSK_PORT(netsock));
   ((UDPPacket*)pkt)->SetDestinationPort(dest_port);
-  ((UDPPacket*)pkt)->SetDataSize(datalen);         
+  ((UDPPacket*)pkt)->SetDataSize(datalen);
   // send the packet to destination IP address
-  ((UDPPacket*)pkt)->Send(dest_addr);	
+  ((UDPPacket*)pkt)->Send(dest_addr);
   /* we will assume it all went! */
   /*acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: sent"); */
   return datalen;
@@ -280,7 +280,7 @@ netx_poll(void)
   PBYTE pUDPData;
   netx_addr_t  source;
   netx_addr_t  dest;
-  
+
   //LOG_FSTART();
 
   /* Construct a UDP packet object using the FIFO. */
@@ -302,28 +302,28 @@ netx_poll(void)
 
     /* call our handler */
     //acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: source port: %d", newUDPPacket.GetSourcePort());
-    acnlog(LOG_DEBUG | LOG_NETX,  "netx_poll, source port %d, address: %s", newUDPPacket.GetSourcePort(), inet_ntoa(newUDPPacket.GetSourceAddress()));
-    acnlog(LOG_DEBUG | LOG_NETX,  "netx_poll, dest port %d, address: %s", newUDPPacket.GetDestinationPort(), inet_ntoa(newUDPPacket.GetDestinationAddress()));
-    
-        
-    netx_handler(pUDPData, length, &source, &dest);
+//    acnlog(LOG_DEBUG | LOG_NETX,  "netx_poll, source port %d, address: %s", newUDPPacket.GetSourcePort(), ntoa(newUDPPacket.GetSourceAddress()));
+//    acnlog(LOG_DEBUG | LOG_NETX,  "netx_poll, dest port %d, address: %s", newUDPPacket.GetDestinationPort(), ntoa(newUDPPacket.GetDestinationAddress()));
+
+
+    netx_handler((char *)pUDPData, length, &source, &dest);
     acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handled");
-    
+
     /* send it to the ACN SLP UDP receiver */
     return 0;
   }
   /* Note: the UDP packet is automatically deleted with the call of the destructor here */
   //acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: timeout");
   return 0;
-}      
+}
 
 /************************************************************************/
-/* 
+/*
   netihandler()
-    Socket call back 
+    Socket call back
     This is the routine that gets called when a new UDP message is available.
 */
-void netx_handler(BYTE *data, int length, netx_addr_t *source, netx_addr_t *dest)
+void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest)
 {
   netxsocket_t *socket;
   localaddr_t   host;
@@ -331,18 +331,18 @@ void netx_handler(BYTE *data, int length, netx_addr_t *source, netx_addr_t *dest
   acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: ...");
 
   /* save get destination address */
-#if CONFIG_LOCALIP_ANY  
+#if CONFIG_LOCALIP_ANY
   LCLAD_PORT(host) = netx_PORT(dest);
 #else
   LCLAD_INADDR(host) = netx_INADDR(dest);
   LCLAD_PORT(host) = netx_PORT(dest);
-#endif  
-  
+#endif
+
   /* see if we have anyone registered for this socket */
   socket = nsk_find_netsock(&host);
   if (socket) {
     if (socket->data_callback) {
-      (*socket->data_callback)(socket, data, length, dest, source, NULL);
+      (*socket->data_callback)(socket, (uint8_t *)data, length, dest, source, NULL);
       return;
     }
   }
@@ -358,15 +358,15 @@ void netx_handler(BYTE *data, int length, netx_addr_t *source, netx_addr_t *dest
 #if CONFIG_NET_IPV4
 ip4addr_t netx_getmyip(netx_addr_t *destaddr)
 {
-	int inf;  
+	int inf;
   UNUSED_ARG(destaddr);
-  
+
 	// get interface
   inf = GetFirstInterface();
-  
+
   // force refresh of structure
  	GetIfConfig(inf);		// perhaps this should be done globally once at boot!
- 	
+
  	// get IP
   return InterfaceIP(inf);
 }
@@ -379,15 +379,15 @@ ip4addr_t netx_getmyip(netx_addr_t *destaddr)
 */
 ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
 {
-	int inf;  
+	int inf;
   UNUSED_ARG(destaddr);
-  
+
 	// get interface
   inf = GetFirstInterface();
-  
+
   // force refresh of structure
  	GetIfConfig(inf);		// perhaps this should be done globally once at boot!
- 	
+
  	// get IP Mask
   return InterfaceMASK(inf);
 }

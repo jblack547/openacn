@@ -47,8 +47,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*=========================================================================*/
 #define SLP_UNUSED_ARG(x) (void)x
 
-#define SLP_RESERVED_PORT       427
-#define SLP_MCAST_ADDRESS       0xeffffffd  // 239.255.255.253
+#define SLP_RESERVED_PORT       htons(427)
+#define SLP_MCAST_ADDRESS       htonl(0xeffffffd)  // 239.255.255.253
 
 #define SLP_VERSION             2
 #define SLP_TTL					        16

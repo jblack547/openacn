@@ -40,6 +40,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "types.h"
 #include "uuid.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /************************************************************************/
 /*
 WARNING
@@ -49,78 +53,79 @@ Many of the marshal/unmarshal macros evaluate their arguments multiple times
 #if CONFIG_MARSHAL_INLINE
 #include "string.h"
 
-static inline uint8_t *marshalU8(uint8_t *data, uint8_t u8)
+static __inline uint8_t *marshalU8(uint8_t *data, uint8_t u8)
 {
 	*data++ = u8;
 	return data;
 }
 
-static inline uint8_t *marshalU16(uint8_t *data, uint16_t u16)
+static __inline uint8_t *marshalU16(uint8_t *data, uint16_t u16)
 {
 	data[0] = u16 >> 8;
-	data[1] = u16;
+	data[1] = (uint8_t)(u16);
 	return data + 2;
 }
 
-static inline uint8_t *marshalU32(uint8_t *data, uint32_t u32)
+static __inline uint8_t *marshalU32(uint8_t *data, uint32_t u32)
 {
 	data[0] = u32 >> 24;
-	data[1] = u32 >> 16;
-	data[2] = u32 >> 8;
-	data[3] = u32;
+	data[1] = (uint8_t)(u32 >> 16);
+	data[2] = (uint8_t)(u32 >> 8);
+	data[3] = (uint8_t)(u32);
 	return data + 4;
 }
 
-static inline uint8_t *marshalUUID(uint8_t *data, const uint8_t *uuid)
+static __inline uint8_t *marshalUUID(uint8_t *data, const uint8_t *uuid)
 {
 	return (uint8_t *)memcpy(data, uuid, sizeof(uuid_t)) + sizeof(uuid_t);
 }
 
-static inline uint8_t *marshalVar(uint8_t *data, const uint8_t *src, uint16_t size)
+static __inline uint8_t *marshalVar(uint8_t *data, const uint8_t *src, uint16_t size)
 {
 	memcpy( marshalU16(data, size + 2), src, size);
 	return data + size + 2;	
 }
 
-static inline uint8_t *marshal_p_string(uint8_t *data, const p_string_t *str)
+static __inline uint8_t *marshal_p_string(uint8_t *data, const p_string_t *str)
 {
 	return marshalVar(data, str->value, str->length);
 }
 
-static inline uint8_t unmarshalU8(const uint8_t *data)
+static __inline uint8_t unmarshalU8(const uint8_t *data)
 {
 	return *data;
 }
 
-static inline uint16_t unmarshalU16(const uint8_t *data)
+static __inline uint16_t unmarshalU16(const uint8_t *data)
 {
 	return (data[0] << 8) | data[1];
 }
 
-static inline uint32_t unmarshalU32(const uint8_t *data)
+static __inline uint32_t unmarshalU32(const uint8_t *data)
 {
 	return (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
 }
 
-static inline uint8_t *unmarshalUUID(const uint8_t *data, uint8_t *uuid)
+static __inline uint8_t *unmarshalUUID(const uint8_t *data, uint8_t *uuid)
 {
 	return (uint8_t *)memcpy(uuid, data, sizeof(uuid_t));
 }
 
-static inline uint16_t unpackVar(const uint8_t *data, uint8_t *dest)
+static __inline uint16_t unpackVar(const uint8_t *data, uint8_t *dest)
 {
 	uint16_t len = unmarshalU16(data) - 2;
 	memcpy(dest, data + 2, len);
 	return len;
 }
 
-static inline p_string_t *unmarshal_p_string(const uint8_t *data, p_string_t *str)
+static __inline p_string_t *unmarshal_p_string(const uint8_t *data, p_string_t *str)
 {
 	str->length = unpackVar(data, str->value);
 	return str;
 }
 
 #else
+#include <string.h>
 
 #define marshalU8(datap, u8) (*(uint8_t *)(datap) = (uint8_t)(u8), (uint8_t *)(datap) + 1)
 #define unmarshalU8(datap) (*(uint8_t *)(datap))
@@ -157,12 +162,12 @@ static inline p_string_t *unmarshal_p_string(const uint8_t *data, p_string_t *st
 							((uint8_t *)(srcp)), \
 							((uint16_t)(len)) \
 						) + ((uint16_t)(len)) \
-					) 
+					)
 
-static inline uint16_t unpackVar(uint8_t *data, uint8_t *dest)
+static uint16_t unpackVar(const uint8_t *data, uint8_t *dest)
 {
 	uint16_t len = unmarshalU16(data) - 2;
-	memcpy(dest, data + sizeof(uint16_t), len;
+	memcpy(dest, data + sizeof(uint16_t), len);
 	return len;
 }
 
@@ -176,5 +181,10 @@ static inline uint16_t unpackVar(uint8_t *data, uint8_t *dest)
 						), ((p_string_t *)(str)) \
 					)
 #endif
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif	/* __marshal_h__ */

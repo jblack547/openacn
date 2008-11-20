@@ -1,5 +1,5 @@
-#ifndef __NETBURNER_SOCKETS_H__
-#define __NETBURNER_SOCKETS_H__
+#ifndef __SOCKETS_H__
+#define __SOCKETS_H__
 
 #if CONFIG_STACK_NETBURNER /* don't build if not configured for use  */
 
@@ -16,4 +16,4 @@ struct sockaddr_in {
 
 #endif /* CONFIG_STACK_NETBURNER */
 
-#endif /* __NETBURNER_SOCKETS_H__ */
+#endif /* __SOCKETS_H__ */

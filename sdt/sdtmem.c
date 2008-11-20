@@ -39,8 +39,8 @@ This module is separated from the main SDT to allow customization of memory
 handling.
 
 */
-static const char *rcsid __attribute__ ((unused)) =
-   "$Id$";
+//static const char *rcsid __attribute__ ((unused)) =
+//   "$Id$";
 
 #include "opt.h"
 #include "types.h"

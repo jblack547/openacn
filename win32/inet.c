@@ -1,7 +1,7 @@
 /*--------------------------------------------------------------------*/
 /*
 
-Copyright (c) 2007, Pathway Connectivity Inc.
+Copyright (c) 2008, Electronic Theatre Controls, Inc.
 
 All rights reserved.
 
@@ -34,69 +34,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 /*--------------------------------------------------------------------*/
-/* Universally Unique Identifier (UUID). RFC 4122 */
 
-#ifndef __uuid_h__
-#define __uuid_h__ 1
-
-#include <stdio.h>
+#include <stdlib.h>
 #include "opt.h"
 #include "types.h"
+#include "acn_arch.h"
+
+#if CONFIG_WIN32
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/*
-For most purposes a UUID is simply an array of 16 octets
-*/
-#define UUIDSIZE 16
-#define UUID_STR_SIZE 37  /* includeing null termination */
-
-/* conflict in MSVC++ */
-#ifdef uuid_t
-#undef uuid_t
-#endif
-
-typedef uint8_t uuid_t[UUIDSIZE];
-
-const static uuid_t  null_cid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
-/*
-  Macros to access the internal structure
-  Fields are in Network byte order
-*/
-#define UUID_TIME_LOW(uuid) ntohl(*(uint32_t *)(uuid))
-#define UUID_TIME_MID(uuid) ntohs(*(uint16_t *)((uuid) + 4))
-#define UUID_TIME_HIV(uuid) ntohs(*(uint16_t *)((uuid) + 6))
-#define UUID_CLKSEQ_HI(uuid) (*((uuid) + 8))
-#define UUID_CLKSEQ_LOW(uuid) (*((uuid) + 9))
-#define UUID_NODE(uuid) ((uuid) + 10)
-
-int textToUuid(const char *uuidText, uuid_t uuidp);
-char *uuidToText(const uuid_t uuidp, char *uuidText);
-
-#define uuidIsEqual(uuid1, uuid2) (memcmp(uuid1, uuid2, sizeof(uuid_t)) == 0)
-#define uuidNull(uuid) (memset(uuid, 0, sizeof(uuid_t)))
-//#define uuidIsNull(uuid) (memcmp(uuid, (uuid_t){0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, sizeof(uuid_t)) == 0)
-#define uuidIsNull(uuid) (memcmp(uuid, &null_cid, sizeof(uuid_t)) == 0)
-#define uuidCopy(uuid1, uuid2) (memcpy(uuid1, uuid2, sizeof(uuid_t)))
-
-#if !defined(uuidIsEqual)
-int uuidIsEqual(const uuid_t uuid1, const uuid_t uuid2);
-#endif
-#if !defined(uuidNull)
-void uuidNull(uuid_t uuid);
-#endif
-#if !defined(uuidIsNull)
-int  uuidIsNull(const uuid_t uuid);
-#endif
-#if !defined(uuidCopy)
-void uuidCopy(uuid_t uuid1, const uuid_t uuid2);
-#endif
-
 #ifdef __cplusplus
-}
+}extern "C" {
 #endif
 
-#endif /* __uuid_h__ */
+#endif /* CONFIG_WIN32 */
+

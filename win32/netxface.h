@@ -48,22 +48,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "epi20.h"
 #endif
 
-#if CONFIG_STACK_NETBURNER
-#include "sockets.h"
+#if CONFIG_WIN32
+#include "winsock.h"
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+//TODO: make correct size: 1500?
+typedef char UDPPacket[1800];
+
 #if CONFIG_NET_IPV4
 #ifndef HAVE_port_t
   typedef uint16_t port_t;  /* net endpoint is a port */
   #define HAVE_port_t
-#endif
-
-#ifndef HAVE_ip4addr_t
-  typedef uint32_t ip4addr_t; /* net group is a multicast address */
-  #define HAVE_ip4addr_t
 #endif
 
 #ifndef HAVE_groupaddr_t
@@ -121,18 +120,12 @@ typedef void netx_callback_t (
 #define netx_FAMILY AF_INET
 #endif /* CONFIG_NET_IPV4 */
 
-typedef int netx_nativeSocket_t; // there is no native structure for netburner, so we use an int
+typedef SOCKET netx_nativeSocket_t;
 typedef struct sockaddr_in netx_addr_t;
-/*
-struct sockaddr_in {
-  uint16_t sin_port;
-  uint32_t sin_addr;
-  char sin_zero[8];
-};
-*/
-// operations performed on netx_addr_t
+
+/* operations performed on netx_addr_t */
 #define netx_PORT(addrp) (addrp)->sin_port
-#define netx_INADDR(addrp) (addrp)->sin_addr
+#define netx_INADDR(addrp) (addrp)->sin_addr.s_addr
 #define netx_INIT_ADDR_STATIC(inaddr, port) {netx_FAMILY, port, inaddr}
 #define netx_INIT_ADDR(addrp, inaddr, port) ( \
 		(addrp)->sin_family = netx_FAMILY, \
@@ -256,6 +249,6 @@ SDT packets use a standard transport address format for address and port which m
 }
 #endif
 
-#endif /* CONFIG_STACK_NETBURNER */
+#endif /* CONFIG_WIN32 */
 
 #endif	/* #ifndef __netxface_h__ */

@@ -1,5 +1,5 @@
-#ifndef __NETBURNER_IP_ADDR_H__
-#define __NETBURNER_IP_ADDR_H__
+#ifndef __IP_ADDR_H__
+#define __IP_ADDR_H__
 
 #if CONFIG_STACK_NETBURNER /* don't build if not configured for use  */
 

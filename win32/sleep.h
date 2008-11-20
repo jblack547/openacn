@@ -29,37 +29,11 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
-
-  Description:
-    converts 32 bit unsigned integer to a IP address string.
+  $Id$
 */
-#include <stdio.h>
-#include "opt.h"
-#include "types.h"
-#include "acn_arch.h"
-#include "inet.h"
+#ifndef SLEEP_H_
+#define SLEEP_H_
 
-#include "ntoa.h"
+void sleep(int mseconds);
 
-/*********************************/
-/* returns ptr to static buffer; not reentrant! */
-char ip_string[16];
-char * ntoa(ip4addr_t ip_addr)
-{
-  // convert an ip address number into a string
-  uint8_t a,b,c,d;
-  ip_addr = ntohl(ip_addr);
-
-  a = (uint8_t)(ip_addr>>24);
-  b = (uint8_t)(ip_addr>>16);
-  c = (uint8_t)(ip_addr>>8);
-  d = (uint8_t)(ip_addr&0xff);
-
-  sprintf(ip_string,"%d.%d.%d.%d", a,b,c,d);
-
-  return ip_string;
-}
-
-
-
+#endif /*SLEEP_H_*/

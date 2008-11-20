@@ -55,8 +55,8 @@ Notes:
 
 */
 /*--------------------------------------------------------------------*/
-static const char *rcsid __attribute__ ((unused)) =
-   "$Id$";
+//static const char *rcsid __attribute__ ((unused)) =
+//   "$Id$";
 
 #include <string.h>
 #include <stdio.h>
@@ -279,10 +279,9 @@ sdt_join(component_t *local_component, component_t *foreign_component)
 int
 sdt_startup(bool acceptAdHoc)
 {
-  LOG_FSTART();
-
   localaddr_t localaddr;
 
+  LOG_FSTART();
 
   /* prevent reentry */
   if (sdt_state != ssCLOSED) {
@@ -475,12 +474,13 @@ sdt_del_component(component_t *component)
   acn_protect_t  protect;
   sdt_member_t  *member;
 
-  assert(component);
 
   #if LOG_DEBUG | LOG_SDT
   char  uuid_text[37];
   uuidToText(component->cid, uuid_text);
   #endif
+
+  assert(component);
 
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_component: %s", uuid_text);
 
@@ -1487,19 +1487,20 @@ sdt_format_client_block(uint8_t *client_block, uint16_t foreign_mid, uint32_t pr
 /*
   Convert seconds to system units
  */
-static inline
+static __inline
 uint32_t
 sec_to_ticks(int time_in_sec)
 {
   return time_in_sec * 1000;
 }
 
-static inline
+static __inline
 uint32_t
 msec_to_ticks(int time_in_msec)
 {
   return time_in_msec;
 }
+
 
 /*****************************************************************************/
 /*
@@ -1520,10 +1521,10 @@ msec_to_ticks(int time_in_msec)
 int
 sdt_tx_join(component_t *local_component, component_t *foreign_component, bool is_reciprocal)
 {
-  sdt_member_t  *local_member;
-  sdt_member_t  *foreign_member;
-  sdt_channel_t *local_channel;
-  sdt_channel_t *foreign_channel;
+  sdt_member_t  *local_member = NULL;
+  sdt_member_t  *foreign_member = NULL;
+  sdt_channel_t *local_channel = NULL;
+  sdt_channel_t *foreign_channel = NULL;
   uint8_t *buf_start;
   uint8_t *buffer;
   int      allocations = 0;
@@ -1534,15 +1535,17 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component, bool i
   assert(local_component);
   assert(foreign_component);
 
-  auto void remove_allocations(void);
-  void remove_allocations(void) {
-    if (allocations & ALLOCATED_LOCAL_MEMBER) sdt_del_member(foreign_channel, local_member);
-//    if (allocations & ALLOCATED_FOREIGN_LISTENER) rlp_del_listener(sdt_multicast_socket, foreign_channel->listener);
-    if (allocations & ALLOCATED_FOREIGN_CHANNEL) sdt_del_channel(foreign_component);
-//    if (allocations & ALLOCATED_FOREIGN_COMP) sdt_del_component(foreign_component);
-    if (allocations & ALLOCATED_FOREIGN_MEMBER) sdt_del_member(local_channel, foreign_member);
+//  auto void remove_allocations(void);
+//  void remove_allocations(void) {
+#undef remove_allocations
+#define remove_allocations() \
+    if (allocations & ALLOCATED_LOCAL_MEMBER) sdt_del_member(foreign_channel, local_member); \
+/*    if (allocations & ALLOCATED_FOREIGN_LISTENER) rlp_del_listener(sdt_multicast_socket, foreign_channel->listener); */ \
+    if (allocations & ALLOCATED_FOREIGN_CHANNEL) sdt_del_channel(foreign_component); \
+/*    if (allocations & ALLOCATED_FOREIGN_COMP) sdt_del_component(foreign_component); */ \
+    if (allocations & ALLOCATED_FOREIGN_MEMBER) sdt_del_member(local_channel, foreign_member); \
     if (allocations & ALLOCATED_LOCAL_CHANNEL)  sdt_del_channel(local_component);
-  }
+//  }
 
   local_channel = local_component->tx_channel;
   foreign_channel = foreign_component->tx_channel;
@@ -1934,13 +1937,14 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
   uint16_t        local_channel_number;
 
   uint16_t         local_mid;
-  component_t     *local_component;
-  component_t     *foreign_component;
+  component_t     *local_component = NULL;
+  component_t     *foreign_component = NULL;
 
-  sdt_channel_t   *foreign_channel;
-  sdt_channel_t   *local_channel;
-  sdt_member_t    *local_member;
-  sdt_member_t    *foreign_member;
+  sdt_channel_t   *foreign_channel = NULL;
+  sdt_channel_t   *local_channel = NULL;
+  sdt_member_t    *local_member = NULL;
+  sdt_member_t    *foreign_member = NULL;
+
   uint32_t         foreign_total_seq;
   uint32_t         foreign_reliable_seq;
 
@@ -1952,14 +1956,16 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
 
   LOG_FSTART();
 
-  auto void remove_allocations(void);
-  void remove_allocations(void) {
-    if (allocations & ALLOCATED_LOCAL_MEMBER) sdt_del_member(foreign_channel, local_member);
-    if (allocations & ALLOCATED_FOREIGN_LISTENER) rlp_del_listener(sdt_multicast_socket, foreign_channel->listener);
-    if (allocations & ALLOCATED_FOREIGN_CHANNEL) sdt_del_channel(foreign_component);
-    if (allocations & ALLOCATED_FOREIGN_COMP) sdt_del_component(foreign_component);
+//  auto void remove_allocations(void);
+//  void remove_allocations(void) {
+#undef remove_allocations
+#define remove_allocations() \
+    if (allocations & ALLOCATED_LOCAL_MEMBER) sdt_del_member(foreign_channel, local_member); \
+    if (allocations & ALLOCATED_FOREIGN_LISTENER) rlp_del_listener(sdt_multicast_socket, foreign_channel->listener); \
+    if (allocations & ALLOCATED_FOREIGN_CHANNEL) sdt_del_channel(foreign_component); \
+    if (allocations & ALLOCATED_FOREIGN_COMP) sdt_del_component(foreign_component); \
     if (allocations & ALLOCATED_LOCAL_CHANNEL) sdt_del_channel(local_component);
-  }
+//  }
 
   /* verify data length */
   if (data_len < 40) {
@@ -3029,7 +3035,7 @@ sdt_tx_leave(component_t *local_component, component_t *foreign_component, sdt_m
   sdt_channel_t *foreign_channel;
   sdt_channel_t *local_channel;
   uint8_t       *pdup;
-  uint32_t       pdu_size;
+  uint16_t       pdu_size;
 
   LOG_FSTART();
 
@@ -3114,7 +3120,7 @@ sdt_tx_connect(component_t *local_component, component_t *foreign_component, uin
   sdt_channel_t *foreign_channel;
   sdt_channel_t *local_channel;
   uint8_t       *pdup;
-  uint32_t       pdu_size;
+  uint16_t       pdu_size;
 
   LOG_FSTART();
 
@@ -3207,7 +3213,7 @@ sdt_tx_connect_accept(component_t *local_component, component_t *foreign_compone
   sdt_channel_t *foreign_channel;
   sdt_channel_t *local_channel;
   uint8_t       *pdup;
-  uint32_t       pdu_size;
+  uint16_t       pdu_size;
 
   LOG_FSTART();
 
@@ -3305,7 +3311,7 @@ sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, 
   sdt_channel_t *foreign_channel;
   sdt_channel_t *local_channel;
   uint8_t       *pdup;
-  uint32_t       pdu_size;
+  uint16_t       pdu_size;
 
   LOG_FSTART();
 
@@ -3399,7 +3405,7 @@ sdt_tx_disconnecting(component_t *local_component, component_t *foreign_componen
   sdt_channel_t *foreign_channel;
   sdt_channel_t *local_channel;
   uint8_t       *pdup;
-  uint32_t       pdu_size;
+  uint16_t       pdu_size;
 
   LOG_FSTART();
 
@@ -3630,7 +3636,7 @@ sdt_tx_reliable_data(component_t *local_component, component_t *foreign_componen
   sdt_channel_t *local_channel;
   uint16_t       association;
   uint8_t       *pdup;
-  uint32_t       pdu_size;
+  uint16_t       pdu_size;
 
   LOG_FSTART();
 
@@ -3698,7 +3704,7 @@ sdt_tx_reliable_data(component_t *local_component, component_t *foreign_componen
   datagram += data_len;
 
   /* add length to client block pdu */
-  marshalU16(client_block, (10+data_len) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  marshalU16(client_block, (uint16_t)(10+data_len) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add length to wrapper pdu */
   pdu_size = datagram-wrapper;
@@ -4273,7 +4279,7 @@ void sdt_stats(void)
     #endif
     port = netx_PORT(&component->adhoc_addr);
     addr = netx_INADDR(&component->adhoc_addr);
-    acnlog(LOG_INFO | LOG_STAT, "ad_hoc: %s: %d", inet_ntoa(addr), port);
+    acnlog(LOG_INFO | LOG_STAT, "ad_hoc: %s: %d", ntoa(addr), port);
     acnlog(LOG_INFO | LOG_STAT, "ad_hoc_exp: %d", component->adhoc_expires_at);
     acnlog(LOG_INFO | LOG_STAT, "auto_created: %d", component->auto_created);
     channel = component->tx_channel;
@@ -4282,10 +4288,10 @@ void sdt_stats(void)
       acnlog(LOG_INFO | LOG_STAT, " avail mid: %d", channel->available_mid);
       port = netx_PORT(&channel->destination_addr);
       addr = netx_INADDR(&channel->destination_addr);
-      acnlog(LOG_INFO | LOG_STAT, " dest_addr: %s: %d", inet_ntoa(addr), port);
+      acnlog(LOG_INFO | LOG_STAT, " dest_addr: %s: %d", ntoa(addr), port);
       port = netx_PORT(&channel->source_addr);
       addr = netx_INADDR(&channel->source_addr);
-      acnlog(LOG_INFO | LOG_STAT, " source_addr: %s: %d", inet_ntoa(addr), port);
+      acnlog(LOG_INFO | LOG_STAT, " source_addr: %s: %d", ntoa(addr), port);
       acnlog(LOG_INFO | LOG_STAT, " total_seq: %d", channel->total_seq);
       acnlog(LOG_INFO | LOG_STAT, " reliable_seq: %d", channel->reliable_seq);
       acnlog(LOG_INFO | LOG_STAT, " oldest_avail: %d", channel->oldest_avail);

@@ -29,37 +29,56 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+	$Id: semahore.cpp 122 2008-11-13 17:43:41Z bflorac $
 
   Description:
-    converts 32 bit unsigned integer to a IP address string.
+    wrapper for OS semaphore.
 */
-#include <stdio.h>
+
 #include "opt.h"
+#if NEVER /* NOT USED AT THE MOMENT */
+
 #include "types.h"
 #include "acn_arch.h"
-#include "inet.h"
 
-#include "ntoa.h"
+#include "constants.h"
 
-/*********************************/
-/* returns ptr to static buffer; not reentrant! */
-char ip_string[16];
-char * ntoa(ip4addr_t ip_addr)
+#include "semaphore.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+OS_SEM MySemaphore;
+
+void *new_semephore()
 {
-  // convert an ip address number into a string
-  uint8_t a,b,c,d;
-  ip_addr = ntohl(ip_addr);
 
-  a = (uint8_t)(ip_addr>>24);
-  b = (uint8_t)(ip_addr>>16);
-  c = (uint8_t)(ip_addr>>8);
-  d = (uint8_t)(ip_addr&0xff);
-
-  sprintf(ip_string,"%d.%d.%d.%d", a,b,c,d);
-
-  return ip_string;
+	OSSemInit(& MySemaphore,0);
+	OSSemPost(& MySemaphore); // Add one to the semaphores value
+	return NULL;
 }
 
+void *give_semephore()
+{
+	return NULL;
+}
 
+void *get_semephore()
+{
+	if (OSSemPend(& MySemaphore, 5*TICKS_PER_SECOND)==OS_TIMEOUT) {
+
+	}
+
+
+		// We timed out the 5 seconds}else {// We got the semaphore}
+
+	return NULL;
+}
+
+#ifdef __cplusplus
+}
+#endif /* CONFIG_STACK_NETBURNER */
+
+#endif
 

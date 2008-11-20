@@ -94,11 +94,11 @@ typedef sint8_t int8_t;
 /* 16-bit types */
 #ifndef __HAVE_uint16_t
   #if (UINT_MAX == 65535)
-  typedef unsigned int uint16_t;
-  #define __HAVE_uint16_t 1
-#elif (USHRT_MAX == 65535)
-  typedef unsigned short uint16_t;
-  #define __HAVE_uint16_t 1
+    typedef unsigned int uint16_t;
+    #define __HAVE_uint16_t 1
+  #elif (USHRT_MAX == 65535)
+    typedef unsigned short uint16_t;
+    #define __HAVE_uint16_t 1
   #endif
 #endif
 
@@ -154,6 +154,10 @@ typedef sint8_t int8_t;
   #endif
 #endif /* #ifdef NEED_INT64 */
 
+#ifndef HAVE_ip4addr_t
+  typedef uint32_t ip4addr_t; /* ip address as a long */
+  #define HAVE_ip4addr_t
+#endif
 
 #define PACKED __attribute__((__packed__))
 #define UNUSED_ARG(x) (void)(x)
@@ -162,7 +166,7 @@ typedef sint8_t int8_t;
 typedef struct
 {
 	uint16_t length;
-	uint8_t value[0];
+	uint8_t  *value;   //value[0];
 } p_string_t;
 
 //#include "user_types.h"

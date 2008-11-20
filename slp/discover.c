@@ -39,6 +39,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //5.1.2.	RFRs
 //Under the well known DCID (CAB91A8C-CC44-49b1-9398-1EF5C07C31C9):
 
+//TODO: change printf to acnlog...
+
 /* Lib includes */
 #include <stdlib.h>
 
@@ -116,7 +118,7 @@ static void create_attr_list(char *new_attr_list, component_t *component)
     }
 		
     // convert the IP string
-    ip_str = inet_ntoa(netx_getmyip(0));
+    ip_str = ntoa(netx_getmyip(0));
     
     // create the attribute string for SLP discovery
     sprintf(new_attr_list, attr_list_fmt, cid_str, component->fctn, component->uacn, ip_str, SDT_ADHOC_PORT, access_str, dcid_str, ip_str);
@@ -154,6 +156,28 @@ static void create_url(char *new_url, component_t *component)
 */
 /* Callback when we receive a reply from our attribute request */
 // for DA builds
+
+bool get_attribute_str(char** next_attr, char**attr_str)
+{
+  char *s;
+  char *e;
+  /* find '(' */
+  s = strchr(*next_attr, '(');
+  if (s) {
+    s = s + 1;
+    /* now find mataching */
+    e = strchr(s, ')');
+    if (e) {
+      *next_attr = e + 1;
+      *e = 0;
+      *attr_str = s;
+      return 1;
+    }
+  }
+  *attr_str = NULL;
+  return 0;
+}
+
 static void attrrqst_callback(int error, char *attr_list)
 {
   uuid_t  cid;
@@ -168,7 +192,7 @@ static void attrrqst_callback(int error, char *attr_list)
   component_t *comp = NULL;
 
   uint32_t  ip = 0;
-  uint32_t  port = 0;
+  uint16_t  port = 0;
 
   char *next_attr;
   char *attr_str;
@@ -177,6 +201,8 @@ static void attrrqst_callback(int error, char *attr_list)
   char *e;
 
   /* local function to get attribute block */
+  //TODO: do we need auto below
+#ifdef NEVER
   auto bool get_attribute_str(void);
   bool get_attribute_str(void)
   {
@@ -198,13 +224,14 @@ static void attrrqst_callback(int error, char *attr_list)
     attr_str = NULL;
     return 0;
   }
+#endif
 
   if (!error) {
     printf("attrrqst callback: %s\n",attr_list);
     /* start from the first one */
     next_attr = attr_list;
     /* and rip thru each attribute block */
-    while (get_attribute_str()) {
+    while (get_attribute_str(&next_attr, &attr_str)) {
       /* 0 = match */
       /* CID ? */
       if (!strncmp(attr_str, "cid=", 4)) {
@@ -247,7 +274,7 @@ static void attrrqst_callback(int error, char *attr_list)
           } else {
             /* get ip */
             strncpy(ip_str, s, e-s);
-            ip = inet_aton(ip_str);
+            ip = aton(ip_str);
             /* got ip, now get port */
             s = e+1;
             e = strchr(s, ';');
@@ -284,14 +311,16 @@ static void attrrqst_callback(int error, char *attr_list)
   }
 
   /* create a component for this CID */
+#if CONFIG_SDT
   if (!uuidIsNull(cid)) {
   	// use the CID to get the address of the component structure 
+    //why is this commeted out?
     //comp = sdt_find_component(cid);  // COMMENTED OUT
     // if it was found
     if (comp) {
       uuidCopy(comp->dcid, dcid);
-      netx_PORT(&comp->adhoc_addr) = port;
-      netx_INADDR(&comp->adhoc_addr) = ip;
+      netx_PORT(&comp->adhoc_addr) = htons(port);
+      netx_INADDR(&comp->adhoc_addr) = htonl(ip);
     } else {
       /* create a new component struct at the end of the list */
       comp = sdt_add_component(cid, dcid, false, accUNKNOWN); 
@@ -299,11 +328,12 @@ static void attrrqst_callback(int error, char *attr_list)
         return;
       }
     }
-    netx_PORT(&comp->adhoc_addr) = port;
-    netx_INADDR(&comp->adhoc_addr) = ip;
+    netx_PORT(&comp->adhoc_addr) = htons(port);
+    netx_INADDR(&comp->adhoc_addr) = htonl(ip);
     strcpy(comp->fctn, fctn_str);
     strcpy(comp->uacn, uacn_str);
   }
+#endif /* CONFIG_SDT */
 }
 
 #if SLP_IS_UA

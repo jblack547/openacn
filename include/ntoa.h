@@ -39,12 +39,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "types.h"
 
+
+
 /*********************************/
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-char * ntoa(uint32_t n);
+char * ntoa(ip4addr_t n);
 
 #ifdef __cplusplus
 }

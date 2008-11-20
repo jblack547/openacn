@@ -50,16 +50,16 @@ uint16_t dyn_mask;
 
 /************************************************************************/
 /* local version of ffs to avoid complexities in compiler               */
-static inline int ffs_1(register int x) 
-{ 
-  int p; 
-  if (x == 0) 
-    { return 0; } 
+static __inline int ffs_1(register int x)
+{
+  int p;
+  if (x == 0)
+    { return 0; }
 
-  for (p = 1; (x & 1) == 0; p++) 
-    { x >>= 1; } 
+  for (p = 1; (x & 1) == 0; p++)
+    { x >>= 1; }
 
-  return p; 
+  return p;
 }
 
 /************************************************************************/
@@ -67,13 +67,13 @@ static inline int ffs_1(register int x)
   Initialize the Multicast Address allocation algorithm.
   Returns -1 for failure (invalid scopemask).
   If scopeaddr == 0 use the epi10 default address and mask
-  
+
   All masks and addresses are passed in Network byte order
 */
 
 int mcast_alloc_init(
-	ip4addr_t scopeaddr, 
-	ip4addr_t scopemask, 
+	ip4addr_t scopeaddr,
+	ip4addr_t scopemask,
 	component_t *comp
 )
 {
@@ -133,7 +133,7 @@ From epi10 r4:
 #ifndef mcast_alloc_new
 groupaddr_t mcast_alloc_new(local_component_t *comp)
 {
-	
+
 	return scope_and_host | htonl((uint32_t)(dyn_mask & comp->dyn_mcast++));
 }
 #endif

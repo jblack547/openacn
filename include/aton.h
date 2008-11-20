@@ -30,36 +30,28 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 	$Id$
-
+  
   Description:
-    converts 32 bit unsigned integer to a IP address string.
+    Header file for aton.c
 */
-#include <stdio.h>
-#include "opt.h"
-#include "types.h"
-#include "acn_arch.h"
-#include "inet.h"
+#ifndef __ATON_H__
+#define __ATON_H__
 
-#include "ntoa.h"
+#include "types.h"
+
+
 
 /*********************************/
-/* returns ptr to static buffer; not reentrant! */
-char ip_string[16];
-char * ntoa(ip4addr_t ip_addr)
-{
-  // convert an ip address number into a string
-  uint8_t a,b,c,d;
-  ip_addr = ntohl(ip_addr);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-  a = (uint8_t)(ip_addr>>24);
-  b = (uint8_t)(ip_addr>>16);
-  c = (uint8_t)(ip_addr>>8);
-  d = (uint8_t)(ip_addr&0xff);
+ip4addr_t aton(char *ip_str);
 
-  sprintf(ip_string,"%d.%d.%d.%d", a,b,c,d);
-
-  return ip_string;
+#ifdef __cplusplus
 }
+#endif
 
+#endif //__ATON_H__
 
 

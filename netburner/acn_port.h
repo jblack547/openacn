@@ -44,6 +44,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "includes.h"       // netburner types
 #include "have_types.h"
 
+#define printf(format, ...) iprintf(format, ##__VA_ARGS__)
+
 extern OS_CRIT DASemaphore; // semaphore to protect directory agent list
 #define ACN_PORT_PROTECT()        0;OSLock()//OSCritEnter(&DASemaphore, 0)
 #define ACN_PORT_UNPROTECT(pval)  OSUnlock()//OSCritLeave(&DASemaphore)
