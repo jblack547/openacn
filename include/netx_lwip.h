@@ -38,19 +38,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 
-#if CONFIG_STACK_WIN32 && !defined(__netx_win32_h__)
-#define __netx_win32_h__ 1
+#if CONFIG_STACK_LWIP && !defined(__netx_lwip_h__)
+#define __netx_lwip_h__ 1
 
-#include "winsock.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/* UDPPACKETSIZE is max size of Ethernet packet - see epi20 for discussion */
-#define UDPPACKETSIZE 1514
-
-typedef char UDPPacket[UDPPACKETSIZE];
+#include "lwip/udp.h"
+#include "lwip/sockets.h"
+#include "lwip/netif.h"
+#include "lwip/igmp.h"
+#include "lwip/pbuf.h"
+#include "lwip/sys.h"
+#include "netif/etharp.h"
 
 #if CONFIG_NET_IPV4
 #ifndef HAVE_port_t
@@ -109,19 +106,27 @@ typedef void netx_callback_t (
 
 /************************************************************************/
 
-
 #if CONFIG_NET_IPV4
 #define netx_FAMILY AF_INET
 #endif /* CONFIG_NET_IPV4 */
 
-typedef SOCKET netx_nativeSocket_t;
+typedef struct udp_pcb *netx_nativeSocket_t;
 typedef struct sockaddr_in netx_addr_t;
-
+/*
+struct sockaddr_in {
+  u8_t sin_len;
+  u8_t sin_family;
+  u16_t sin_port;
+  struct in_addr sin_addr;
+  char sin_zero[8];
+};
+*/
 /* operations performed on netx_addr_t */
 #define netx_PORT(addrp) (addrp)->sin_port
 #define netx_INADDR(addrp) (addrp)->sin_addr.s_addr
-#define netx_INIT_ADDR_STATIC(inaddr, port) {netx_FAMILY, port, inaddr}
+#define netx_INIT_ADDR_STATIC(inaddr, port) {sizeof(struct sockaddr_in), netx_FAMILY, (port), {inaddr}}
 #define netx_INIT_ADDR(addrp, inaddr, port) ( \
+		(addrp)->sin_len = sizeof(struct sockaddr_in), \
 		(addrp)->sin_family = netx_FAMILY, \
 		netx_INADDR(addrp) = (inaddr), \
 		netx_PORT(addrp) = (port) \
@@ -131,7 +136,7 @@ typedef struct sockaddr_in netx_addr_t;
 
 typedef struct netxsocket_s netxsocket_t;
 
-/* FIXME is netx_process_packet_t used? */
+/* FIXME is netx_process_packet_t used */
 typedef void netx_process_packet_t (
     netxsocket_t        *socket,
     const uint8_t       *data,
@@ -146,7 +151,6 @@ typedef void netx_process_packet_t (
 struct netsocket_s {
 	netx_nativeSocket_t nativesock;
 	port_t localaddr;
-	netx_process_packet_t *data_callback;   /* pointer to call back when data is available */
 };
 
 /* operations when looking at netxsock_t */
@@ -196,16 +200,14 @@ extern void  netx_free_txbuf(void *pkt);
 extern char *netx_txbuf_data(void *pkt);
 
 /* operation argument for netx_change_group */
-#define netx_JOINGROUP 1
-#define netx_LEAVEGROUP 0
+#define netx_JOINGROUP IP_ADD_MEMBERSHIP
+#define netx_LEAVEGROUP IP_DROP_MEMBERSHIP
 
-/************************************************************************/
 #if CONFIG_NET_IPV4
 ip4addr_t netx_getmyip(netx_addr_t *destaddr);
 ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 #endif /* CONFIG_NET_IPV4 */
 
-/************************************************************************/
 #ifndef netx_PORT_NONE
 #define netx_PORT_NONE 0
 #endif
@@ -226,8 +228,5 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 #define netx_INIT_ADDR(addrp, addr, port) (netx_INADDR(addrp) = (addr), netx_PORT(addrp) = (port))
 #endif
 
-#ifdef __cplusplus
-}
-#endif
 
-#endif	/* #if CONFIG_STACK_WIN32 && !defined(__netx_win32_h__) */
+#endif	/* #if CONFIG_STACK_LWIP && !defined(__netx_lwip_h__) */
