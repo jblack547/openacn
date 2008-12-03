@@ -79,20 +79,20 @@ extern "C" {
                                ((uint32_t)((c) & 0xff) << 8) | \
                                 (uint32_t)((d) & 0xff))
 
-//#define htons(x) (x)
-//#define ntohs(x) (x)
-//#define htonl(x) (x)
-//#define ntohl(x) (x)
+/* #define htons(x) (x) */
+/* #define ntohs(x) (x) */
+/* #define htonl(x) (x) */
+/* #define ntohl(x) (x) */
 
 #endif	/* CONFIG_NET_IPV4 */
 
 typedef void netx_callback_t (
-  //component_event_t state,
-  void *param1,  // does not seem to be used but might hold the addr of the callback routine
+  /* component_event_t state, */
+  void *param1,  /* does not seem to be used but might hold the addr of the callback routine */
   void *param2
 );
 
-//****************************************************************************************
+/************************************************************************/
 /*
   We use each stack's native structure for holding transport layer (UDP) addresses.
   This information is typedef'd to netx_addr_t.
@@ -115,13 +115,13 @@ typedef void netx_callback_t (
 
 */
 
-//****************************************************************************************
+/************************************************************************/
 
 #if CONFIG_NET_IPV4
 #define netx_FAMILY AF_INET
 #endif /* CONFIG_NET_IPV4 */
 
-typedef int netx_nativeSocket_t; // there is no native structure for netburner, so we use an int
+typedef int netx_nativeSocket_t; /* there is no native structure for netburner, so we use an int */
 typedef struct sockaddr_in netx_addr_t;
 /*
 struct sockaddr_in {
@@ -130,7 +130,7 @@ struct sockaddr_in {
   char sin_zero[8];
 };
 */
-// operations performed on netx_addr_t
+/* operations performed on netx_addr_t */
 #define netx_PORT(addrp) (addrp)->sin_port
 #define netx_INADDR(addrp) (addrp)->sin_addr
 #define netx_INIT_ADDR_STATIC(inaddr, port) {netx_FAMILY, port, inaddr}
@@ -151,7 +151,7 @@ typedef void netx_process_packet_t (
     void                *ref
 );
 
-//****************************************************************************************
+/************************************************************************/
 #if CONFIG_LOCALIP_ANY
 struct netxsocket_s {
   netx_nativeSocket_t    nativesock;      /* pointer to native socket structure */
@@ -172,7 +172,7 @@ struct netxsocket_s {
 #define LCLAD_PORT(x)   x
 #define LCLAD_INADDR(x) netx_INADDR_ANY  /* zero */
 
-//#define netx_LCLADDR(x) netx_PORT(x)
+/* #define netx_LCLADDR(x) netx_PORT(x) */
 
 #else /* !CONFIG_LOCALIP_ANY */
 
@@ -190,13 +190,13 @@ typedef netx_addr_t    *localaddr_t;
 #define LCLAD_PORT(x)   netx_PORT(x)
 #define LCLAD_INADDR(x) netx_INADDR(x)
 
-//#define netx_LCLADDR(x) (x)
+/* #define netx_LCLADDR(x) (x) */
 
 #endif /* !CONFIG_LOCALIP_ANY */
 
 
-//****************************************************************************************
-// function prototypes for netxface.c
+/************************************************************************/
+/* function prototypes for netxface.c */
 void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest);
 
 extern void  netx_init(void);
@@ -212,18 +212,18 @@ extern char *netx_txbuf_data(void *pkt);
 
 
 
-//****************************************************************************************
+/************************************************************************/
 #define netx_JOINGROUP 1
 #define netx_LEAVEGROUP 0
 
 
-//****************************************************************************************
+/************************************************************************/
 #if CONFIG_NET_IPV4
 ip4addr_t netx_getmyip(netx_addr_t *destaddr);
 ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 #endif /* CONFIG_NET_IPV4 */
 
-//****************************************************************************************
+/************************************************************************/
 #if CONFIG_SDT
 /*
 SDT packets use a standard transport address format for address and port which may differ from native format
