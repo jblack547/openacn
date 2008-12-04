@@ -53,12 +53,16 @@ For most purposes a UUID is simply an array of 16 octets
 #define UUIDSIZE 16
 #define UUID_STR_SIZE 37  /* includeing null termination */
 
-/* conflict in MSVC++ */
+/* msvc++ has this defined so we need to undefine it */
 #ifdef uuid_t
 #undef uuid_t
 #endif
 
+/* generic uuid as array */
 typedef uint8_t uuid_t[UUIDSIZE];
+
+/* same by another name */
+typedef uuid_t cid_t;
 
 const static uuid_t  null_cid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
@@ -76,9 +80,9 @@ const static uuid_t  null_cid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 int textToUuid(const char *uuidText, uuid_t uuidp);
 char *uuidToText(const uuid_t uuidp, char *uuidText);
 
+/* Macro version of functions */
 #define uuidIsEqual(uuid1, uuid2) (memcmp(uuid1, uuid2, sizeof(uuid_t)) == 0)
 #define uuidNull(uuid) (memset(uuid, 0, sizeof(uuid_t)))
-//#define uuidIsNull(uuid) (memcmp(uuid, (uuid_t){0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, sizeof(uuid_t)) == 0)
 #define uuidIsNull(uuid) (memcmp(uuid, &null_cid, sizeof(uuid_t)) == 0)
 #define uuidCopy(uuid1, uuid2) (memcpy(uuid1, uuid2, sizeof(uuid_t)))
 

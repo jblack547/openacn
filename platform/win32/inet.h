@@ -34,64 +34,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   Description:
     Header file for ntoa.c
 */
+
+/*
+	Here we can define/redefine ntoa(), aton(), htonl(), htons(), ntohl() ntohs() 
+*/
 #ifndef __INET_H__
 #define __INET_H__
 
 #include "opt.h"
 #include "types.h"
 #include "acn_arch.h"
-#include "ntoa.h"
-#include "aton.h"
 
+#include "ntoa.h" /* acn provided */
+#include "aton.h" /* acn provided */
 #include "ip_addr.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef CONFIG_WIN32
-
-/* ascii to network */
-//uint32_t inet_aton(const char *cp);
-
-/* network to ascii */
-//char *   inet_ntoa(uint32_t n);
-//#define inet_ntoa(x) ntoa(x)
-
-#ifdef NEVER
-
-#ifdef htons
-#undef htons
-#endif /* htons */
-
-#ifdef htonl
-#undef htonl
-#endif /* htonl */
-
-#ifdef ntohs
-#undef ntohs
-#endif /* ntohs */
-
-#ifdef ntohl
-#undef ntohl
-#endif /* ntohl */
-
-
-#if BYTE_ORDER == BIG_ENDIAN
- #define htons(x) (x)
- #define ntohs(x) (x)
- #define htonl(x) (x)
- #define ntohl(x) (x)
-#else /* BYTE_ORDER != BIG_ENDIAN */
- #error !BIG_INDIAN NOT SUPPORTED YET
-#endif /* BYTE_ORDER == BIG_ENDIAN */
-
-#endif
-
-#endif /* CONFIG_STACK_WIN32 */
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __INET_H__ */

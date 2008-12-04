@@ -34,65 +34,69 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 /*--------------------------------------------------------------------*/
-
 #include "opt.h"
 #include "types.h"
 #include "acn_arch.h"
 #include "uuid.h"
-#include <ctype.h>  /* POSSIBLE COMPILER DEPENDENDENCY */
 
+/* stack independent calls usually found in ctype.h*/
+#ifndef isdigit
+	#define isdigit(c)	((c) >= '0' && (c) <= '9')
+#endif
+#ifndef isxdigit
+	#define isxdigit(c)	(isdigit((c)) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
+#endif
+
+/******************************************************************************/
+/* Convert text based UUID to uuit_t 
+ * Input format example: D1F6F109-8A48-4435-8157-A226604DEA89
+ * Returns 0 OK or non-zere if error in format found
+ */
 int textToUuid(const char *uuidText, uuid_t uuidp)
 {
 	uint8_t *bytp;
 	uint16_t byt;
 
-	byt = 1;	//bit provides a shift marker
+	byt = 1;	/* bit provides a shift marker */
 
-	for (bytp = uuidp; bytp < uuidp + UUIDSIZE; ++uuidText)
-	{
-		if (*uuidText == '-') continue;	//ignore dashes
-		if (isdigit(*uuidText))
-		{
+	for (bytp = uuidp; bytp < uuidp + UUIDSIZE; ++uuidText) {
+		if (*uuidText == '-') continue;	/* ignore dashes */
+		if (isdigit(*uuidText)) {
 			byt = (byt << 4) | (*uuidText - '0');
-		}
-		else if (isxdigit(*uuidText))
-		{
-			byt = (byt << 4) | (toupper(*uuidText) - 'A' + 10);
-		}
-		else
-		{
-			while (bytp < uuidp + UUIDSIZE) *bytp++ = 0;
-			return -1;	//error terminates
-		}
-		if (byt >= 0x100)
-		{
+		} else 
+			if (isxdigit(*uuidText)) {
+			  byt = (byt << 4) | (toupper(*uuidText) - 'A' + 10);
+		  } else {
+			  while (bytp < uuidp + UUIDSIZE) *bytp++ = 0;
+			  return -1;	//error terminates
+			}
+		if (byt >= 0x100) {
 			*bytp++ = (uint8_t)byt;
-			byt = 1;	//restore shift marker
+			byt = 1;	/* restore shift marker */
 		}
 	}
-	//FIXME - check for terminated input string here (what termination is allowed?)
+	//TODO: - check for terminated input string here (what termination is allowed?)
 	return 0;
 }
 
 const char hexdig[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 #define tohex(nibble) hexdig[nibble]
 
+/******************************************************************************/
 /*
 Make a string from a UUID
-return pointer to end of string
+Returns pointer to end of string
 */
 char *uuidToText(const uuid_t uuidp, char *uuidText)
 {
 	int octet;
 
-	for(octet = 0; octet < 16; octet++)
-	{
+	for (octet = 0; octet < 16; octet++) {
 		*uuidText++ = tohex(*uuidp >> 4);
 		*uuidText++ = tohex(*uuidp & 0x0f);
 		++uuidp;
 
-		switch(octet)
-		{
+		switch(octet) {
 			case 3 :
 			case 5 :
 			case 7 :
@@ -109,6 +113,10 @@ char *uuidToText(const uuid_t uuidp, char *uuidText)
 /* Also see MACROS defined in header */
 #if !defined(uuidIsEqual)
 /*****************************************************************************/
+/*
+ * Compares 2 UUIDs
+ * Returns non-zero if equal.
+ */
 int uuidIsEqual(const uuid_t uuid1, const uuid_t uuid2)
 {
 	int count = 16;
@@ -119,6 +127,9 @@ int uuidIsEqual(const uuid_t uuid1, const uuid_t uuid2)
 #endif
 
 #if !defined(uuidNull)
+/* 
+ * Fulls UUID with zeros
+ */
 /*****************************************************************************/
 void uuidNull(uuid_t uuid)
 {
@@ -132,9 +143,13 @@ void uuidNull(uuid_t uuid)
 
 #if !defined(uuidIsNull)
 /*****************************************************************************/
+/* 
+ * Test UUID to see if is NULL
+ * Returns non-zero if NULL
+ */
 int uuidIsNull(const uuid_t uuid)
 {
-  return uuidIsEqual(uuid, (uuid_t){0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
+  return uuidIsEqual(uuid, null_cid);
 }
 #endif
 

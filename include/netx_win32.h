@@ -143,40 +143,44 @@ typedef void netx_process_packet_t (
 
 /************************************************************************/
 #if CONFIG_LOCALIP_ANY
-struct netsocket_s {
-	netx_nativeSocket_t nativesock;
-	port_t localaddr;
-	netx_process_packet_t *data_callback;   /* pointer to call back when data is available */
+struct netxsocket_s {
+  netx_nativeSocket_t    nativesock;      /* pointer to native socket structure */
+  port_t                 localaddr;       /* local address */
+  netx_process_packet_t *data_callback;   /* pointer to call back when data is available */
 };
 
 /* operations when looking at netxsock_t */
-#define NSK_PORT(x) ((x).localaddr)
-#define NSK_INADDR(x) netx_INADDR_ANY
+#define NSK_PORT(x)     ((x)->localaddr)
+#define NSK_INADDR(x)   netx_INADDR_ANY
 
 #ifndef HAVE_localaddr_t
-	typedef port_t          localaddr_t;
-	#define HAVE_localaddr_t
+  typedef port_t          localaddr_t;
+  #define HAVE_localaddr_t
 #endif
 
 /* operation when looking at localaddr_t */
-#define LCLAD_PORT(x) x
-#define LCLAD_INADDR(x) netx_INADDR_ANY
-#define netx_LCLADDR(x) netx_PORT(x)
+#define LCLAD_PORT(x)   x
+#define LCLAD_INADDR(x) netx_INADDR_ANY  /* zero */
+
+//#define netx_LCLADDR(x) netx_PORT(x)
 
 #else /* !CONFIG_LOCALIP_ANY */
 
-struct netsocket_s {
-	netx_nativeSocket_t nativesock;
-	netx_addr_t localaddr;
+struct netxsocket_s {
+	netx_nativeSocket_t   *nativesock;     /* pointer to native socket structure */
+	netx_addr_t            localaddr;      /* local address */
+  netx_process_packet_t *data_callback;  /* pointer to call back when data is available */
 };
-#define NSK_PORT(x) netx_PORT(&(x).localaddr)
-#define NSK_INADDR(x) netx_INADDR(&(x).localaddr)
 
-typedef netx_addr_t *localaddr_t;
+#define NSK_PORT(x)   netx_PORT(&(x)->localaddr)
+#define NSK_INADDR(x) netx_INADDR(&(x)->localaddr)
 
-#define LCLAD_PORT(x) netx_PORT(x)
+typedef netx_addr_t    *localaddr_t;
+
+#define LCLAD_PORT(x)   netx_PORT(x)
 #define LCLAD_INADDR(x) netx_INADDR(x)
-#define netx_LCLADDR(x) (x)
+
+//#define netx_LCLADDR(x) (x)
 
 #endif /* !CONFIG_LOCALIP_ANY */
 

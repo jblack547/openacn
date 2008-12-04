@@ -153,8 +153,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define	CONFIG_STACK_BSD       0
 #endif
 /* Winsock sockets */
-#ifndef CONFIG_STACK_WINSOCK
-#define	CONFIG_STACK_WINSOCK   0
+#ifndef CONFIG_STACK_WIN32
+#define	CONFIG_STACK_WIN32   0
 #endif
 /* LightweightIP (LWIP) stack */
 #ifndef CONFIG_STACK_LWIP
@@ -167,10 +167,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* Netburner sockets */
 #ifndef CONFIG_STACK_NETBURNER
 #define CONFIG_STACK_NETBURNER 0
-#endif
-/* Windows (msvcc) stack */
-#ifndef CONFIG_WIN32
-#define CONFIG_WIN32 0
 #endif
 
 
@@ -506,7 +502,7 @@ Protocols to build
 
 /************************************************************************/
 /* checks on network stack */
-#if (CONFIG_STACK_BSD + CONFIG_STACK_WINSOCK + CONFIG_STACK_PATHWAY + CONFIG_STACK_LWIP + CONFIG_STACK_NETBURNER + CONFIG_WIN32) != 1
+#if (CONFIG_STACK_BSD + CONFIG_STACK_WIN32 + CONFIG_STACK_PATHWAY + CONFIG_STACK_LWIP + CONFIG_STACK_NETBURNER) != 1
 #error Need to select exactly one network stack
 #endif
 

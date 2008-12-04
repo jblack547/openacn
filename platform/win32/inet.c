@@ -40,15 +40,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "types.h"
 #include "acn_arch.h"
 
-#if CONFIG_WIN32
+#if CONFIG_STACK_WIN32
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-#ifdef __cplusplus
-}extern "C" {
-#endif
-
-#endif /* CONFIG_WIN32 */
+#endif /* CONFIG_STACK_WIN32 */
 

@@ -34,7 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef HAVE_TYPES_H_
 #define HAVE_TYPES_H_
 
-#if CONFIG_STACK_NETBURNER
+/* define these if your stack has duplicate defines */
+#if NEVER
 #define __HAVE_uint8_t 1
 #define __HAVE_int8_t 1
 #define __HAVE_uint16_t 1

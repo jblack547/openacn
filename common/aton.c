@@ -44,11 +44,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "aton.h"
 
 /*********************************/
-/* return ip network address from dotted notation */
-/* Note, this very strict. it requres x.x.x.x format. where x is 1 to 3 digits. */
+/* return ip network address from dotted notation 
+ * Note, this very strict. it requres x.x.x.x format. where x is 1 to 3 digits.
+ * there is also a safer but not as portable: inet_addr(ip_str)
+ */
 ip4addr_t aton(char *ip_str)
 {
-  // convert an ip string to network order
+  /* convert an ip string to network order */
   int i;
   unsigned int ip=0;
   char *tmp=(char*)ip_str;
@@ -70,9 +72,6 @@ ip4addr_t aton(char *ip_str)
     return 0;
   }
   return htonl(ip);
-
-  //safer but not as portable
-  //return (inet_addr(ip_str));
 }
 
 

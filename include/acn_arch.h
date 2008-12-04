@@ -44,8 +44,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 typedef uint32_t protocolID_t;
 #define PROTO_NONE 0
 
-typedef uuid_t cid_t;
-
 /* PDU flags */
 /* flag and length field is 16 bits */
 #define LENGTH_FLAG    0x8000

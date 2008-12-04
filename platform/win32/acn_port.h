@@ -40,34 +40,40 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opt.h"
 
-#if CONFIG_WIN32
+#if CONFIG_STACK_WIN32
 #include "Windows.h"
 
+// ignore warnings:
+/* This function or variable may be unsafe. Consider using xxx instead. 
+   To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. */
+/* #define _CRT_SECURE_NO_WARNINGS <- does not seem to work*/
 #pragma warning(disable:4996)
 
-//#define __func__ __FUNCDNAME__
+/* msvsc++ uses a different prefix */
 #define __func__ __FUNCTION__
 
 #include "have_types.h"
 
-
 //TODO: need to define this!
 //extern OS_CRIT DASemaphore; // semaphore to protect directory agent list
+typedef int acn_protect_t;
 #define ACN_PORT_PROTECT()        acn_port_protect()
 #define ACN_PORT_UNPROTECT(x)     acn_port_unprotect(x)
-
-typedef int acn_protect_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* prevent other threads */
 acn_protect_t  acn_port_protect(void);
+/* allow other threads */
 void           acn_port_unprotect(acn_protect_t param);
+
 #ifdef __cplusplus
 }
 #endif
 
 
-#endif /* CONFIG_WIN32 */
+#endif /* CONFIG_STACK_WIN32 */
 
 #endif

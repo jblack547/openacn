@@ -45,10 +45,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "semaphore.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 OS_SEM MySemaphore;
 
 void *new_semephore()
@@ -75,10 +71,6 @@ void *get_semephore()
 
 	return NULL;
 }
-
-#ifdef __cplusplus
-}
-#endif /* CONFIG_STACK_NETBURNER */
 
 #endif
 

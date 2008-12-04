@@ -38,22 +38,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opt.h"
 
-#if CONFIG_WIN32
+#if CONFIG_STACK_WIN32
 #include "Windows.h"
 #include "types.h"
 #include "acn_arch.h"
+#include "sleep.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+/* OS dependent Sleep function */
 void sleep(int mseconds)
 {
   Sleep(mseconds); /*  */
 }
 
-#ifdef __cplusplus
-}
-#endif
-#endif /* CONFIG_WIN32 */
+#endif /* CONFIG_STACK_WIN32 */
 

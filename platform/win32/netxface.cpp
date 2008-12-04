@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "types.h"
 #include "acn_arch.h"
 
-#if CONFIG_WIN32
+#if CONFIG_STACK_WIN32
 #include <malloc.h>
 #include <winsock.h>
 #include <Windows.h>
@@ -55,10 +55,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /************************************************************************/
 #define INPACKETSIZE DEFAULT_MTU
 #define LOG_FSTART() acnlog(LOG_DEBUG | LOG_NETX, "%s :...", __func__)
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /************************************************************************/
 /* local memory */
@@ -461,8 +457,5 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
   return 0;
 }
 
-#ifdef __cplusplus
-}
-#endif
 #endif	/* CONFIG_NET_IPV4 */
 
