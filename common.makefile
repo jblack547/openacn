@@ -32,32 +32,51 @@
 # 	$Id$
 # 
 ##########################################################################
-
 #
 # Makefile common to all (or most) subdirectories
 #
-
-ARCH:=${shell uname -m}
-
-ifeq (,$ARCH)
-ifeq (Windows_NT,${OS})
-ARCH:=${PROCESSOR_ARCHITECTURE}
-endif
-endif
-
+# Although in the top directory, it is read in the context of a sub
+# directory.
 #
-# Deal with variants on i486 i586 etc.
+# Sub-directories which are immediately beneath TOPDIR
+# should normally just include this file. Others should define
+# TOPDIR first
 #
-ifneq (,${patsubst i%86,i386,${ARCH}})
-ifeq (,${wildcard ${TOPDIR}/include/arch-${ARCH}})
-ARCH:=${patsubst i%86,i386,${ARCH}}
-endif
+# e.g.
+#   TOPDIR:=../..
+#   include ${TOPDIR}/common.makefile
+#
+ifeq "${TOPDIR}" ""
+# Default TOPDIR to ..
+TOPDIR:=..
 endif
 
+##########################################################################
+# Set up C compiler options and compile rules
+#
 CFLAGS:=
 CFLAGS+=-O2
 CFLAGS+= -std=c99 -Wall -Wextra -Wno-uninitialized
-CFLAGS+=-I ${TOPDIR}/include
 CFLAGS+=-D_XOPEN_SOURCE=600 -D_BSD_SOURCE=1
 
-VPATH:=common rlp sdt dmp test
+${OBJDIR}/%.o: %.c
+	${CC} ${CFLAGS} ${CPPFLAGS} ${TARGET_ARCH} -c -o$@ $<
+
+ifeq "${OBJS}" ""
+OBJS:=${patsubst %.c,${OBJDIR}/%.o,${wildcard *.c}}
+endif
+
+ifeq "${LIBNAME}" ""
+LIBNAME:=${notdir ${shell pwd}}.a
+endif
+
+.PHONY: all ts
+
+all: ${LIBDIR}/${LIBNAME}
+
+${LIBDIR}/${LIBNAME}: ${OBJS}
+	ar rcs $@ ${OBJS}
+
+ts:
+	@echo ${LIBNAME}
+
