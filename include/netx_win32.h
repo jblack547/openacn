@@ -162,7 +162,7 @@ struct netxsocket_s {
 #define LCLAD_PORT(x)   x
 #define LCLAD_INADDR(x) netx_INADDR_ANY  /* zero */
 
-//#define netx_LCLADDR(x) netx_PORT(x)
+/* #define netx_LCLADDR(x) netx_PORT(x) */
 
 #else /* !CONFIG_LOCALIP_ANY */
 
@@ -180,7 +180,7 @@ typedef netx_addr_t    *localaddr_t;
 #define LCLAD_PORT(x)   netx_PORT(x)
 #define LCLAD_INADDR(x) netx_INADDR(x)
 
-//#define netx_LCLADDR(x) (x)
+/* #define netx_LCLADDR(x) (x) */
 
 #endif /* !CONFIG_LOCALIP_ANY */
 
