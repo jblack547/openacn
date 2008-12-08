@@ -84,4 +84,4 @@ ip4addr_t aton(const char *ip_str);
 }
 #endif
 
-#endif //__ATON_H__
+#endif /* __ATON_H__ */
