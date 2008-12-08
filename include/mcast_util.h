@@ -47,7 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #if CONFIG_EPI10
 int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, component_t *comp);
-//extern int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, component_t *comp);
+/* extern int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, component_t *comp); */
 /*
   mcast_alloc_new can be a macro
 */

@@ -257,10 +257,10 @@ as required.
 
   CONFIG_ACNLOG options are:
 
-  ACNLOG_NONE		//Logging is compiled out
-  ACNLOG_SYSLOG		//Log using POSIX Syslog
-  ACNLOG_STDOUT		//Log to standard output (default)
-  ACNLOG_STDERR		//Log to standard error
+  ACNLOG_NONE		- Logging is compiled out
+  ACNLOG_SYSLOG		- Log using POSIX Syslog
+  ACNLOG_STDOUT		- Log to standard output (default)
+  ACNLOG_STDERR		- Log to standard error
 
   Syslog handles logging levels itself and CONFIG_LOGLEVEL is ignored.
   For other options Messages up to CONFIG_LOGLEVEL are logged & levels
@@ -542,12 +542,12 @@ Protocols to build
 #endif
 
 /************************************************************************/
-//TODO: wrf combine these into one define?
-// Sanity check for memory RLP managment
+/* TODO: wrf combine these into one define? */
+/* Sanity check for memory RLP managment */
 #if (CONFIG_RLPMEM_MALLOC + CONFIG_RLPMEM_STATIC) != 1
 #error Need to select one RLP memory managment model
 #endif
-// Sanity check for memory SDT managment
+/* Sanity check for memory SDT managment */
 #if (CONFIG_SDTMEM_MALLOC + CONFIG_SDTMEM_STATIC) != 1
 #error Need to select one SDT memory managment model
 #endif

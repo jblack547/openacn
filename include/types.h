@@ -50,7 +50,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Work out what we can automatically
 */
 #include <limits.h>
-//#include <stddef.h>
+/*
+#include <stddef.h>
+*/
 
 #ifndef true
 #define true 1
@@ -161,10 +163,10 @@ typedef sint8_t int8_t;
 #define UNUSED_ARG(x) (void)(x)
 #define bool uint8_t
 
-typedef struct
+typedef struct p_string_s
 {
 	uint16_t length;
-	uint8_t  *value;   //value[0];
+	uint8_t  *value;   /* value[0]; */
 } p_string_t;
 
 #include "user_types.h"

@@ -35,7 +35,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 
-//#include <stddef.h>
+/*
+#include <stddef.h>
+*/
 #include <string.h>
 #include "opt.h"
 #include "types.h"

@@ -40,7 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opt.h"
 
-// wrf - borrowed from FreeBSD
+/* wrf - borrowed from FreeBSD */
 /* facility codes */
 #define LOG_KERN        (0<<3)  /* kernel messages */
 #define LOG_USER        (1<<3)  /* random user-level messages */
@@ -96,8 +96,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define acnopenlog(ident, option, facility) openlog(ident, option, facility)
 #define acncloselog() closelog()
 #define acnlog(priority, ...) if (priority >= 0) SysLog(__VA_ARGS__)
-//#define acnlog(priority, ...) if (priority >= 0) syslog(priority, __VA_ARGS__)
-//#define acnlog(priority, ...) if (priority >= 0) iprintf(__VA_ARGS__)
+/* #define acnlog(priority, ...) if (priority >= 0) syslog(priority, __VA_ARGS__) */
+/* #define acnlog(priority, ...) if (priority >= 0) iprintf(__VA_ARGS__) */
 /* void  openlog (const char *ident, int option, int facility) */
 /* void  syslog (int priority, const char *format, ...) */
 /* void  closelog (void) */
@@ -110,9 +110,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define acnopenlog(ident, option, facility)
 #define acncloselog()
 #define acnlog(priority, format, ...) if (((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) printf(format"\n", ##__VA_ARGS__)
-//#define acnlog(priority, format, ...) if (((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) iprintf("%d:"format"\n", time(0), ##__VA_ARGS__)
+/* #define acnlog(priority, format, ...) if (((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) iprintf("%d:"format"\n", time(0), ##__VA_ARGS__) */
 
-//#define acnlog(priority, format, ...) ((((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) ? iprintf(format"\n", ##__VA_ARGS__) : (void)0)
+/* #define acnlog(priority, format, ...) ((((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) ? iprintf(format"\n", ##__VA_ARGS__) : (void)0) */
 
 #elif CONFIG_ACNLOG == ACNLOG_STDERR
 

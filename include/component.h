@@ -49,11 +49,11 @@ Information structures and handling relating to components
 #include "byteorder.h"
 
 #if CONFIG_DMP
-//#include "dmp.h"
+/* #include "dmp.h" */
 #endif
 
 #if CONFIG_SDT
-//#include "sdt.h"
+/* #include "sdt.h" */
 #endif
 
 
@@ -69,7 +69,7 @@ Information structures and handling relating to components
   as pointers to it may be stored and dereferenced at a later time.
 */
 
-// my device type
+/* my device type */
 typedef enum
 {
   accUNKNOWN,
@@ -88,18 +88,18 @@ typedef enum
 
 typedef void component_callback_t (
   component_event_t state,
-  void *param1,  // does not seem to be used but might hold the addr of the callback routine
+  void *param1,  /* does not seem to be used but might hold the addr of the callback routine */
   void *param2
 );
 #endif
 
 typedef struct component_s
 {
-  cid_t cid;  // component ID
-  cid_t dcid; // discoverer CID?
+  cid_t cid;  /* component ID */
+  cid_t dcid; /* discoverer CID? */
   char  fctn[ACN_FCTN_SIZE];  
   char  uacn[ACN_UACN_SIZE];
-  access_t   access;  // if I am device or controller
+  access_t   access;  /* if I am device or controller */
   bool       is_local;
   #if CONFIG_EPI10
 	  uint16_t dyn_mcast;
@@ -108,7 +108,7 @@ typedef struct component_s
     netx_addr_t   adhoc_addr;
 	  int           adhoc_expires_at;
     bool          auto_created;
-	  struct component_s   *next;  // pointer to next component in linked list
+	  struct component_s   *next;  /* pointer to next component in linked list */
     struct sdt_channel_s *tx_channel;
     component_callback_t *callback; 
   #endif

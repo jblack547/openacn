@@ -81,8 +81,8 @@ int mcast_alloc_init(
 	uint32_t HostPart;
 	uint16_t uuidPart;
 
-	// Set the scope part by masking the scope address with the scope mask.
-	// If a scope argument is zero, then set the ACN EPI 10 default.
+	/* Set the scope part by masking the scope address with the scope mask. */
+	/* If a scope argument is zero, then set the ACN EPI 10 default. */
 	if(scopeaddr == 0)
 	{
 		scopeaddr = E1_17_AUTO_SCOPE_ADDRESS;
@@ -90,13 +90,13 @@ int mcast_alloc_init(
 	}
 	scopeaddr &= scopemask;	/* discard superfluous bits */
 
-	// Adjust the scope mask to be within the spec range
+	/* Adjust the scope mask to be within the spec range */
 	scopemask |= EPI10_SCOPE_MIN_MASK;
 	scopemask &= EPI10_SCOPE_MAX_MASK;
 
 	if ((scopeaddr & scopemask) != scopeaddr)
 	{
-		//acnlog(LOG_ERR|LOG_LOCAL0,"mcast_alloc_init: Scope-address out of range.");
+		/* acnlog(LOG_ERR|LOG_LOCAL0,"mcast_alloc_init: Scope-address out of range."); */
 		return -1;
 	}
 
@@ -109,14 +109,14 @@ From epi10 r4:
 	Function ffs_1 finds LS bit set
 	with lsb numbered as 1
 */
-	HostShift = ffs_1(ntohl(scopemask)) - 9;  // 10
-	HostPart = ntohl(netx_getmyip(NULL)); // 216.253.200.200
-	HostPart &= EPI10_HOST_PART_MASK; // & 0xff  = 200 == 0xc8
-	HostPart <<= HostShift; // TBD THIS CAME TO 0x32000
+	HostShift = ffs_1(ntohl(scopemask)) - 9;  /* 10 */
+	HostPart = ntohl(netx_getmyip(NULL)); /* 216.253.200.200 */
+	HostPart &= EPI10_HOST_PART_MASK; /* & 0xff  = 200 == 0xc8 */
+	HostPart <<= HostShift; /* TBD THIS CAME TO 0x32000 */
 
-	dyn_mask = (1 << HostShift) - 1; // 0x3FF
+	dyn_mask = (1 << HostShift) - 1; /* 0x3FF */
 
-	scope_and_host = scopeaddr | htonl(HostPart); // 0xEFC32000
+	scope_and_host = scopeaddr | htonl(HostPart); /* 0xEFC32000 */
 
 /*
 */
