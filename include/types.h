@@ -52,8 +52,6 @@ Work out what we can automatically
 #include <limits.h>
 //#include <stddef.h>
 
-#include "acn_port.h"
-
 #ifndef true
 #define true 1
 #endif
@@ -169,6 +167,6 @@ typedef struct
 	uint8_t  *value;   //value[0];
 } p_string_t;
 
-//#include "user_types.h"
+#include "user_types.h"
 
 #endif /* __types_h__ */
