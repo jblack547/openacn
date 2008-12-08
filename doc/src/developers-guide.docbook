@@ -4,6 +4,15 @@
 <chapter>
   <title>Guidance for Developers</title>
   <section>
+    <title>Introduction</title>
+    <para>This chapter is aimed at developers contributing code to
+    OpenACN.</para>
+    <para>If all you are doing is downloading the source and doing a private
+    build, you can do whatever you like subject to license terms. However, If
+    you make inprovements, or port the code to new platforms, we would of course
+    like you to feed your changes back to us.</para>
+  </section>
+  <section>
     <title>Coding Conventions</title>
     <note>
       <title>Acknowledgement</title>
@@ -14,6 +23,27 @@
       <title>Portability</title>
       <para>OpenACN must compile on a wide variety of platforms and
       compilers.</para>
+      <section>
+        <title>Source Language</title>
+        <para>Main sources must be in ANSI C. Do not use other dialects of C or
+        compiler extensions unless there is a serious efficiency gain to be made
+        in the resulting code, and then make sure the relevant code enclosed
+        with an <code>#if</code> statement and an ANSI compatible alternative is
+        also provided. Also comment what you have done and why.</para>
+      </section>
+      <section>
+        <title>Use of C++</title>
+        <para>Some target systems may be built using C++ development systems and
+        require some code to be wrapped in C++ constructions. You can make sure
+        that this does not break C platforms by not introducing *.cpp files into
+        the source tree, except where they only contain code entirely specific
+        to that platform. If necessary create a wrapper file which
+        <computeroutput><code>#include</code></computeroutput>s the normal C
+        file.</para>
+        <para>It is acceptable to include some code within <code>#ifdef
+        __cplusplus</code> sections within sources, provided that this does not
+        break other platforms.</para>
+      </section>
       <section>
         <title>Compiler Differences</title>
         <para>Do not rely on knowledge of the architecture and compiler you are

@@ -48,7 +48,10 @@ Checked out revision 118.
         <callout arearefs="builddir-co" id="builddir">
           <para>This is the name of the directory that the source will be
           installed into. If you omit it, it will simply be called
-          <emphasis>trunk</emphasis>.</para>
+          <emphasis>trunk</emphasis> which is probably not what you want. In
+          other places in this documentation the symbolic name ACNROOT is used
+          to indicate this direcory (it is not a good idea to use the literal
+          name ACNROOT in practice).</para>
         </callout>
       </calloutlist>
     </example>
@@ -67,40 +70,9 @@ Checked out revision 118.
     url="http://svnbook.red-bean.com/">Version Control with
     Subversion</ulink>.</para>
   </section>
-  <section id="quickstart.config">
-    <title>Configuring OpenACN for your System and Application</title>
-    <para>Before openACN will compile, you must create a customization header
-    file called <emphasis>user_opt.h</emphasis>. This can be placed anywhere the
-    compiler will find it, but we suggest placing it in the include directory.
-    If this is simply an empty text file, then openACN will be built with all
-    the default options, but if it is not present at all, then the build process
-    will fail.</para>
-    <para>For available options and their documentation see the header
-    <emphasis>opt.h</emphasis> &#8211; however, <emphasis>do not edit
-    opt.h</emphasis>, your configuration belongs in
-    <emphasis>user_opt.h</emphasis>. There is more information on how openACN
-    configuration works in the section on configuration and
-    customization.</para>
-  </section>
-  <section id="quickstart.building">
-    <title>Building openACN</title>
-    <para>OpenACN expects you to have GNU <emphasis>make</emphasis> installed on
-    your system. Other versions of <emphasis>make</emphasis> may well fail or do
-    the wrong thing. Gnu <emphasis>make</emphasis> is available on most common
-    operating systems including Windows, Macintosh, Linux and Unix.</para>
-    <para>OpenACN is also written principally for the Gnu C compiler
-    <emphasis>gcc</emphasis>. Support for other compilers may be added over
-    time.</para>
-    <para>Once you have configured openACN you build it by simply typing
-    <command><userinput>make</userinput></command>.</para>
-    <example>
-      <title>Building the code</title>
-      <programlisting>~ $ cd acn_develop/openacn
-~/acn_develop/openacn $ make
-for dir in common rlp test ; do make -C $dir all ; done
-make[1]: Entering directory `/home/philip/tmp/openacn/common'
-... etc.</programlisting>
-    </example>
+  <section>
+    <title>Configuring, Adapting and Building OpenACN</title>
+    <para>This is covered more fully in <xref linkend="building"/>.</para>
   </section>
   <section id="quickstart.feedback">
     <title>Feed Back your Fixes and Improvements</title>

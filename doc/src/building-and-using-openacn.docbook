@@ -3,6 +3,160 @@
 "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
 <chapter id="building">
   <title>Building and Using openACN</title>
+  <section>
+    <title>Setting Up A Build Directory</title>
+    <para>You should build your OpenACN code in a build directory, which may be
+    either inside or outside the main source tree. All build specific details
+    including options and makefile configuration should be confined within this
+    build directory. This leaves the source tree untouched and allows you to set
+    up builds for multiple targets alongside each other without them
+    conflicting. There are several example build configurations in the source
+    tree and copying one of these is a good way to start. By convention the
+    build directory is called something like
+    <quote>build-&lt;processor&gt;-&lt;system&gt;</quote> where
+    &lt;<emphasis>processor</emphasis>&gt; is the processor you are cross
+    compiling for, and &lt;<emphasis>system</emphasis>&gt; is the operating
+    system and TCP/IP stack combination. e.g build-coldfire-uclinux or
+    build-arm9-lwip. For builds which use a native compiler the processor should
+    be given as <quote>native</quote> e.g. build-native-freebsd.</para>
+    <para>In the following, the root directory of your downloaded openacn
+    sources (corresponding to SVN's <emphasis>trunk</emphasis> directory is
+    called <emphasis>ACNROOT</emphasis> (if you followed the directions in the
+    previous chapter, this will be actually be <quote>openacn</quote>) whilst
+    the build directory you have created is called
+    <emphasis>MYBUILD</emphasis>.</para>
+  </section>
+  <section>
+    <title>Other Target Specific Directories</title>
+    <para>There are a number of directories within the tree which contain target
+    specific code. C code routines specific to a particular stack and OS are
+    subdirectories within the <emphasis>ACNROOT/platform</emphasis> directory.
+    Whilst these routines may be used for specific builds, they are generally
+    applicable across a range of builds which use the same OS and/or
+    stack.</para>
+    <para>Similarly there are subdirectories within the main include directory
+    for headers specific to individual processor or processor family
+    architectures. If building using Make, the appropriate directories are
+    incorporated into the header file search path when compiling.</para>
+  </section>
+  <section id="quickstart.config">
+    <title>Configuring OpenACN for your System and Application</title>
+    <para>Before you can build OpenACN you need to do some basic configuration.
+    This generally means creating and/or editing these files:</para>
+    <section>
+      <title>user_opt.h</title>
+      <para>Most options are set within a file called
+      <emphasis>MYBUILD/include/user_opt.h</emphasis>. Copying one of the
+      examples is a good way to start. For a full list of configuration options
+      and documentation on what they do, look at
+      <emphasis>ACNROOT/include/opt.h</emphasis>. You should not however edit
+      <emphasis>ACNROOT/include/opt.h</emphasis> directly (unless you are adding
+      new options in source code you plan to feed back into openACN).</para>
+    </section>
+    <section>
+      <title>Building Using Make</title>
+      <para>Make is a generic command line build system which works with any
+      compiler and many other processing systems (e.g. for transforming this
+      documentation from Docbook into HTML, PDF or other formats).</para>
+      <para>OpenACN is set up to be built with <ulink
+      url="http://www.gnu.org/software/make/">Gnu make</ulink>. This open-source
+      program is available on most common operating systems including Windows
+      (both <ulink url="http://gnuwin32.sourceforge.net/">fully native</ulink>
+      or using the <ulink url="http://www.sourceware.org/cygwin/">Cygwin</ulink>
+      environment), Macintosh, Linux and Unix. Other versions of Make vary
+      wildly in their operation and syntax and may not work.</para>
+      <para>The configuration for your own build should go into
+      <emphasis>MYBUILD/Makefile</emphasis>. This file is where you put
+      build-specific configuration. It then includes
+      <emphasis>ACNROOT/builddir.mk</emphasis> which provides defaults and rules
+      applicable to all builds.</para>
+      <para>The items you may need to define in
+      <emphasis>MYBUILD/Makefile</emphasis> include:</para>
+      <variablelist>
+        <varlistentry>
+          <term>C Compiler</term>
+          <listitem>
+            <para>Make will use the native C compiler by default (usually
+            <quote>cc</quote>) If you are cross compiling, this is not what you
+            want and you need to define the Make variable
+            <emphasis>CC</emphasis> to be the command to start your compiler.
+            e.g.</para>
+            <programlisting>CC=/usr/bin/h8300-elf-gcc -ms</programlisting>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>BUILDDIR</term>
+          <listitem>
+            <para>This is the name and path of your build directory starting
+            from ACNROOT. e.g.</para>
+            <programlisting>BUILDDIR=${ACNROOT}/../build-avr-uip</programlisting>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>PLATFORMNAME</term>
+          <listitem>
+            <para>The Make variable PLATFORMNAME must be the same as the name of
+            the subdirectory of ACNROOT/platform which includes platform
+            dependent code for your operating system (if any) and stack
+            e.g.</para>
+            <programlisting>PLATFORMNAME=linux    # Assume Linux's standard stack</programlisting>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>INCLUDEDIRS</term>
+          <listitem>
+            <para>Make variable INCLUDEDIRS is a space separated list of
+            directories to search for header files. You can add directories to
+            this list if necessary, for example to search for stack-specific
+            headers. e.g.prog</para>
+            <programlisting>INCLUDEDIRS+=../../lwip/src/include   # Note the use of +=</programlisting>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>CFLAGS</term>
+          <listitem>
+            <para>The Make variable contains flags and options for the C
+            compiler. There is a default set defined in ACNROOT/builddir.mk but
+            you can override them in your Makefile if desired. e.g. (for Borland
+            bcc)</para>
+            <programlisting>CFLAGS:=
+CFLAGS+=-6                    # Pentium pro level processor
+CFLAGS+=-A                    # ANSI C
+CFLAGS+=-b- -O2 -Oc -Ov -pm   # Some optimization options</programlisting>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <para>Further documentation is given in the sample Makefiles
+      provided.</para>
+    </section>
+    <section>
+      <title>Building Using Integrated Development Environments</title>
+      <para>The use of IDEs is beyond the scope of this documentation at
+      present. However, any good IDE will allow you to build within the
+      directory structure given above. It should ensure that the following
+      include directories are in the compiler's search path:</para>
+      <simplelist>
+        <member>ACNROOT/include</member>
+        <member>ACNROOT/include/arch-&lt;processor&gt;</member>
+        <member>MYBUILD/include</member>
+        <member>ACNROOT/platform/&lt;your-platform&gt;</member>
+      </simplelist>
+    </section>
+  </section>
+  <section id="quickstart.building">
+    <title>Building openACN</title>
+    <para>Assuming you are building with Make, once you have configured openACN
+    you build it by simply typing <command><userinput>make</userinput></command>
+    in a shell (in cmd.exe on Windows) from your build directory. For example if
+    your build directory is bendilite/openacn/build-avr-uip:</para>
+    <example>
+      <title>Building the code</title>
+      <programlisting>~ $ cd bendilite/openacn/build-avr-uip
+~/bendilite/openacn/build-avr-uip $ make</programlisting>
+    </example>
+    <para>If you type make in the ACNROOT directory. Make will attempt to make
+    all the builds within this directory which may not be what you want!</para>
+  </section>
   <section id="building.configuration">
     <title>Configuration and Customization</title>
     <section>
@@ -24,10 +178,8 @@
         default value for each option and performs sanity checks such as
         ensuring you have not selected two operating systems in the same build.
         In order to build your own customized implementation you must create
-        your own header file <emphasis>user_opt.h</emphasis> where the compiler
-        will find it (its easiest to place it the same include directory, but
-        you may need to place it elsewhere if you are building multiple
-        configurations from the same source).</para>
+        your own header file
+        <emphasis>MYBUILD/include/user_opt.h</emphasis>.</para>
         <para>opt.h only provides default values for options which have not been
         defined in user_opt.h so you need only define in user_opt.h, those
         options for which you do not want the default value. This means that

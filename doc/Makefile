@@ -1,3 +1,4 @@
+##########################################################################
 #
 # Makefile for openACN documentation
 #
@@ -31,6 +32,8 @@
 #
 # $Id: Makefile 327 2008-03-26 11:32:49Z philip $
 #
+#tabs=8
+##########################################################################
 
 #
 # Some default variables - override on command line if desired
