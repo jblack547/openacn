@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "types.h"
 #include "acn_arch.h"
 #include "uuid.h"
+#include <ctype.h>
 
 /* stack independent calls usually found in ctype.h*/
 #ifndef isdigit
@@ -87,7 +88,7 @@ const char hexdig[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a',
 Make a string from a UUID
 Returns pointer to end of string
 */
-char *uuidToText(const uuid_t uuidp, char *uuidText)
+char *uuidToText(const uint8_t *uuidp, char *uuidText)
 {
 	int octet;
 
