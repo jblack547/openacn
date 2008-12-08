@@ -8,5 +8,6 @@
 <!-- Special parameters or templates for HTML chunks go here -->
 
 <xsl:param name="use.id.as.filename" select="0"/>
+<xsl:param name="chunk.section.depth" select="0"/>
 
 </xsl:stylesheet>
