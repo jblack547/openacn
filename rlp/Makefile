@@ -34,15 +34,7 @@
 ##########################################################################
 
 #
-# Makefile for Root Layer Subdirectory
+# Makefile for Subdirectory
 #
 
-TOPDIR:=..
-OBJS:=rlp.o
-
-include ${TOPDIR}/common.makefile
-
-all : ${OBJS}
-
-clean :
-	rm -f *.o
+include ../subdir.mk

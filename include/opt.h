@@ -96,35 +96,60 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   but these vary from system to system so use our own macro
   names and allow user override in user_opt.h
 */
-#ifndef ARCH_AMD64
-#ifdef __amd64__
-#define ARCH_AMD64 1
+
+#ifndef ARCH_x86_64
+#if defined(__x86_64__)
+#define ARCH_x86_64 1
 #else
-#define ARCH_AMD64 0
+#define ARCH_x86_64 0
 #endif
 #endif
 
 #ifndef ARCH_i386
-#ifdef __i386__
-#define ARCH_X86 1
+#if defined(__i386__)
+#define ARCH_i386 1
 #else
-#define ARCH_X86 0
+#define ARCH_i386 0
 #endif
 #endif
 
-#ifndef ARCH_H8300
-#ifdef __H8300__
-#define ARCH_H8300 1
+#ifndef ARCH_h8300
+#if defined(__H8300__)
+#define ARCH_h8300 1
 #else
-#define ARCH_H8300 0
+#define ARCH_h8300 0
 #endif
 #endif
 
-#ifndef ARCH_H8300S
-#ifdef __H8300S__
-#define ARCH_H8300S 1
+#ifndef ARCH_h8300s
+#if defined(__H8300S__)
+#define ARCH_h8300s 1
 #else
-#define ARCH_H8300S 0
+#define ARCH_h8300s 0
+#endif
+#endif
+
+#ifndef ARCH_thumb
+#if defined(__thumb__)
+#define ARCH_thumb 1
+#else
+#define ARCH_thumb 0
+#endif
+#endif
+
+#ifndef ARCH_arm
+#if defined(__arm__)
+#define ARCH_arm 1
+#else
+#define ARCH_arm 0
+#endif
+#endif
+
+#ifndef ARCH_coldfire
+#if defined(__mcoldfire__)
+#define ARCH_coldfire 1
+#else
+#define ARCH_coldfire 0
 #endif
 #endif
 

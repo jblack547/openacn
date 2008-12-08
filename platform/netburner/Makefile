@@ -1,6 +1,6 @@
 ##########################################################################
 # 
-# Copyright (c) 2007, Pathway Connectivity Inc.
+# Copyright (c) 2007, Engineering Arts (UK).
 # 
 # All rights reserved.
 # 
@@ -29,44 +29,13 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 
-# 	$Id$
+# 	$Id: Makefile 89 2008-02-04 21:35:24Z philipnye $
 # 
 ##########################################################################
+
 #
-# Makefile for top level ACN directory
-# 
-# Mostly this just jumps into the build directory (directories) and
-# builds from there
+# Makefile for Subdirectory
+#
+TOPDIR:=../..
 
-ALLBUILDS:=${patsubst build-%,%,${wildcard build-*}}
-
-ifeq "${ALLBUILDS}" ""
-${error No build directories found}
-endif
-
-##########################################################################
-# Default target is all build directories - not good unless they all work
-# on a common development system.
-.PHONY: all ${ALLBUILDS}
-
-all : ${ALLBUILDS}
-
-##########################################################################
-# Generic rule for building
-
-${ALLBUILDS}:
-	${MAKE} -C build-$@
-
-.PHONY : clean
-
-CLEANBUILDS=${addsuffix _clean, ${ALLBUILDS}}
-
-clean : ${CLEANBUILDS}
-
-${CLEANBUILDS}:
-	${MAKE} -C ${patsubst %_clean,build-%,$@} clean
-
-.PHONY: ts
-
-ts:
-	@echo ${ALLBUILDS}
+include ${TOPDIR}/subdir.mk

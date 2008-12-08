@@ -210,6 +210,10 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 #define netx_INADDR_ANY ((ip4addr_t)0)
 #endif
 
+#ifndef netx_INADDR_NONE
+#define netx_INADDR_NONE ((ip4addr_t)0xffffffff)
+#endif
+
 #ifndef netx_GROUP_UNICAST
 #define netx_GROUP_UNICAST netx_INADDR_ANY
 #endif

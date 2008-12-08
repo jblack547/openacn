@@ -49,6 +49,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "lwip/sys.h"
 #include "netif/etharp.h"
 
+#define acn_port_protect() sys_arch_protect()
+#define acn_port_unprotect(pval) sys_arch_unprotect(pval)
+
 #if CONFIG_NET_IPV4
 #ifndef HAVE_port_t
   typedef uint16_t port_t;  /* net endpoint is a port */
@@ -218,6 +221,10 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 
 #ifndef netx_INADDR_ANY
 #define netx_INADDR_ANY ((ip4addr_t)0)
+#endif
+
+#ifndef netx_INADDR_NONE
+#define netx_INADDR_NONE ((ip4addr_t)0xffffffff)
 #endif
 
 #ifndef netx_GROUP_UNICAST

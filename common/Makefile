@@ -34,15 +34,7 @@
 ##########################################################################
 
 #
-# Makefile for Root Layer Subdirectory
+# Makefile for Subdirectory
 #
 
-TOPDIR:=..
-OBJS:=netiface.o uuid.o mcast_util.o
-
-include ${TOPDIR}/common.makefile
-
-all : ${OBJS}
-
-clean :
-	rm -f *.o
+include ../subdir.mk

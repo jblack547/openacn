@@ -37,14 +37,65 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __byteorder_h__
 #define __byteorder_h__
 
+/************************************************************************/
+/*
+  These are probably defined in standard system headers (e.g. netinet/in.h)
+  If they are not this deals with it
 
-uint16 swap16(uint16 n);
-uint32 swap32(uint32 n);
+  x86_64 architecture is little endian
+*/
 
-#define htons( n) swap16( n)
-#define ntohs( n) swap16( n)
-#define htonl( n) swap32( n)
-#define ntohl( n) swap32( n)
+#if !defined(BYTE_ORDER)
+#define BYTE_ORDER LITTLE_ENDIAN
+#endif
 
+#if !defined(LITTLE_ENDIAN)
+#define LITTLE_ENDIAN 1234
+#endif
+
+#if !defined(BIG_ENDIAN)
+#define BIG_ENDIAN    4321
+#endif
+
+/************************************************************************/
+/*
+ Network to native conversions are likewise defined in one of the standard
+ includes for your stack or system e.g. <netinet/in.h>
+*/
+
+#if !defined(ntohl)
+#define ntohl(x) __bswap_32(x)
+#endif
+
+#if !defined(ntohs)
+#define ntohs(x) __bswap_16(x)
+#endif
+
+#if !defined(htonl)
+#define htonl(x) __bswap_32(x)
+#endif
+
+#if !defined(htons)
+#define htons(x) __bswap_16(x)
+#endif
+
+/************************************************************************/
+/*
+ Again there are likely to be (highly optimized) versions of these already.
+*/
+
+#if !defined(__bswap_16)
+#define __bswap_16(x) \
+      	( (((x) & 0xff00) >> 8) \
+      	| (((x) & 0x00ff) << 8) )
+#endif
+
+#if !defined(__bswap_32)
+#define __bswap_32(x) \
+      	( (((x) & 0xff000000) >> 24) \
+      	| (((x) & 0x00ff0000) >> 8) \
+      	| (((x) & 0x0000ff00) << 8) \
+      	| (((x) & 0x000000ff) << 24) )
+#endif
 
 #endif /* __byteorder_h__ */

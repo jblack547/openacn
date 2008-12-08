@@ -1,7 +1,7 @@
 /*--------------------------------------------------------------------*/
 /*
 
-Copyright (c) 2007, Pathway Connectivity Inc.
+Copyright (c) 2007, Engineering Arts (UK)
 
 All rights reserved.
 
@@ -14,7 +14,7 @@ met:
  * Redistributions in binary form must reproduce the above copyright
    notice, this list of conditions and the following disclaimer in the
    documentation and/or other materials provided with the distribution.
- * Neither the name of Pathway Connectivity Inc. nor the names of its
+ * Neither the name of Engineering Arts nor the names of its
    contributors may be used to endorse or promote products derived from
    this software without specific prior written permission.
 
@@ -34,68 +34,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 /*--------------------------------------------------------------------*/
-#ifndef __byteorder_h__
-#define __byteorder_h__
 
-/************************************************************************/
-/*
-  These are probably defined in standard system headers (e.g. netinet/in.h)
-  If they are not this deals with it
+#ifndef __user_opt_h__
+#define __user_opt_h__ 1
 
-  i386 architecture is little endian
-*/
+//#define CONFIG_RLP_SINGLE_CLIENT 0x4541ffff
+#define	CONFIG_STACK_BSD       1
+#define	CONFIG_LOCALIP_ANY 0  
+#define CONFIG_ACNLOG ACNLOG_STDERR
+#define CONFIG_LOGLEVEL LOG_DEBUG
 
-#if !defined(BYTE_ORDER)
-#define BYTE_ORDER LITTLE_ENDIAN
 #endif
-
-#if !defined(LITTLE_ENDIAN)
-#define LITTLE_ENDIAN 1234
-#endif
-
-#if !defined(BIG_ENDIAN)
-#define BIG_ENDIAN    4321
-#endif
-
-/************************************************************************/
-/*
- Network to native conversions are likewise defined in one of the standard
- includes for your stack or system e.g. <netinet/in.h>
-*/
-
-#if !defined(ntohl)
-#define ntohl(x) __bswap_32(x)
-#endif
-
-#if !defined(ntohs)
-#define ntohs(x) __bswap_16(x)
-#endif
-
-#if !defined(htonl)
-#define htonl(x) __bswap_32(x)
-#endif
-
-#if !defined(htons)
-#define htons(x) __bswap_16(x)
-#endif
-
-/************************************************************************/
-/*
- Again there are likely to be (highly optimized) versions of these already.
-*/
-
-#if !defined(__bswap_16)
-#define __bswap_16(x) \
-      	( (((x) & 0xff00) >> 8) \
-      	| (((x) & 0x00ff) << 8) )
-#endif
-
-#if !defined(__bswap_32)
-#define __bswap_32(x) \
-      	( (((x) & 0xff000000) >> 24) \
-      	| (((x) & 0x00ff0000) >> 8) \
-      	| (((x) & 0x0000ff00) << 8) \
-      	| (((x) & 0x000000ff) << 24) )
-#endif
-
-#endif /* __byteorder_h__ */

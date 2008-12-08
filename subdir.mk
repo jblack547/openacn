@@ -54,10 +54,14 @@ endif
 ##########################################################################
 # Set up C compiler options and compile rules
 #
+ifeq "${CFLAGS}" ""
+ifeq "${COMPILER}" "gcc"
 CFLAGS:=
 CFLAGS+=-O2
 CFLAGS+= -std=c99 -Wall -Wextra -Wno-uninitialized
 CFLAGS+=-D_XOPEN_SOURCE=600 -D_BSD_SOURCE=1
+endif
+endif
 
 ${OBJDIR}/%.o: %.c
 	${CC} ${CFLAGS} ${CPPFLAGS} ${TARGET_ARCH} -c -o$@ $<
@@ -70,12 +74,17 @@ ifeq "${LIBNAME}" ""
 LIBNAME:=${notdir ${shell pwd}}.a
 endif
 
-.PHONY: all ts
+LIBRARY=${LIBDIR}/${LIBNAME}
 
-all: ${LIBDIR}/${LIBNAME}
+.PHONY: all ts clean
 
-${LIBDIR}/${LIBNAME}: ${OBJS}
+all: ${LIBRARY}
+
+${LIBRARY}: ${OBJS}
 	ar rcs $@ ${OBJS}
+
+clean:
+	rm -f ${OBJS} ${LIBRARY}
 
 ts:
 	@echo ${LIBNAME}

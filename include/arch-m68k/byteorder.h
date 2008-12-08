@@ -2,6 +2,8 @@
 /*
 
 Copyright (c) 2007, Pathway Connectivity Inc.
+Copyright (c) 2008, Pathway Electronic Theatre Controls, Inc.
+
 
 All rights reserved.
 
@@ -30,7 +32,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+	$Id: byteorder.h 127 2008-11-21 04:04:11Z bflorac $
 
 */
 /*--------------------------------------------------------------------*/
@@ -42,11 +44,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   These are probably defined in standard system headers (e.g. netinet/in.h)
   If they are not this deals with it
 
-  i386 architecture is little endian
+  Coldfire architecture is big endian
 */
 
 #if !defined(BYTE_ORDER)
-#define BYTE_ORDER LITTLE_ENDIAN
+#define BYTE_ORDER BIG_ENDIAN
 #endif
 
 #if !defined(LITTLE_ENDIAN)
@@ -61,6 +63,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*
  Network to native conversions are likewise defined in one of the standard
  includes for your stack or system e.g. <netinet/in.h>
+ Note: These macros evaluate their arguments multiple times - use with caution
 */
 
 #if !defined(ntohl)
