@@ -37,13 +37,13 @@
 #
 # This Makefile provides major configuration options. Most of the actual 
 # rules are common to all build configurations and are in 
-# ${TOPDIR}/build.make which is included here
+# ${ACNROOT}/build.make which is included here
 #
 ##########################################################################
-# TOPDIR is the route to the OpenACN top level directory (corresponding
+# ACNROOT is the route to the OpenACN top level directory (corresponding
 # to openacn/trunk or whatever tag you have downloaded).
 
-TOPDIR=..
+ACNROOT=..
 
 ##########################################################################
 # PLATFORMNAME is the name of your platform.
@@ -52,22 +52,22 @@ TOPDIR=..
 PLATFORMNAME:=netburner
 
 ##########################################################################
-# BUILDDIR is the route to this build directory as reached from TOPDIR.
+# BUILDDIR is the route to this build directory as reached from ACNROOT.
 # You can use an absolute path:
 # 
 # BUILDDIR:=${shell pwd}
 #
 # or a relative one - which is shorter and works better on some systems
-# (Note this must be a recursively expanded variable because TOPDIR varies
+# (Note this must be a recursively expanded variable because ACNROOT varies
 # with sub-makes):
 #
-BUILDDIR=${TOPDIR}/build-${PLATFORMNAME}
+BUILDDIR=${ACNROOT}/build-${PLATFORMNAME}
 
 ##########################################################################
 # PLATFORM is the name of the direcory containing platform specific
 # sources (network interface etc.). This is mostly defined and named by 
 # the stack.
-PLATFORM=${TOPDIR}/platform/${PLATFORMNAME}
+PLATFORM=${ACNROOT}/platform/${PLATFORMNAME}
 
 ##########################################################################
 # If you are corss compiling, you need to define yourC compiler here.
@@ -91,4 +91,4 @@ export BUILDDIR CC
 ##########################################################################
 # Now include rules common to all builds
 #
-include ${TOPDIR}/builddir.mk
+include ${ACNROOT}/builddir.mk

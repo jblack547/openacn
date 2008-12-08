@@ -54,10 +54,10 @@ endif
 ##########################################################################
 # Define include search for building - first build specifics, then general
 # includes.
-INCLUDEDIRS+=${BUILDDIR}/include ${TOPDIR}/include ${TOPDIR}/include/arch-${ARCH} ${PLATFORM}
+INCLUDEDIRS+=${BUILDDIR}/include ${ACNROOT}/include ${ACNROOT}/include/arch-${ARCH} ${PLATFORM}
 
 CPPFLAGS:=${addprefix -I,${INCLUDEDIRS}}
-CONFIG:=${TOPDIR}/include/opt.h
+CONFIG:=${ACNROOT}/include/opt.h
 
 export CPPFLAGS CONFIG
 
@@ -102,7 +102,7 @@ all : subdirs
 subdirs: ${SUBDIRS}
 
 ${SUBDIRS}:
-	${MAKE} -C ${TOPDIR}/$@
+	${MAKE} -C ${ACNROOT}/$@
 
 .PHONY : clean
 
@@ -110,7 +110,7 @@ clean : ${addsuffix _clean, ${SUBDIRS}}
 	rm -f *.defs .arch.mk
 
 ${addsuffix _clean, ${SUBDIRS}}:
-	${MAKE} -C ${TOPDIR}/${@:_clean=} clean
+	${MAKE} -C ${ACNROOT}/${@:_clean=} clean
 
 ##########################################################################
 # ts is a target for miscellaneous debug and doesn't do much
@@ -135,5 +135,6 @@ opt.defs: user_opt.h
 
 ##########################################################################
 # .arch.mk is used by Make to deduce the architecture
+# This requires 'sed' which may not be available on Windows platforms
 .arch.mk: opt.defs
 	sed -n 's/#define ARCH_\([^ ]\+\) 1$$/ARCH:=\1/p' $< > $@
