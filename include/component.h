@@ -46,7 +46,7 @@ Information structures and handling relating to components
 
 #include "uuid.h"
 #include "netxface.h"
-#include "inet.h"
+#include "byteorder.h"
 
 #if CONFIG_DMP
 //#include "dmp.h"
