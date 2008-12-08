@@ -34,15 +34,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   Description:
     converts 32 bit unsigned integer to a IP address string.
 */
-#include <stdio.h>
+/************************************************************************/
+
 #include "opt.h"
 #include "types.h"
-#include "acn_arch.h"
-#include "inet.h"
-
 #include "ntoa.h"
 
-/*********************************/
+/*
+many target stacks define ntoa as a macro using a standard function
+and define HAVE_ntoa - see ntoa.h
+*/
+#if !defined(HAVE_ntoa)
+#include <stdio.h>
+#include "netxface.h"
+/*
+inet.h no longer defines anything useful?
+#include "inet.h"
+*/
+
+/************************************************************************/
 /* returns ptr to static buffer; not reentrant! */
 char ip_string[16];
 char * ntoa(ip4addr_t ip_addr)
@@ -61,5 +71,4 @@ char * ntoa(ip4addr_t ip_addr)
   return ip_string;
 }
 
-
-
+#endif /* !defined(HAVE_ntoa) */

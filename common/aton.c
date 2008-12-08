@@ -34,45 +34,56 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   Description:
     converts 32 bit unsigned integer to a IP address string.
 */
-#include <stdio.h>
-#include <stdlib.h>
+/************************************************************************/
+
 #include "opt.h"
 #include "types.h"
-#include "acn_arch.h"
-#include "inet.h"
-
 #include "aton.h"
 
-/*********************************/
-/* return ip network address from dotted notation 
- * Note, this very strict. it requres x.x.x.x format. where x is 1 to 3 digits.
- * there is also a safer but not as portable: inet_addr(ip_str)
- */
-ip4addr_t aton(char *ip_str)
+/*
+many target stacks define aton as a macro using a standard function
+see aton.h
+*/
+
+#if !defined(HAVE_aton)
+#include <stdio.h>
+#include <stdlib.h>
+#include "netxface.h"
+/*
+inet.h no longer defines anything useful?
+#include "inet.h"
+*/
+
+/************************************************************************/
+/*
+  return ip network address from dotted notation
+  Note, this very strict. it requres x.x.x.x format. where x is 1 to 3
+  digits.
+*/
+ip4addr_t aton(const char *ip_str)
 {
   /* convert an ip string to network order */
   int i;
-  unsigned int ip=0;
-  char *tmp=(char*)ip_str;
+  uint32_t ip = 0;
+  const char *tmp = ip_str;
 
   for (i=24; ;) {
-    long j;
-    j=strtoul(tmp,&tmp,0);
+    unsigned long j;
+    j=strtoul(tmp,(char **)&tmp,0);
     if (*tmp==0) {
       ip|=j;
       break;
     }
     if (*tmp=='.') {
-      if (j>255) return 0;
+      if (j>255) return netx_INADDR_ANY;
       ip|=(j<<i);
       if (i>0) i-=8;
       ++tmp;
       continue;
     }
-    return 0;
+    return netx_INADDR_ANY;
   }
   return htonl(ip);
 }
 
-
-
+#endif /* !defined(HAVE_aton) */

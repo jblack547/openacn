@@ -37,16 +37,44 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __NTOA_H__
 #define __NTOA_H__
 
-#include "types.h"
-
-
-
-/*********************************/
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/************************************************************************/
+/*
+many target stacks already provide an aton function so we just wrap that
+up as a macro. A simple version is provided for the few which don't
+*/
+#if CONFIG_STACK_WIN32
+
+#include <winsock2.h>
+#define ntoa(ipad) inet_ntoa((struct in_addr)(ipad))
+#define HAVE_ntoa 1
+
+#elif CONFIG_STACK_BSD
+
+/*
+#include <sys/socket.h>
+#include <netinet/in.h>
+*/
+#include <arpa/inet.h>
+#define ntoa(ipad) inet_ntoa((struct in_addr)(ipad))
+#define HAVE_ntoa 1
+
+/*
+#elif CONFIG_STACK_NETBURNER
+
+FIXME: What is the Netburner function?
+
+#include "utils.h"
+#define ntoa(ipad) IpToAscii(ipad);
+#define HAVE_ntoa 1
+*/
+
+#else
 char * ntoa(ip4addr_t n);
+#endif
 
 #ifdef __cplusplus
 }
