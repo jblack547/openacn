@@ -148,6 +148,7 @@ struct netxsocket_s {
   port_t                 localaddr;       /* local address */
   netx_process_packet_t *data_callback;   /* pointer to call back when data is available */
 };
+#define NETX_SOCK_HAS_CALLBACK 1
 
 /* operations when looking at netxsock_t */
 #define NSK_PORT(x)     ((x)->localaddr)
@@ -171,6 +172,7 @@ struct netxsocket_s {
 	netx_addr_t            localaddr;      /* local address */
   netx_process_packet_t *data_callback;  /* pointer to call back when data is available */
 };
+#define NETX_SOCK_HAS_CALLBACK 1
 
 #define NSK_PORT(x)   netx_PORT(&(x)->localaddr)
 #define NSK_INADDR(x) netx_INADDR(&(x)->localaddr)

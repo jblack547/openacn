@@ -467,9 +467,11 @@ rlp_open_netsocket(localaddr_t *localaddr)
 		return NULL;
 	}
 
-  netsock->data_callback = rlp_process_packet;
+#if NETX_SOCK_HAS_CALLBACK
+	netsock->data_callback = rlp_process_packet;
+#endif
 
-  acnlog(LOG_DEBUG|LOG_RLP, "LOG_INFO|rlp_open_netsocket: port=%d", NSK_PORT(netsock));
+	acnlog(LOG_DEBUG|LOG_RLP, "LOG_INFO|rlp_open_netsocket: port=%d", NSK_PORT(netsock));
 
 	return netsock;
 }

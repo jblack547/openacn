@@ -138,10 +138,12 @@ typedef void netx_process_packet_t (
 
 /************************************************************************/
 #if CONFIG_LOCALIP_ANY
-struct netsocket_s {
+struct netxsocket_s {
 	netx_nativeSocket_t nativesock;
 	port_t localaddr;
+  netx_process_packet_t *data_callback;  /* pointer to call back when data is available */
 };
+#define NETX_SOCK_HAS_CALLBACK 0
 
 /* operations when looking at netxsock_t */
 #define NSK_PORT(x)     ((x)->localaddr)
@@ -164,6 +166,7 @@ struct netxsocket_s {
 	netx_addr_t            localaddr;      /* local address */
   netx_process_packet_t *data_callback;  /* pointer to call back when data is available */
 };
+#define NETX_SOCK_HAS_CALLBACK 1
 
 #define NSK_PORT(x)   netx_PORT(&(x)->localaddr)
 #define NSK_INADDR(x) netx_INADDR(&(x)->localaddr)
