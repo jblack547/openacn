@@ -45,12 +45,9 @@
 # the build directory not here.
 #
 ##########################################################################
-# If ARCH isn't already defined, try to deduce it
+# Include configuration stuff
 #
-ifeq "${ARCH}" ""
-include .arch.mk
-endif
-
+include .opts.mk
 ##########################################################################
 # PLATFORM is normally in the platform directory
 #
@@ -93,11 +90,6 @@ ifeq "${CCOUTPUT}" ""
 CCOUTPUT:=-o
 endif
 
-# Include flag for CC
-ifeq "${CCINC}" ""
-CCINC:=-I
-endif
-
 # Compile only (no link) flag for CC
 ifeq "${CCONLY}" ""
 CCONLY:=-c
@@ -120,11 +112,11 @@ endif
 # Define include search for building - first build specifics, then general
 # includes.
 INCLUDEDIRS+=include
-INCLUDEDIRS+=${ACNROOT}/include
 INCLUDEDIRS+=${ACNROOT}/include/arch-${ARCH}
 INCLUDEDIRS+=${ACNROOT}/${PLATFORM}
+INCLUDEDIRS+=${ACNROOT}/include
 
-CPPFLAGS:=${addprefix ${CCINC},${INCLUDEDIRS}}
+CPPFLAGS:=${addprefix -I,${INCLUDEDIRS}}
 
 ##########################################################################
 # Cancel all built in make rules axcept the ones we are likely to use
@@ -139,10 +131,10 @@ ${OBJDIR}/%.o: %.c
 ##########################################################################
 # SUBDIRS defines all the sub-directories which are normally built
 #
-SUBDIRS:=common rlp sdt slp dmp ${PLATFORM}
+SUBDIRS:=${PLATFORM} common ${ACNPARTS}
 
 SUBDIRS:=${addprefix ${ACNROOT}/,${SUBDIRS}}
-vpath %.c ${SUBDIRS}
+vpath %.c ${SUBDIRS} ${ACNROOT}
 
 ##########################################################################
 # For now we just build and add all C files we find
@@ -182,7 +174,21 @@ include ${patsubst ${OBJDIR}/%.o, ${DEPDIR}/%.d, ${OBJS}}
 # ts is a target for miscellaneous debug and doesn't do much
 .PHONY : ts
 ts:
-	@echo ${patsubst ${OBJDIR}/%.o, ${DEPDIR}/%.d, ${OBJS}}
+	@echo ${ARCH} ${SYS} ${SUBDIRS}
+
+##########################################################################
+# .opts.mk contains Make relevant options extracted from the
+# configuration headers opt.h and user_opt.h
+#
+.opts.mk: ${ACNROOT}/opts.mk.c
+	${CPP} ${CPPFLAGS} $< ${CCOUTPUT}$@
+
+# Make sure we have its dependencies OK
+${DEPDIR}/opts.mk.d: opts.mk.c
+	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
+	| sed 's/^\([^ :]\+\)\.o:/.\1 \1.d:/' > $@
+
+include ${DEPDIR}/opts.mk.d
 
 ##########################################################################
 # .defs produces a complete preprocessor dump of the symbols defined in a
@@ -194,13 +200,3 @@ vpath %.h ${INCLUDEDIRS}
 
 %.defs: %.h
 	${CPP} ${CPPFLAGS} -dM $< -o$@
-
-##########################################################################
-# Explicit additional dependency for opt.h since it changes a lot
-opt.defs: user_opt.h
-
-##########################################################################
-# .arch.mk is used by Make to deduce the architecture
-# This requires 'sed' which may not be available on Windows platforms
-.arch.mk: opt.defs
-	sed -n 's/#define ARCH_\([^ ]\+\) 1$$/ARCH:=\1/p' $< > $@

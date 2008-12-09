@@ -66,9 +66,7 @@ ARCH:=i386
 VISUALCDIR:=C:\Program Files\Microsoft Visual Studio 9.0\VC\bin
 CC=${VISUALCDIR}\cl.exe
 COMPILER:=visualc
-CCOUTPUT:=/Fo
-CCINC:=/I
-Z:=\
+CCOUTPUT:=-Fo
 
 ##########################################################################
 # You may need to define the C preprocessor as well - not usually
