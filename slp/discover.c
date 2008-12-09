@@ -51,7 +51,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acnlog.h"
 
 #include "netxface.h"
+/*
 #include "inet.h"
+*/
+#include "ntoa.h"
+#include "aton.h"
 #include "uuid.h"
 #include "epi18.h"
 #include "slp.h"
@@ -118,7 +122,7 @@ static void create_attr_list(char *new_attr_list, component_t *component)
     }
 		
     // convert the IP string
-    ip_str = ntoa(netx_getmyip(0));
+    ip_str = ntoa(netx_getmyip(NULL));
     
     // create the attribute string for SLP discovery
     sprintf(new_attr_list, attr_list_fmt, cid_str, component->fctn, component->uacn, ip_str, SDT_ADHOC_PORT, access_str, dcid_str, ip_str);
@@ -189,7 +193,10 @@ static void attrrqst_callback(int error, char *attr_list)
   char port_str[6]             = {'\0'};
   char dd[64]                  = {'\0'};
 
+/*
+	FIXME: Unused?
   component_t *comp = NULL;
+*/
 
   uint32_t  ip = 0;
   uint16_t  port = 0;
