@@ -88,15 +88,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* platform dependent network interface*/
 #include "netxface.h"
+/*
 #include "inet.h"
+*/
+#include "ntoa.h"
+#include "aton.h"
 
 /* other includes */
 #include "netsock.h"  /* network socket storage */
 
 #include "uuid.h"     /* manage uuids */
 #include "pack.h"     /* to pack and unpack data strucures */
-#include "inet.h"     /* "32 bit" network address value to ascii */
-#include "sleep.h"    /* platform dependent delay */
+#include "msleep.h"    /* platform dependent delay */
 
 /* SLP include */
 #include "slp.h"      /* This module */
@@ -578,7 +581,7 @@ void da_dereg(void)
   /* now wait for all of them to close */
   /* perhaps this should be non-blocking */
   // TODO: Timeout should allow for retries.
-  sleep(500); /* delay 500 ms */
+  msleep(500); /* delay 500 ms */
   valid = 0;
   for (x=0;x<MAX_DA;x++) {
     if (da_list[x].state != DA_CLOSED) {
