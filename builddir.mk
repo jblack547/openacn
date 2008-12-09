@@ -52,71 +52,121 @@ include .arch.mk
 endif
 
 ##########################################################################
-# Define include search for building - first build specifics, then general
-# includes.
-INCLUDEDIRS+=${BUILDDIR}/include ${ACNROOT}/include ${ACNROOT}/include/arch-${ARCH} ${PLATFORM}
-
-CPPFLAGS:=${addprefix -I,${INCLUDEDIRS}}
-CONFIG:=${ACNROOT}/include/opt.h
-
-export CPPFLAGS CONFIG
-
-##########################################################################
-# Cancel all built in make rules axcept the ones we are likely to use
+# PLATFORM is normally in the platform directory
 #
-.SUFFIXES: .o .ln .s .c .h .a .ln .cc .i
+ifeq "${PLATFORM}" ""
+PLATFORM=platform/${PLATFORMNAME}
+endif
 
 ##########################################################################
 #
 # Find or create an object code directory and a library directory
 #
 ifeq "${OBJDIR}" ""
-OBJDIR:=${BUILDDIR}/obj
+OBJDIR:=obj
 endif
 ifneq "${wildcard ${OBJDIR}}" "${OBJDIR}"
 ${shell mkdir -p ${OBJDIR}}
 endif
 
 ifeq "${LIBDIR}" ""
-LIBDIR:=${BUILDDIR}/lib
+LIBDIR:=lib
 endif
 ifneq "${wildcard ${LIBDIR}}" "${LIBDIR}"
 ${shell mkdir -p ${LIBDIR}}
 endif
 
-export OBJDIR LIBDIR
+##########################################################################
+# Default file separators and some C flags
+# These should work on any gcc platform but of course Windows needs
+# something different
+
+# Output flag for CC
+ifeq "${CCOUTPUT}" ""
+CCOUTPUT:=-o
+endif
+
+# Include flag for CC
+ifeq "${CCINC}" ""
+CCINC:=-I
+endif
+
+# Compile only (no link) flag for CC
+ifeq "${CCONLY}" ""
+CCONLY:=-c
+endif
+
+# File path separator
+ifeq "$Z" ""
+Z:=/
+endif
+
+##########################################################################
+# Set up some C compiler options and compile rules
+#
+ifeq "${COMPILER}" "gcc"
+CFLAGS+=-std=c99 -Wall -Wextra -Wno-uninitialized
+CFLAGS+=-D_XOPEN_SOURCE=600 -D_BSD_SOURCE=1
+endif
+
+##########################################################################
+# Define include search for building - first build specifics, then general
+# includes.
+INCLUDEDIRS+=include
+INCLUDEDIRS+=${ACNROOT}/include
+INCLUDEDIRS+=${ACNROOT}/include/arch-${ARCH}
+INCLUDEDIRS+=${ACNROOT}/${PLATFORM}
+
+CPPFLAGS:=${addprefix ${CCINC},${INCLUDEDIRS}}
+
+##########################################################################
+# Cancel all built in make rules axcept the ones we are likely to use
+#
+#.SUFFIXES: .o .ln .s .c .h .a .ln .cc .i
+.SUFFIXES:
+
+# Genric C build rule
+${OBJDIR}/%.o: %.c
+	${CC} ${CFLAGS} ${CPPFLAGS} ${TARGET_ARCH} ${CCONLY} ${CCOUTPUT}$@ $<
 
 ##########################################################################
 # SUBDIRS defines all the sub-directories which are normally built
 #
-SUBDIRS:=common rlp sdt slp dmp ${PLATFORM} 
+SUBDIRS:=common rlp sdt slp dmp ${PLATFORM}
+
+SUBDIRS:=${addprefix ${ACNROOT}/,${SUBDIRS}}
+vpath %.c ${SUBDIRS}
+
+##########################################################################
+# For now we just build and add all C files we find
+#
+OBJS:=${wildcard ${addsuffix /*.c, ${SUBDIRS}}}
+OBJS:=${patsubst %.c,${OBJDIR}/%.o,${notdir ${OBJS}}}
 
 ##########################################################################
 # Build rules
 #
+#Get the default rule in early
 
-.PHONY : all subdirs ${SUBDIRS}
+LIBRARY=${LIBDIR}/libacn.a
 
-all : subdirs
+.PHONY : all
 
-subdirs: ${SUBDIRS}
+all : ${LIBRARY}
 
-${SUBDIRS}:
-	${MAKE} -C ${ACNROOT}/$@
+${LIBRARY}: ${OBJS}
+	ar rcs $@ $^
 
 .PHONY : clean
 
-clean : ${addsuffix _clean, ${SUBDIRS}}
-	rm -f *.defs .arch.mk
-
-${addsuffix _clean, ${SUBDIRS}}:
-	${MAKE} -C ${ACNROOT}/${@:_clean=} clean
+clean :
+	rm -f *.defs .arch.mk ${OBJDIR}/*.o ${LIBRARY}
 
 ##########################################################################
 # ts is a target for miscellaneous debug and doesn't do much
 .PHONY : ts
 ts:
-	@echo ${.DEFAULT_GOAL}
+	@echo ${OBJS}
 
 ##########################################################################
 # .defs produces a complete preprocessor dump of the symbols defined in a

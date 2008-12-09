@@ -63,50 +63,24 @@ ARCH:=i386
 # If you are corss compiling, you need to define yourC compiler here.
 # If compiling is native, then it is usually best to leave this to Make.
 #
-CC=C:/usr/bcc55/bin/bcc32.exe
-COMPILER:=bcc32
+VISUALCDIR:=C:\Program Files\Microsoft Visual Studio 9.0\VC\bin
+CC=${VISUALCDIR}\cl.exe
+COMPILER:=visualc
+CCOUTPUT:=/Fo
+CCINC:=/I
+Z:=\
 
 ##########################################################################
 # You may need to define the C preprocessor as well - not usually
 # necessary for GCC because it can be accessed through CC, but other
 # compilers are different.
 #
-CPP=C:/usr/bcc55/bin/cpp32.exe
+CPP=${CC} /TC /EP
 
 ##########################################################################
 # CFLAGS are the compiler option flags
 # Note include directories belong in CPPFLAGS not here
-CFLAGS:=
-CFLAGS+=-6	#Pentium pro level
-CFLAGS+=-A	# ANSI C
-CFLAGS+=-b- -O2 -Oc -Ov -pm
-
-
-##########################################################################
-# BUILDDIR is the route to this build directory as reached from ACNROOT.
-# You can use an absolute path:
-# 
-# BUILDDIR:=${shell pwd}
-#
-# or a relative one - which is shorter and works better on some systems
-# (Note this must be a recursively expanded variable because ACNROOT varies
-# with sub-makes):
-#
-BUILDDIR=${ACNROOT}/build-${PLATFORMNAME}
-
-##########################################################################
-# PLATFORM is the name of the direcory containing platform specific
-# sources (network interface etc.). This is mostly defined and named by 
-# the stack.
-PLATFORM=${ACNROOT}/platform/${PLATFORMNAME}
-
-##########################################################################
-# Need to explicitly tell BCC where its standard includes are!
-#
-BCCDIR=C:/usr/bcc55
-INCLUDEDIRS+=${BCCDIR}/include
-
-export BUILDDIR CC CPP CFLAGS
+CFLAGS+=/O2 /Za /Wall
 
 ##########################################################################
 # Include any more build specific configuration or rules here
