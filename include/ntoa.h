@@ -59,7 +59,12 @@ up as a macro. A simple version is provided for the few which don't
 #include <netinet/in.h>
 */
 #include <arpa/inet.h>
-#define ntoa(ipad) inet_ntoa((struct in_addr)(ipad))
+static inline char *ntoa(ip4addr_t ipad)
+{
+	struct in_addr addr;
+	addr.s_addr = ipad;
+	return inet_ntoa(addr);
+}
 #define HAVE_ntoa 1
 
 /*
