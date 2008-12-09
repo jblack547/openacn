@@ -419,6 +419,7 @@ rlpm_free_listener(rlp_listener_t *listener)
 rlp_listener_t *
 rlpm_next_listener(rlp_listener_t *listener, protocolID_t pdu_protocol)
 {
+	UNUSED_ARG(listener);
   rlp_listener_t *alistener;
 
   alistener = listeners->next;
