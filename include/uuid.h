@@ -64,7 +64,7 @@ typedef uint8_t uuid_t[UUIDSIZE];
 /* same by another name */
 typedef uuid_t cid_t;
 
-const static uuid_t  null_cid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+static const uuid_t  null_cid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 /*
   Macros to access the internal structure
