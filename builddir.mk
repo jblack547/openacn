@@ -76,6 +76,13 @@ ifneq "${wildcard ${LIBDIR}}" "${LIBDIR}"
 ${shell mkdir -p ${LIBDIR}}
 endif
 
+ifeq "${DEPDIR}" ""
+DEPDIR:=deps
+endif
+ifneq "${wildcard ${DEPDIR}}" "${DEPDIR}"
+${shell mkdir -p ${DEPDIR}}
+endif
+
 ##########################################################################
 # Default file separators and some C flags
 # These should work on any gcc platform but of course Windows needs
@@ -163,10 +170,19 @@ clean :
 	rm -f *.defs .arch.mk ${OBJDIR}/*.o ${LIBRARY}
 
 ##########################################################################
+# Track dependencies
+#
+${DEPDIR}/%.d: %.c
+	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
+	| sed 's/^\([^ :]\+\)\.o:/\1.o \1.d:/' > $@
+
+include ${patsubst ${OBJDIR}/%.o, ${DEPDIR}/%.d, ${OBJS}}
+
+##########################################################################
 # ts is a target for miscellaneous debug and doesn't do much
 .PHONY : ts
 ts:
-	@echo ${OBJS}
+	@echo ${patsubst ${OBJDIR}/%.o, ${DEPDIR}/%.d, ${OBJS}}
 
 ##########################################################################
 # .defs produces a complete preprocessor dump of the symbols defined in a
