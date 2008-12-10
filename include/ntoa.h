@@ -48,12 +48,10 @@ up as a macro. A simple version is provided for the few which don't
 */
 #if CONFIG_STACK_WIN32
 
-#include <winsock.h>
-
+#include <winsock2.h>
 static __inline char *ntoa(ip4addr_t ipad)
 {
-	struct in_addr addr;
-	addr.s_addr = ipad;
+	struct in_addr addr = {ipad};
 	return inet_ntoa(addr);
 }
 #define HAVE_ntoa 1
@@ -67,10 +65,10 @@ static __inline char *ntoa(ip4addr_t ipad)
 #include <arpa/inet.h>
 static inline char *ntoa(ip4addr_t ipad)
 {
-	struct in_addr addr;
-	addr.s_addr = ipad;
+	struct in_addr addr = {ipad};
 	return inet_ntoa(addr);
 }
+
 #define HAVE_ntoa 1
 
 /*
