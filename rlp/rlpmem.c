@@ -419,10 +419,9 @@ rlpm_free_listener(rlp_listener_t *listener)
 rlp_listener_t *
 rlpm_next_listener(rlp_listener_t *listener, protocolID_t pdu_protocol)
 {
-	UNUSED_ARG(listener);
   rlp_listener_t *alistener;
 
-  alistener = listeners->next;
+  alistener = listener->next;
   while (alistener) {
     if (alistener->protocol == pdu_protocol) {
       return alistener;
@@ -645,5 +644,5 @@ void rlpm_free_txbuf(struct rlp_txbuf_s *buf)
 			+ sizeof(cid_t))
 #endif
 
-/* #endif	/* #elif CONFIG_RLPMEM_MALLOC */ */
+/* #endif	/* #elif CONFIG_RLPMEM_MALLOC */
 
