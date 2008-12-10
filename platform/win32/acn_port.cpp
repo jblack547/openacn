@@ -47,15 +47,15 @@ static bool initialized = 0;
 acn_protect_t acn_port_protect(void)
 {
 
-  //printf("protect count: %d\n", protect_count);
+  /* printf("protect count: %d\n", protect_count); */
   if (protect_count == 0) {
-    //printf("is zero\n");
+    /* printf("is zero\n"); */
     if (!initialized) {
-      //printf("init\n");
+      /* printf("init\n"); */
       InitializeCriticalSection(&CriticalSection);
       initialized = 1;
     }
-    //printf("crit\n");
+    /* printf("crit\n"); */
     EnterCriticalSection(&CriticalSection);
     protect_count++;
   }
@@ -65,7 +65,7 @@ void acn_port_unprotect(acn_protect_t param)
 {
   protect_count--;
   if (protect_count == 0) {
-    //printf("notcrit\n");
+    /* printf("notcrit\n"); */
     LeaveCriticalSection(&CriticalSection);
   }
 }

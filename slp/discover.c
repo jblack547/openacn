@@ -61,6 +61,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "slp.h"
 #include "sdt.h"
 #include "component.h"
+#include "acn_port.h"
 
 /* this module */
 #include "discover.h"
@@ -184,8 +185,8 @@ bool get_attribute_str(char** next_attr, char**attr_str)
 
 static void attrrqst_callback(int error, char *attr_list)
 {
-  uuid_t  cid;
-  uuid_t  dcid;
+  uint8_t *cid;
+  uint8_t *dcid;
   char cid_str[37]             = {'\0'};
   char fctn_str[ACN_FCTN_SIZE] = {'\0'};
   char uacn_str[ACN_FCTN_SIZE] = {'\0'};
@@ -193,10 +194,9 @@ static void attrrqst_callback(int error, char *attr_list)
   char port_str[6]             = {'\0'};
   char dd[64]                  = {'\0'};
 
-/*
-	FIXME: Unused?
+#if CONFIG_SDT
   component_t *comp = NULL;
-*/
+#endif
 
   uint32_t  ip = 0;
   uint16_t  port = 0;

@@ -93,6 +93,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "ntoa.h"
 #include "aton.h"
+#include "acn_port.h"
 
 /* other includes */
 #include "netsock.h"  /* network socket storage */
@@ -2539,7 +2540,7 @@ SLPError slp_reg(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list)
 /*******************************************************************************
 
 /* TODO: Add support for more than one registration */
-*******************************************************************************/
+/*******************************************************************************/
 /* FUNCTION TESTED */
 SLPError slp_dereg(void)
 {

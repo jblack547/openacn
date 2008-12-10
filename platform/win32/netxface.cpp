@@ -45,11 +45,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma comment(lib, "wsock32.lib")
 #endif
 
-#include "acn_arch.h"
+/* #include "acn_arch.h" */
+#include "acn_port.h"
 #include "netxface.h"
 #include "netsock.h"
 #include "acnlog.h"
-#include "inet.h"
+#include "ntoa.h"
+/* #include "inet.h" */
 
 
 /************************************************************************/
@@ -86,6 +88,7 @@ void netx_init(void)
 /************************************************************************/
 void *netx_new_txbuf(int size)
 {
+  UNUSED_ARG(size);
   return malloc(sizeof(UDPPacket));
 }
 
@@ -102,7 +105,8 @@ void netx_free_txbuf(void * pkt)
  */
 void netx_release_txbuf(void * pkt)
 {
-//  delete (UDPPacket*)pkt;
+  UNUSED_ARG(pkt);
+/*  delete (UDPPacket*)pkt; */
 }
 
 
@@ -138,12 +142,14 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   }
   
   /* flag that the socket is open */
-  netsock->nativesock = socket(AF_INET, SOCK_DGRAM, 0);
+  netsock->nativesock = socket(PF_INET, SOCK_DGRAM, 0);
 
   if (!netsock->nativesock) {
     acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : socket fail");
     return 1; /* FAIL */
   }
+
+  /* TODO: Set reuse option? */
 
   netx_INIT_ADDR(&addr, LCLAD_INADDR(*localaddr), LCLAD_PORT(*localaddr));
 
@@ -218,7 +224,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
   /* socket should ahve some options if enabled for multicast */
 
   /* allow reuse of the local port number */
-  flag = TRUE;
+  flag = true;
   ret = setsockopt(netsock->nativesock,  SOL_SOCKET, SO_REUSEADDR, (char *)&flag,  sizeof(flag));
   if (ret == SOCKET_ERROR) {
     acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:SO_REUSEADDR fail");
@@ -233,12 +239,12 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
     return 1; /* fail */
   }
 
-  //opt_val = FALSE;
-  //ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)opt_val, sizeof(opt_val)); 
-  //if (ret == SOCKET_ERROR) {
-  //  acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_LOOP fail");
-  //  return 1; /* fail */
-  //}
+  /* opt_val = FALSE; */
+  /* ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)opt_val, sizeof(opt_val)); */
+  /* if (ret == SOCKET_ERROR) { */
+  /*  acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_LOOP fail"); */
+  /*  return 1; /* fail */
+  /* } */
 
   mreq.imr_multiaddr.s_addr = local_group;
   mreq.imr_interface.s_addr = INADDR_ANY;
@@ -261,10 +267,10 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
     The call returns the number of characters sent, or negitive if an error occurred. 
 */
 int netx_send_to(
-	netxsocket_t      *netsock,    // contains a flag if port is open and the local port number
-	const netx_addr_t *destaddr,   // contians dest port and ip numbers
-	void              *pkt,        // pointer data packet if type UPDPacket (return from netx_new_txbuf())
-	size_t             datalen     // length of data
+	netxsocket_t      *netsock,    /* contains a flag if port is open and the local port number */
+	const netx_addr_t *destaddr,   /* contians dest port and ip numbers */
+	void              *pkt,        /* pointer data packet if type UPDPacket (return from netx_new_txbuf()) */
+	size_t             datalen     /* length of data */
 )
 {
   netx_addr_t  dest_addr;
@@ -287,7 +293,7 @@ int netx_send_to(
   }
   
   /* get dest IP and port from the calling routine */
-  // TODO: For now I'm going to copy to insure sin_family is set
+  /* TODO: For now I'm going to copy to insure sin_family is set */
   netx_INIT_ADDR(&dest_addr, netx_INADDR(destaddr), netx_PORT(destaddr));
 
   /* create a new UDP packet */
@@ -311,8 +317,8 @@ int netx_send_to(
 /*
   Poll for input
 */
-//TODO: need to place this better
-//TODO: This should not be hard code...and we should check size
+/* TODO: need to place this better */
+/* TODO: This should not be hard code...and we should check size */
 static UDPPacket recv_buffer;
 int
 netx_poll(void)
@@ -328,14 +334,14 @@ netx_poll(void)
   netx_addr_t         source;
   netx_addr_t         dest;
   
-  //LOG_FSTART();
+  /* LOG_FSTART(); */
 
   FD_ZERO(&socks);
 
   /* abort if we have no sockets yet */
   nsk = nsk_first_netsock();
   if (!nsk) {
-    //acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: no sockets");
+    /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: no sockets"); */
     return 1;
   }
   while (nsk) {
@@ -346,7 +352,7 @@ netx_poll(void)
     nsk = nsk_next_netsock(nsk);
   }
   
-  //TODO: what should timeout be?
+  /* TODO: what should timeout be? */
   timeout.tv_sec = 10;
 	timeout.tv_usec = 0;
   readsocks = select(high_sock+1, &socks, NULL, NULL, &timeout);
@@ -358,21 +364,21 @@ netx_poll(void)
     nsk = nsk_first_netsock();
     while (nsk && nsk->nativesock) {
       if (FD_ISSET(nsk->nativesock,&socks)) {
-        //acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: recvfrom...");
-        length = recvfrom(nsk->nativesock, recv_buffer, 1800, 0, (SOCKADDR *)&source, &addr_len);
+        /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: recvfrom..."); */
+        length = recvfrom(nsk->nativesock, recv_buffer, sizeof(recv_buffer), 0, (SOCKADDR *)&source, &addr_len);
         if (length < 0) {
           acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: recvfrom fail: %d", WSAGetLastError());
           return(1); /* fail */
         }
         if (length > 0) {
-          //TODO: This need to be network in localaddress form!
+          /* TODO: This need to be network in localaddress form! */
           netx_PORT(&dest) = LCLAD_PORT(nsk->localaddr);
           netx_INADDR(&dest) = LCLAD_INADDR(nsk->localaddr);
 
-          //acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handoff");
+          /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handoff"); */
           netx_handler(recv_buffer, length, &source, &dest);
-          //acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handled");
-//          return 0;
+          /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handled"); */
+/*          return 0; */
         } else {
           acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: length = 0");
           return(0); /* ok but no data */
@@ -381,7 +387,7 @@ netx_poll(void)
       nsk = nsk_next_netsock(nsk);
     }
   } 
-  //acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: no data");
+  /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: no data"); */
   return 0;
 }      
 
@@ -435,6 +441,8 @@ the given remote address. For now we just get the first address
   struct  hostent *local_host;
   struct  in_addr *in;
 
+  UNUSED_ARG(destaddr);
+
   gethostname(s, 256);
   local_host = gethostbyname(s);
   if (local_host) {
@@ -452,8 +460,8 @@ the given remote address. For now we just get the first address
 */
 ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
 {
-
-  //TODO: Implement me
+  UNUSED_ARG(destaddr);
+  /* TODO: Implement me */
   return 0;
 }
 

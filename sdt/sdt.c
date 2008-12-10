@@ -78,7 +78,12 @@ Notes:
 #include "acnlog.h"     /* acn log functions */
 #include "marshal.h"    /* machine independent packing and unpacking of data */
 #include "mcast_util.h" /* handy multicast utilities */
+#include "acn_port.h"
+#include "ntoa.h"
+
+#if 0
 #include "inet.h"       /* network to address translation */
+#endif
 
 #if CONFIG_STACK_LWIP
 #include "lwip/sys.h"
@@ -1634,8 +1639,8 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component, bool i
   buffer = buf_start;
 
   /* TODO: add unicast/multicast support? */
-  buffer = marshalU16(buffer, 49 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
-  /* buffer = marshalU16(buffer, 43 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG); */
+  buffer = marshalU16(buffer, 49 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  /* buffer = marshalU16(buffer, 43 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG); */
   buffer = marshalU8(buffer, SDT_JOIN);
   buffer = marshalUUID(buffer, foreign_component->cid);
   buffer = marshalU16(buffer, foreign_member->mid);
