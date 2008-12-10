@@ -83,14 +83,14 @@ struct rlp_txbuf_s {
 };
 
 extern void rlpm_init(void);
-//extern void rlpm_netsocks_init(void);
-//extern void rlpm_listeners_init(void);
+/* extern void rlpm_netsocks_init(void); */
+/* extern void rlpm_listeners_init(void); */
 
-//extern netxsocket_t *rlpm_new_netsock(void);
-//extern netxsocket_t *rlpm_find_netsock(localaddr_t localaddr);
-//extern netxsocket_t *rlpm_next_netsock(netxsocket_t *sockp);
-//extern netxsocket_t *rlpm_first_netsock(void);
-//extern void rlpm_free_netsock(netxsocket_t *sockp);
+/* extern netxsocket_t *rlpm_new_netsock(void); */
+/* extern netxsocket_t *rlpm_find_netsock(localaddr_t localaddr); */
+/* extern netxsocket_t *rlpm_next_netsock(netxsocket_t *sockp); */
+/* extern netxsocket_t *rlpm_first_netsock(void); */
+/* extern void rlpm_free_netsock(netxsocket_t *sockp); */
 
 extern rlp_listener_t *rlpm_new_listener(rlp_rxgroup_t *rxgroup);
 extern void            rlpm_free_listener(rlp_listener_t *listener);

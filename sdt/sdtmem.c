@@ -39,8 +39,8 @@ This module is separated from the main SDT to allow customization of memory
 handling.
 
 */
-//static const char *rcsid __attribute__ ((unused)) =
-//   "$Id$";
+/* static const char *rcsid __attribute__ ((unused)) = */
+/*   "$Id$"; */
 
 #include "opt.h"
 #include "types.h"
@@ -215,7 +215,7 @@ sdtm_free_resend(sdt_resend_t *resend)
   resend->tx_buffer = NULL;                           /* mark it empty */
 }
 
-#endif // of CONFIG_SDTMEM_STATIC 
+#endif /* of CONFIG_SDTMEM_STATIC */
 
 
 #if CONFIG_SDTMEM_MALLOC

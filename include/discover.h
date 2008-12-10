@@ -43,10 +43,10 @@ extern "C" {
 
 void discover_acn(char *dcid);
 void discover_register(component_t *component);
-//void discover_deregister(void);
+/* void discover_deregister(void); */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif //__DISCOVER_H__
+#endif /*__DISCOVER_H__ */

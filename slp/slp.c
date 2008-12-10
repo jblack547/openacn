@@ -139,7 +139,7 @@ const uint16_t  sa_reg_len        = sizeof(sa_reg_str) - 1;
 /*=========================================================================*/
 /* locals */
 /*=========================================================================*/
-//xTaskHandle slp_task = NULL;    // SLP Thread created in slp_open
+/* xTaskHandle slp_task = NULL;    // SLP Thread created in slp_open */
 
 uint16_t      xid;              /* sequential transaction id */
 SLPDa_list    da_list[MAX_DA];  /* note, this is fixed count! */
@@ -200,11 +200,11 @@ char *unpackURL_ENTRY(char* data, SLPUrlEntry *urlentry);
 
 /* UA only functions (also see header file) */
 #if SLP_IS_UA
-//SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
-//  void (*callback) (int error, char *url));
+/* SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate, */
+/*  void (*callback) (int error, char *url)); */
 SLPError slp_receive_srvrply(ip4addr_t ip, SLPHeader *header, char *data);
-//SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags,
-//  void (*callback) (int error, char *attributes));
+/* SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags, */
+/*  void (*callback) (int error, char *attributes)); */
 SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data);
 #endif
 
@@ -224,9 +224,9 @@ SLPError  slp_send_svrack(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code)
 #endif
 
 /****************************************************************/
-// TODO: move this to utility
-// This function compares the two strings, disregarding case.
-// note: GCC has a builtin function of the same name that can be access via __builtin_strcasecmp()
+/* TODO: move this to utility */
+/* This function compares the two strings, disregarding case. */
+/* note: GCC has a builtin function of the same name that can be access via __builtin_strcasecmp() */
 static int __strcasecmp (const char *s1, const char *s2)
 {
   char  c1, c2;
@@ -580,7 +580,7 @@ void da_dereg(void)
 
   /* now wait for all of them to close */
   /* perhaps this should be non-blocking */
-  // TODO: Timeout should allow for retries.
+  /* TODO: Timeout should allow for retries. */
   msleep(500); /* delay 500 ms */
   valid = 0;
   for (x=0;x<MAX_DA;x++) {
@@ -589,7 +589,7 @@ void da_dereg(void)
       break;
     }
   }
-  //TODO: log ones not closed?
+  /* TODO: log ones not closed? */
 }
 #endif /* SLP_SA */
 
@@ -645,7 +645,7 @@ char *getSLP_STR(SLPString *slp_str)
   /* get length */
   len = slp_str->len;
   /* small check on length */
-  if (len > 2000) // a guess size TODO": This should be based on interface MTU
+  if (len > 2000) /* a guess size TODO": This should be based on interface MTU */
     len = 0;
   result = (char*)SLP_MALLOC(len+1);
   if (result) {
@@ -994,9 +994,9 @@ SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
   slp_header.lang_tag.len = local_lang_len;
   offset = packSLP_HEADER(offset, &slp_header);
 
-  // TODO: If running without DA,
-  // we need to make a SA list of SA's we have
-  // This then would also go out multicast
+  /* TODO: If running without DA, */
+  /* we need to make a SA list of SA's we have */
+  /* This then would also go out multicast */
   /* PRList */
   slp_string.len = 0;
   offset = packSLP_STR(offset, &slp_string);
@@ -1077,10 +1077,10 @@ SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
         : non-zero if not valid
 *******************************************************************************/
 /* FUNCTION NOT TESTED (for use without DA) */
-// TODO, compare needed to be looked at.
-// We need to check on partial compare on service type'
-// we need to compare on predicate string
-// May have problems with long pr_list....(wrf)
+/* TODO, compare needed to be looked at. */
+/* We need to check on partial compare on service type' */
+/* we need to compare on predicate string */
+/* May have problems with long pr_list....(wrf) */
 SLPError slp_receive_srvrqst(ip4addr_t ip, SLPHeader *header, char *data)
 {
   SLPSrvRequest srv_req;
@@ -1905,7 +1905,7 @@ SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data)
   } else {
     /* get attributes count */
     data = unpackSLP_STR(data, &slp_str);
-    // TODO: should we get auth block and abort if it exist (we don't support)
+    /* TODO: should we get auth block and abort if it exist (we don't support) */
 
     /* get string */
     attr_list = getSLP_STR(&slp_str);
@@ -2214,8 +2214,8 @@ SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
  */
 /******************************************************************************/
 /* FUNCTION TESTED */
-//static void slp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr, uint16_t port)
-//void slp_recv(char *slp_data, int length, uint32_t ip_addr, int port)
+/* static void slp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr, uint16_t port) */
+/* void slp_recv(char *slp_data, int length, uint32_t ip_addr, int port) */
 void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref)
 {
   /* slp_data* points to the data in the received UDP message */
@@ -2338,7 +2338,7 @@ void  slp_active_discovery_start(void)
   dda_timer.xid = 0;
   dda_timer.discover = 1;
 }
-#endif //SLP_IS_UA || SLP_IS_SA
+#endif /* SLP_IS_UA || SLP_IS_SA */
 
 /*******************************************************************************
 srand() should be called before slp_init
@@ -2401,7 +2401,7 @@ SLPError slp_open(void)
   /* wait for network to be running. DHCP will bring it up after we get a IP address */
   /* ... */
 
-  // TODO: make this a const
+  /* TODO: make this a const */
   /* set address */
   IP4_ADDR(&slpmcast, 239,255,255,253);
 
@@ -2432,7 +2432,7 @@ SLPError slp_open(void)
     return SLP_MEMORY_ALLOC_FAILED;
   }
 
-  //TODO: should we start thread to receive data here or do outside?
+  /* TODO: should we start thread to receive data here or do outside? */
 
   return SLP_OK;
 }
@@ -2461,7 +2461,7 @@ void slp_close(void)
   /* remove our multicast address */
   netx_change_group(slp_socket, slpmcast, netx_LEAVEGROUP);
 
-  // TODO: we need to shut down timer here!
+  /* TODO: we need to shut down timer here! */
 
   /* free our netsock */
   /* make sure no one is going to use it before we free it */
@@ -2473,7 +2473,7 @@ void slp_close(void)
   /* now get rid of it */
   nsk_free_netsock(hold_socket);
 
-  //TODO: Shutdown timer and receive threads?
+  /* TODO: Shutdown timer and receive threads? */
 
   return;
 }
@@ -2538,7 +2538,7 @@ SLPError slp_reg(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list)
 #if SLP_IS_SA
 /*******************************************************************************
 
-// TODO: Add support for more than one registration
+/* TODO: Add support for more than one registration */
 *******************************************************************************/
 /* FUNCTION TESTED */
 SLPError slp_dereg(void)
@@ -2587,10 +2587,11 @@ void slp_print_stat(void)
 }
 
 
-// TODO: This thread is now done by the application thread.
-//*******************************************************************************
-//  Thread for SLP
-//*******************************************************************************/
+/* TODO: This thread is now done by the application thread. */
+/*******************************************************************************
+  Thread for SLP
+ *******************************************************************************/
+#if 0
 //void slp_thread( void *pvParameters )
 //{
 //  portTickType xLastWakeTime;
@@ -2612,4 +2613,5 @@ void slp_print_stat(void)
 //    vTaskDelayUntil( &xLastWakeTime, 1/portTICK_RATE_MS );
 //  }
 //}
+#endif
 

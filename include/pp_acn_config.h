@@ -153,7 +153,7 @@ typedef struct
 	uint8 reboot;
 	uint8 upgrade;
 }
-volNodeData;                    //created at runtime on each boot
+volNodeData;                    /* created at runtime on each boot */
 
 typedef struct
 {
@@ -182,10 +182,10 @@ typedef struct
 void activateConfig();
 int isEventReliable(local_component_t *comp, int address);
 
-//global Configuration Parmams
+/* global Configuration Parmams */
 extern char *firmwareFile;
 
-nvcNodeData nvcNode;   //stored in flash
-volNodeData volNode;   //built at boot
+nvcNodeData nvcNode;   /* stored in flash */
+volNodeData volNode;   /* built at boot */
 extern gateway_prop_t gatewayProps;
 #endif

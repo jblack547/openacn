@@ -68,4 +68,4 @@ char *unpackUINT32(char *charptr, uint32_t *val);
 }
 #endif
 
-#endif // PACK_H
+#endif /* PACK_H */

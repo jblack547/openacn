@@ -51,10 +51,10 @@ Code which sits on top of SDT should not really have to use this header
 
 #define RECIPROCAL_TIMEOUT_ms AD_HOC_TIMEOUT_ms * 2
 
-#define FOREIGN_MEMBER_EXPIRY_TIME_ms  5000 // see MIN_EXPIRY_TIME_ms
-#define FOREIGN_MEMBER_NAK_HOLDOFF_ms  2    // see NAK_HOLDOFF_INTERVAL_ms
-#define FOREIGN_MEMBER_NAK_MODULUS     50   //
-#define FOREIGN_MEMBER_NAK_MAX_TIME_ms 20   // see NAK_MAX_TIME_ms
+#define FOREIGN_MEMBER_EXPIRY_TIME_ms  5000 /* see MIN_EXPIRY_TIME_ms */
+#define FOREIGN_MEMBER_NAK_HOLDOFF_ms  2    /* see NAK_HOLDOFF_INTERVAL_ms */
+#define FOREIGN_MEMBER_NAK_MODULUS     50   /* */
+#define FOREIGN_MEMBER_NAK_MAX_TIME_ms 20   /* see NAK_MAX_TIME_ms */
 #define FOREIGN_MEMBER_MAK_TIME_ms      (FOREIGN_MEMBER_EXPIRY_TIME_ms - 1000)
 #if (FOREIGN_MEMBER_MAK_TIME_ms < 100)
   #error "Insufficient FOREIGN_MEMBER_MAK_TIME_ms time"

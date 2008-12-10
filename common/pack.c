@@ -43,7 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "pack.h"
 
-// PACK ********************************************************************************
+/* PACK ******************************************************************************** */
 char *packSTR(char *charptr, char *val) 
 { 
   int cnt;
@@ -65,7 +65,7 @@ char *packSTRlen(char *charptr, char *val, uint32_t len)
   	dif = len - cnt;
   	memset(&charptr[cnt], 0, dif);
   }
-	charptr[len-1] = 0;				//null
+	charptr[len-1] = 0;				/* null */
   return charptr + len;
 }
 
@@ -106,10 +106,10 @@ char *packUINT32(char *charptr, uint32_t val)
   return charptr + 4;
 }
 
-// UNPACK ******************************************************************************
+/* UNPACK ****************************************************************************** */
 char *unpackUINT8(char *charptr, uint8_t *val) 
 {
-  *val = (uint8_t)charptr[0];//*((uint8_t*)charptr++);
+  *val = (uint8_t)charptr[0];/* *((uint8_t*)charptr++); */
   return charptr+1;
 }
 

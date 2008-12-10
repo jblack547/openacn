@@ -57,7 +57,7 @@ inet.h no longer defines anything useful?
 char ip_string[16];
 char * ntoa(ip4addr_t ip_addr)
 {
-  // convert an ip address number into a string
+  /* convert an ip address number into a string */
   uint8_t a,b,c,d;
   ip_addr = ntohl(ip_addr);
 

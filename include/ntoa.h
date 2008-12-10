@@ -91,6 +91,6 @@ char * ntoa(ip4addr_t n);
 }
 #endif
 
-#endif //__NTOA_H__
+#endif /*__NTOA_H__ */
 
 

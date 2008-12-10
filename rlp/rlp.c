@@ -33,8 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 /*--------------------------------------------------------------------*/
-//static const char *rcsid __attribute__ ((unused)) =
-//   "$Id$";
+/* static const char *rcsid __attribute__ ((unused)) = */
+/*   "$Id$"; */
 
 /* acnlog facility DEBUG_RLP is used for ACN:RLP */
 
@@ -521,10 +521,10 @@ rlp_open_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr)
 		groupaddr = netx_GROUP_UNICAST;		/* force generic unicast */
 	}
 
-    // see if this entry already exists
+    /* see if this entry already exists */
 	if ((rxgroup = rlpm_find_rxgroup(netsock, groupaddr))) return rxgroup;	/* found existing matching group */
 
-	// create a new entry in the listeners[] table and get the pointer to the new entry
+	/* create a new entry in the listeners[] table and get the pointer to the new entry */
 	if ((rxgroup = rlpm_new_rxgroup(netsock, groupaddr)) == NULL) {
     acnlog(LOG_ERR|LOG_RLP, "LOG_DEBUG|rlp_open_rxgroup: failed to create listener");
     return NULL;	/* cannot allocate a new one */
@@ -584,7 +584,7 @@ rlp_add_listener(netxsocket_t *netsock, groupaddr_t groupaddr, protocolID_t prot
 		return NULL;
 	}
 
-    // save data for this listener
+    /* save data for this listener */
 	listener->protocol = protocol;
 	listener->callback = callback;
 	listener->ref = ref;
@@ -670,20 +670,20 @@ rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_a
 			return;
 		}
 		if (flags & VECTOR_bFLAG) {
-			pduProtocol = unmarshalU32(pp); // get protocol type
+			pduProtocol = unmarshalU32(pp); /* get protocol type */
 			pp += sizeof(uint32_t);
 		}
 		if (flags & HEADER_bFLAG) {
-			src_cidp = pp; // get pointer to source CID
+			src_cidp = pp; /* get pointer to source CID */
 			pp += sizeof(cid_t);
 		}
-		if (pp > pdup) {// if there is no following PDU in the message
+		if (pp > pdup) {/* if there is no following PDU in the message */
 			acnlog(LOG_DEBUG|LOG_RLP, "rlp_process_packet: pdu length error");
 			return;
 		}
 		if (flags & DATA_bFLAG)	{
-			datap = pp; // get pointer to start of the PDU
-			datasize = pdup - pp; // get size of the PDU
+			datap = pp; /* get pointer to start of the PDU */
+			datasize = pdup - pp; /* get size of the PDU */
 		}
 		/* there may be multiple channels registered for this PDU */
 		for (
@@ -693,9 +693,9 @@ rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_a
 		)
 		{
 			if (listener->callback) {
-        // TODO: hack.. well sort of, clipping out lister->ref and sending back ref from call back
-        // on lwip, this is pointer to pbuf so we can do reference counting on it
-//				(*listener->callback)(datap, datasize, listener->ref, remhost, src_cidp);
+        /* TODO: hack.. well sort of, clipping out lister->ref and sending back ref from call back */
+        /* on lwip, this is pointer to pbuf so we can do reference counting on it */
+/* 				(*listener->callback)(datap, datasize, listener->ref, remhost, src_cidp); */
 				(*listener->callback)(datap, datasize, ref, source, src_cidp);
       }
 		}

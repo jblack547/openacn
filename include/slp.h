@@ -48,73 +48,73 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SLP_UNUSED_ARG(x) (void)x
 
 #define SLP_RESERVED_PORT       htons(427)
-#define SLP_MCAST_ADDRESS       htonl(0xeffffffd)  // 239.255.255.253
+#define SLP_MCAST_ADDRESS       htonl(0xeffffffd)  /* 239.255.255.253 */
 
 #define SLP_VERSION             2
 #define SLP_TTL					        16
 
-//#define SLP_THREAD_PRIO         3
-//#define SLP_THREAD_STACK        600 // FIXME What should this be?
+/* #define SLP_THREAD_PRIO         3   */
+/* #define SLP_THREAD_STACK        600 */ /* FIXME What should this be? */
 
-#define SLP_IS_SA               1  // service agent, provides services
-#define SLP_IS_UA               1  // user agent, looks for services
+#define SLP_IS_SA               1  /* service agent, provides services */
+#define SLP_IS_UA               1  /* user agent, looks for services */
 
-#define SLP_MTU                 600 // Max SLP data packet (not including 44 bytes for header)
+#define SLP_MTU                 600 /* Max SLP data packet (not including 44 bytes for header) */
 
 /*=========================================================================*/
 /* SLP Constants                                                           */
 /*=========================================================================*/
-#define SLP_TMR_INTERVAL  100  // ms
-#define SLP_TMR_TPS       (1000/SLP_TMR_INTERVAL) // 10, inverse of SLP_TMR_INTERVAL
+#define SLP_TMR_INTERVAL  100  /* ms */
+#define SLP_TMR_TPS       (1000/SLP_TMR_INTERVAL) /* 10, inverse of SLP_TMR_INTERVAL */
 
-// TPS = number of times the timer is hit per second
-// Max time to wait for a complete multicast query response (all values.)
-#define CONFIG_MC_MAX     ( 15 * SLP_TMR_TPS ) // default: 15 seconds
-#define CONFIG_MC_RETRY_COUNT (3)              // number of times we should retry a multicast message)
+/* TPS = number of times the timer is hit per second */
+/* Max time to wait for a complete multicast query response (all values.) */
+#define CONFIG_MC_MAX     ( 15 * SLP_TMR_TPS ) /* default: 15 seconds */
+#define CONFIG_MC_RETRY_COUNT (3)              /* number of times we should retry a multicast message) */
 
-// Wait to perform DA discovery on reboot.
-#define CONFIG_START_WAIT	( 3 * SLP_TMR_TPS ) // default: 3 seconds
+/* Wait to perform DA discovery on reboot. */
+#define CONFIG_START_WAIT	( 3 * SLP_TMR_TPS ) /* default: 3 seconds */
 
-// Wait interval before initial retransmission of multicast or unicast requests.
-#define CONFIG_RETRY      ( 2  * SLP_TMR_TPS ) // default: 2 seconds
+/* Wait interval before initial retransmission of multicast or unicast requests. */
+#define CONFIG_RETRY      ( 2  * SLP_TMR_TPS ) /* default: 2 seconds */
 
-// Give up on unicast request retransmission.
-#define CONFIG_RETRY_MAX	( 15 * SLP_TMR_TPS ) // default: 15 seconds
+/* Give up on unicast request retransmission. */
+#define CONFIG_RETRY_MAX	( 15 * SLP_TMR_TPS ) /* default: 15 seconds */
 
-// DA Heartbeat, so that SAs passively detect new DAs.
-#define CONFIG_DA_BEAT    (  3*60*60 * SLP_TMR_TPS ) // default: 3 hours
+/* DA Heartbeat, so that SAs passively detect new DAs. */
+#define CONFIG_DA_BEAT    (  3*60*60 * SLP_TMR_TPS ) /* default: 3 hours */
 
-// Minimum interval to wait before repeating Active DA discovery.
-#define CONFIG_DA_FIND	( 15*60*60 * SLP_TMR_TPS ) // default: 15 minutes
+/* Minimum interval to wait before repeating Active DA discovery. */
+#define CONFIG_DA_FIND	( 15*60*60 * SLP_TMR_TPS ) /* default: 15 minutes */
 
-// Wait to register services on passive DA discovery.
-#define CONFIG_REG_PASSIVE	( 3 * SLP_TMR_TPS ) // default: 1-3 seconds
+/* Wait to register services on passive DA discovery. */
+#define CONFIG_REG_PASSIVE	( 3 * SLP_TMR_TPS ) /* default: 1-3 seconds */
 
-// Wait to register services on active DA discovery.
-#define CONFIG_REG_ACTIVE	( 3 * SLP_TMR_TPS ) // default: 1-3 seconds
+/* Wait to register services on active DA discovery. */
+#define CONFIG_REG_ACTIVE	( 3 * SLP_TMR_TPS ) /* default: 1-3 seconds */
 
-// DAs and SAs close idle connections.
-#define CONFIG_CLOSE_CONN	( 5*60*60 * SLP_TMR_TPS ) // default: 5 minutes
+/* DAs and SAs close idle connections. */
+#define CONFIG_CLOSE_CONN	( 5*60*60 * SLP_TMR_TPS ) /* default: 5 minutes */
 
 #define SLP_DA_SERVICE_TYPE       "service:directory-agent"
 #define SLP_SA_SERVICE_TYPE       "service:service-agent"
 
-#define SLP_REGIGRATION_LIFETIME	(5*60 + 30)        // valid for 5+ minutes, we will update 5 minutes (value is in seconds)
+#define SLP_REGIGRATION_LIFETIME	(5*60 + 30)        /* valid for 5+ minutes, we will update 5 minutes (value is in seconds) */
 
-#define SLP_REGIGISTION_REFRESH	(5*60 * SLP_TMR_TPS) // must be less than SLP_REGIGRATION_LIFETIME (value is TPS )
+#define SLP_REGIGISTION_REFRESH	(5*60 * SLP_TMR_TPS) /* must be less than SLP_REGIGRATION_LIFETIME (value is TPS ) */
 
 /* SLP Function ID constants                                               */
-#define SLP_FUNCT_SRVRQST         1  //Service Request
-#define SLP_FUNCT_SRVRPLY         2  //Service Reply
-#define SLP_FUNCT_SRVREG          3  //Service Registration
-#define SLP_FUNCT_SRVDEREG        4  //Service Deregister
-#define SLP_FUNCT_SRVACK          5  //Service Acknowledge
-#define SLP_FUNCT_ATTRRQST        6  //Attribute Request
-#define SLP_FUNCT_ATTRRPLY        7  //Attribute Reply
-#define SLP_FUNCT_DAADVERT        8  //DA Advertisement
-#define SLP_FUNCT_SRVTYPERQST     9  //Service Type Request
-#define SLP_FUNCT_SRVTYPERPLY     10 //Service Type Reply
-#define SLP_FUNCT_SAADVERT        11 //SA Advertisement
+#define SLP_FUNCT_SRVRQST         1  /* Service Request */
+#define SLP_FUNCT_SRVRPLY         2  /* Service Reply */
+#define SLP_FUNCT_SRVREG          3  /* Service Registration */
+#define SLP_FUNCT_SRVDEREG        4  /* Service Deregister */
+#define SLP_FUNCT_SRVACK          5  /* Service Acknowledge */
+#define SLP_FUNCT_ATTRRQST        6  /* Attribute Request */
+#define SLP_FUNCT_ATTRRPLY        7  /* Attribute Reply */
+#define SLP_FUNCT_DAADVERT        8  /* DA Advertisement */
+#define SLP_FUNCT_SRVTYPERQST     9  /* Service Type Request */
+#define SLP_FUNCT_SRVTYPERPLY     10 /* Service Type Reply */
+#define SLP_FUNCT_SAADVERT        11 /* SA Advertisement */
 
 #define SLP_FLAG_OVERFLOW         0x8000
 #define SLP_FLAG_FRESH            0x4000
@@ -135,7 +135,7 @@ typedef enum {
 } SLPURLLifetime;
 
 typedef enum {
-  // internal errors
+  /* internal errors */
   SLP_UNEXPECTED_MSG               = -13,
 	SLP_NOT_OPEN                     = -12,
 	SLP_DA_NOT_FOUND								 = -11,
@@ -150,7 +150,7 @@ typedef enum {
   SLP_NOT_IMPLEMENTED              = -2,
   SLP_HANDLE_IN_USE                = -1,
 
-  // external errors
+  /* external errors */
   SLP_OK                           = 0,
   SLP_LANGUAGE_NOT_SUPPORTED       = 1,
   SLP_PARSE_ERROR                  = 2,
@@ -179,53 +179,53 @@ typedef enum {
 /*=========================================================================*/
 /* Misc "adjustable" constants (I would not adjust the if I were you)      */
 /*=========================================================================*/
-//#define SLPD_CONFIG_MAX_RECONN      2    /* max number tcp of reconnects   */
-//                                         /* to complete an outgoing        */
-//                                         /* transaction                    */
-//
-//#define SLPD_MAX_SOCKETS            128  /* maximum number of sockets      */
-//
-//#define SLPD_COMFORT_SOCKETS        64   /* a "comfortable" number of      */
-//                                         /* of sockets.  Exceeding this    */
-//                                         /* number will indicate a busy    */
-//                                         /* agent                          */
-//
-//#define SLPD_CONFIG_CLOSE_CONN      900  /* max idle time (60 min) when    */
-//                                         /* not busy                       */
-//
-//#define SLPD_CONFIG_BUSY_CLOSE_CONN 30   /* max idle time (30 sec) when    */
-//                                         /* busy                           */
-//
-//#define SLPD_CONFIG_DA_FIND         900  /* minimum delay between active   */
-//                                         /* discovery requests (15 min)    */
+/*#define SLPD_CONFIG_MAX_RECONN      2    /* max number tcp of reconnects   */
+/*                                         /* to complete an outgoing        */
+/*                                         /* transaction                    */
 
-#define DA_CLOSED    		0  // closed, no active registrions.
-#define DA_SEND_REG 		1  // need to send registration
-#define DA_WAIT_REG 		2  // waiting for ack from registration
-#define DA_EXPIRE   		3  // timing out refresh registation
-#define DA_SEND_DEREG   4  // waiting for ack from deregistration
-#define DA_WAIT_DEREG   5  // send deregister message
+/*#define SLPD_MAX_SOCKETS            128  /* maximum number of sockets      */
+
+/*#define SLPD_COMFORT_SOCKETS        64   /* a "comfortable" number of      */
+/*                                         /* of sockets.  Exceeding this    */
+/*                                         /* number will indicate a busy    */
+/*                                         /* agent                          */
+
+/*#define SLPD_CONFIG_CLOSE_CONN      900  /* max idle time (60 min) when    */
+/*                                         /* not busy                       */
+
+/*#define SLPD_CONFIG_BUSY_CLOSE_CONN 30   /* max idle time (30 sec) when    */
+/*                                         /* busy                           */
+
+/*#define SLPD_CONFIG_DA_FIND         900  /* minimum delay between active   */
+/*                                         /* discovery requests (15 min)    */
+
+#define DA_CLOSED    		0  /* closed, no active registrions. */
+#define DA_SEND_REG 		1  /* need to send registration */
+#define DA_WAIT_REG 		2  /* waiting for ack from registration */
+#define DA_EXPIRE   		3  /* timing out refresh registation */
+#define DA_SEND_DEREG   4  /* waiting for ack from deregistration */
+#define DA_WAIT_DEREG   5  /* send deregister message */
 
 typedef struct _SLPDa_list
 {
   uint32_t    ip;
-  uint32_t    state;      // for ack from da after registration
-  uint32_t    counter;    // counter for message handling
-  uint32_t    retries;    // number of times to retry to sending message;
-  uint32_t    boot_time;  // boottime from discovery
-  uint32_t    timeout;    // counter to discover missing gone bye bye! See CONFIG_DA_BEAT
+  uint32_t    state;      /* for ack from da after registration */
+  uint32_t    counter;    /* counter for message handling */
+  uint32_t    retries;    /* number of times to retry to sending message; */
+  uint32_t    boot_time;  /* boottime from discovery */
+  uint32_t    timeout;    /* counter to discover missing gone bye bye! See CONFIG_DA_BEAT */
 } SLPDa_list;
 
 typedef struct _SLPdda_timer
 {
-  uint8_t     discover;			// set to TRUE to start discovery
-  uint32_t    counter;  		// counter
-  uint8_t	    xmits;        // number of times we have sent message
-  uint16_t	  xid;          // xid of the message
+  uint8_t     discover;			/* set to TRUE to start discovery */
+  uint32_t    counter;  		/* counter */
+  uint8_t	    xmits;        /* number of times we have sent message */
+  uint16_t	  xid;          /* xid of the message */
 } SLPdda_timer;
 
 /*=========================================================================*/
-// NOTE, do NOT use string functions on SLPString structures, they do NOT contain a terminating NULL!
+/* NOTE, do NOT use string functions on SLPString structures, they do NOT contain a terminating NULL! */
 typedef struct _SLPString
 {
   uint16_t  len;
@@ -238,7 +238,7 @@ typedef struct _SLPUrlEntry
   uint16_t    lifetime;
   SLPString   url;
   uint8_t     num_auth_blocks;
-//  SLPAuthBlk  auth_block;
+/*  SLPAuthBlk  auth_block; */
 } SLPUrlEntry;
 
 /*=========================================================================*/
@@ -266,7 +266,7 @@ typedef struct _SLPDAAdvert
   SLPString   attr_list;
   SLPString   slp_sip;
   uint8_t     num_auth_blocks;
-//  SLPAuthBlk  auth_block;
+/*  SLPAuthBlk  auth_block; */
 }SLPDAAdvert;
 
 /*=========================================================================*/
@@ -277,7 +277,7 @@ typedef struct _SLPSrvRegistation
   SLPString   scope_list;
   SLPString   attr_list;
   uint8_t     num_auth_blocks;
-//  SLPAuthBlk  auth_block;
+/*  SLPAuthBlk  auth_block; */
 }SLPSrvRegistration;
 
 /*=========================================================================*/
@@ -325,7 +325,7 @@ void slp_tick(void *arg);
 SLPError slp_reg(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list);
 /* slp de-registration */
 SLPError slp_dereg(void);
-#endif  //SLP_IS_SA
+#endif  /* SLP_IS_SA */
 
 
 #if SLP_IS_UA
@@ -336,15 +336,15 @@ SLPError slp_send_attrrqst(unsigned long ip, char *req_url, char *tags,
 #endif
 
 
-// UA and SA functions
+/* UA and SA functions */
 #if SLP_IS_UA || SLP_IS_SA
 void    slp_active_discovery_start(void);
 void		slp_print_stat(void);
 
 #endif
 
-// call back for UDP SLP receive
-//void slp_recv(char *slp_data, int length, uint32_t ip_addr, int port);
+/* call back for UDP SLP receive */
+/* void slp_recv(char *slp_data, int length, uint32_t ip_addr, int port); */
 void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref);
 
 #ifdef __cplusplus
@@ -353,4 +353,4 @@ void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t
 
 
 
-#endif // SLP_H
+#endif /* SLP_H */

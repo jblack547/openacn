@@ -137,7 +137,7 @@ typedef struct sdt_member_s
 
   /* only used for local member */
   uint16_t nak_holdoff;
-  //uint16_t last_acked;
+  /* uint16_t last_acked; */
   uint16_t nak_modulus;
   uint16_t nak_max_wait;
 } sdt_member_t;
@@ -147,15 +147,15 @@ typedef struct sdt_channel_s
 {
   uint16_t      number;
   uint16_t      available_mid;
-  netx_addr_t   destination_addr;     // channel outbound address (multicast)
-  netx_addr_t   source_addr;          // channel source address
+  netx_addr_t   destination_addr;     /* channel outbound address (multicast) */
+  netx_addr_t   source_addr;          /* channel source address */
   uint32_t      total_seq;
   uint32_t      reliable_seq;
   uint32_t      oldest_avail;
   int           mak_ms;
   sdt_member_t *member_list;
   netxsocket_t  *sock;
-  struct rlp_listener_s *listener;     // multicast listener
+  struct rlp_listener_s *listener;     /* multicast listener */
 } sdt_channel_t;
 
 /* sequence errors */

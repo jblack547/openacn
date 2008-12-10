@@ -61,10 +61,10 @@ nsk_find_netsock(localaddr_t *localaddr)
 {
   netxsocket_t *socket;
 
-    // get address to array of sockets
+    /* get address to array of sockets */
   socket = sockets_tbl;
 #if CONFIG_LOCALIP_ANY
-  // while the port num in this socket entry is not equal to the port num passed in
+  /* while the port num in this socket entry is not equal to the port num passed in */
   while (NSK_PORT(socket) != LCLAD_PORT(*localaddr)) {
 #else
   while (NSK_PORT(socket) != LCLAD_PORT(*localaddr) || NSK_INADDR(socket) != LCLAD_INADDR(*localaddr)) {
@@ -83,11 +83,11 @@ nsk_new_netsock(void)
 {
   netxsocket_t *socket;
 
-    // get address to array of sockets
+    /* get address to array of sockets */
   socket = sockets_tbl;
-  // while this entry is in use (port number in it is non-zero)
+  /* while this entry is in use (port number in it is non-zero) */
   while (NSK_PORT(socket) != netx_PORT_NONE)
-      // point to the next entry in the array
+      /* point to the next entry in the array */
     if (++socket >= sockets_tbl + MAX_NSK_SOCKETS) {
       return NULL;
     }

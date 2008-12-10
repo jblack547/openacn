@@ -69,14 +69,14 @@ int textToUuid(const char *uuidText, uuid_t uuidp)
 			  byt = (byt << 4) | (toupper(*uuidText) - 'A' + 10);
 		  } else {
 			  while (bytp < uuidp + UUIDSIZE) *bytp++ = 0;
-			  return -1;	//error terminates
+			  return -1;	/* error terminates */
 			}
 		if (byt >= 0x100) {
 			*bytp++ = (uint8_t)byt;
 			byt = 1;	/* restore shift marker */
 		}
 	}
-	//TODO: - check for terminated input string here (what termination is allowed?)
+	/* TODO: - check for terminated input string here (what termination is allowed?) */
 	return 0;
 }
 
@@ -107,7 +107,7 @@ char *uuidToText(const uint8_t *uuidp, char *uuidText)
 				break;
 		}
 	}
-	*uuidText = '\0';	//terminate the string
+	*uuidText = '\0';	/* terminate the string */
 	return uuidText;
 }
 

@@ -33,13 +33,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 
-//5.1.1.	Consoles
-//Under the well known DCID (D1F6F109-8A48-4435-8157-A226604DEA89):
+/* 5.1.1.	Consoles */
+/* Under the well known DCID (D1F6F109-8A48-4435-8157-A226604DEA89): */
 
-//5.1.2.	RFRs
-//Under the well known DCID (CAB91A8C-CC44-49b1-9398-1EF5C07C31C9):
+/* 5.1.2.	RFRs */
+/* Under the well known DCID (CAB91A8C-CC44-49b1-9398-1EF5C07C31C9): */
 
-//TODO: change printf to acnlog...
+/* TODO: change printf to acnlog... */
 
 /* Lib includes */
 #include <stdlib.h>
@@ -67,8 +67,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 
-// these (at least my_cid) should be user configurable...
-//static char my_dmp[] = "c";  // c = ctl-access, d = dev-access, or cd = both
+/* these (at least my_cid) should be user configurable... */
+/* static char my_dmp[] = "c";  // c = ctl-access, d = dev-access, or cd = both */
 
 /* examples of data... */
 /*
@@ -102,7 +102,7 @@ static void create_attr_list(char *new_attr_list, component_t *component)
   char dcid_str[UUID_STR_SIZE];
   char access_str[3] = {'\0'};
 
-  // if we received a non-zero pointer to the destination string
+  /* if we received a non-zero pointer to the destination string */
   if (new_attr_list) {
     uuidToText(component->cid, cid_str);
     uuidToText(component->dcid, dcid_str);
@@ -121,12 +121,12 @@ static void create_attr_list(char *new_attr_list, component_t *component)
         break;
     }
 		
-    // convert the IP string
+    /* convert the IP string */
     ip_str = ntoa(netx_getmyip(NULL));
     
-    // create the attribute string for SLP discovery
+    /* create the attribute string for SLP discovery */
     sprintf(new_attr_list, attr_list_fmt, cid_str, component->fctn, component->uacn, ip_str, SDT_ADHOC_PORT, access_str, dcid_str, ip_str);
-    //                                    %s       %s               %s               %s      %d                 %s           %s        %s
+    /*                                    %s       %s               %s               %s      %d                 %s           %s        %s */
   }
 }
 
@@ -135,9 +135,9 @@ static void create_url(char *new_url, component_t *component)
 {
   char cid_str[UUID_STR_SIZE];
 
-  // convert the CID to a string
+  /* convert the CID to a string */
   uuidToText(component->cid, cid_str);
-  // put the CID string into the URL string
+  /* put the CID string into the URL string */
   sprintf(new_url, acn_reg_fmt, cid_str);
 }
 
@@ -159,7 +159,7 @@ static void create_url(char *new_url, component_t *component)
                    $:tftp://192.169.3.100/$.ddl)
 */
 /* Callback when we receive a reply from our attribute request */
-// for DA builds
+/* for DA builds */
 
 bool get_attribute_str(char** next_attr, char**attr_str)
 {
@@ -208,7 +208,7 @@ static void attrrqst_callback(int error, char *attr_list)
   char *e;
 
   /* local function to get attribute block */
-  //TODO: do we need auto below
+  /* TODO: do we need auto below */
 #ifdef NEVER
   auto bool get_attribute_str(void);
   bool get_attribute_str(void)
@@ -270,7 +270,7 @@ static void attrrqst_callback(int error, char *attr_list)
             printf("dcid: %s\n",cid_str);
           }
         }
-        //these will look like this: esta.sdt/192.169.3.100:2487;
+        /* these will look like this: esta.sdt/192.169.3.100:2487; */
         p = strstr(attr_str, "esta.sdt/");
         while (p) {
           s = p + 9;
@@ -320,10 +320,10 @@ static void attrrqst_callback(int error, char *attr_list)
   /* create a component for this CID */
 #if CONFIG_SDT
   if (!uuidIsNull(cid)) {
-  	// use the CID to get the address of the component structure 
-    //why is this commeted out?
-    //comp = sdt_find_component(cid);  // COMMENTED OUT
-    // if it was found
+  	/* use the CID to get the address of the component structure */
+    /* why is this commeted out? */
+    /* comp = sdt_find_component(cid); */ /* COMMENTED OUT */
+    /* if it was found */
     if (comp) {
       uuidCopy(comp->dcid, dcid);
       netx_PORT(&comp->adhoc_addr) = htons(port);
@@ -344,14 +344,14 @@ static void attrrqst_callback(int error, char *attr_list)
 }
 
 #if SLP_IS_UA
-// for directory agent builds
+/* for directory agent builds */
 static void srvrqst_callback(int error, char *url)
 {
   if (!error) {
     printf("srvrqs callback: %s\n",url);
-    //TODO: do we want to get all attributes or just the ones we know about
-//    slp_send_attrrqst(0, url,"cid,csl-esta.dmp,acn-fctn,acn-uacn", attrrqst_callback); 
-    // this will get all
+    /* TODO: do we want to get all attributes or just the ones we know about */
+/*    slp_send_attrrqst(0, url,"cid,csl-esta.dmp,acn-fctn,acn-uacn", attrrqst_callback); */
+    /* this will get all */
     slp_send_attrrqst(0, url, NULL, attrrqst_callback);
   } else {
     printf("srvrqs callback: error %d\n",error);
@@ -360,24 +360,24 @@ static void srvrqst_callback(int error, char *url)
 #endif
 
 #if SLP_IS_UA
-// starting point if we are a directory agent build
+/* starting point if we are a directory agent build */
 void discover_acn(char *dcid_str)
 {
   char predicate_str[100];
 
   sprintf(predicate_str, predicate_fmt, dcid_str);
     
-    // TODO: used dcid, not hard coded...
+    /* TODO: used dcid, not hard coded... */
   slp_send_srvrqst(0, "service:acn.esta", predicate_str, srvrqst_callback);
 }
 #endif
 
-//(cid=01000000-0000-0000-0000-000000000001),(acn-fctn=),(acn-uacn=),(acn-services=esta.dmp),(csl-esta.dmp=esta.sdt/192.168.1.201:5568;esta.dmp/cd:02000000-0000-0000-0000-000000000002),(device-description=$:tftp://192.168.1.2)
+/* (cid=01000000-0000-0000-0000-000000000001),(acn-fctn=),(acn-uacn=),(acn-services=esta.dmp),(csl-esta.dmp=esta.sdt/192.168.1.201:5568;esta.dmp/cd:02000000-0000-0000-0000-000000000002),(device-description=$:tftp://192.168.1.2) */
 char  acn_attr_list[500] = {'\0'};
 char  acn_srv_url[100] = {'\0'};
-//TODO: support for multiple componets
-//      prevent duplicate calls
-// starting point if we are a device build (not a directory agent)
+/* TODO: support for multiple componets */
+/*      prevent duplicate calls */
+/* starting point if we are a device build (not a directory agent) */
 void discover_register(component_t *component)
 {
   /* passed in component must have defined: 

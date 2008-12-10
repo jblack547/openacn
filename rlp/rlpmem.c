@@ -37,8 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 This module is separated from the main RLP to allow customization of memory
 handling. See rlp.c for description of 3-level structure.
 */
-//static const char *rcsid __attribute__ ((unused)) =
-//   "$Id$";
+/* static const char *rcsid __attribute__ ((unused)) = */
+/*   "$Id$"; */
 
 #include <string.h>
 #include "opt.h"
@@ -645,5 +645,5 @@ void rlpm_free_txbuf(struct rlp_txbuf_s *buf)
 			+ sizeof(cid_t))
 #endif
 
-//#endif	/* #elif CONFIG_RLPMEM_MALLOC */
+/* #endif	/* #elif CONFIG_RLPMEM_MALLOC */ */
 

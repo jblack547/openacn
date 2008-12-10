@@ -37,16 +37,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "types.h"
 #include "acn_arch.h"
 
-//#if CONFIG_STACK_NETBURNER
-//#include "includes.h"      // netburner types 
-//#include "have_types.h"
-//#include <ucos.h>
-//#endif
+/* #if CONFIG_STACK_NETBURNER */
+/* #include "includes.h"      */ /* netburner types */
+/* #include "have_types.h" */
+/* #include <ucos.h> */
+/* #endif */
 
 #if CONFIG_STACK_LWIP
 #include "lwip/pbuf.h"
 #include "lwip/sys.h"
-#endif  //CONFIG_STACK_LWIP
+#endif  /* CONFIG_STACK_LWIP */
 
 #include "acn_arch.h"
 #include "dmpmem.h"
@@ -54,15 +54,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acnlog.h"
  
  
-// holder...
+/* holder... */
 dmp_subscription_t subscriptions_m[DMP_MAX_SUBSCRIPTIONS];
 
 #ifdef USE_QUEUE
 #define MAX_DMP_QUEUE 24
 
 /* local variables */
-//static dmp_queue_t *input_ptr;        /* fifo input pointer*/
-//static dmp_queue_t *output_ptr;       /* fifo output pointer */
+/* static dmp_queue_t *input_ptr;        /* fifo input pointer*/ */
+/* static dmp_queue_t *output_ptr;       /* fifo output pointer */ */
 dmp_queue_t dmp_queue[MAX_DMP_QUEUE]; /* fifo */
 #endif
 
@@ -94,7 +94,7 @@ dmpm_init(void)
   dmp_queue_sem = sys_sem_new(1);
   input_ptr = &dmp_queue[0];
   output_ptr = input_ptr;
-#endif //USE_QUEUE
+#endif /* USE_QUEUE */
 
 
 }
@@ -114,7 +114,7 @@ dmpm_close(void)
   if (dmp_queue_sem) {
     sys_sem_free(dmp_queue_sem);
   }
-#endif //USE_QUEUE
+#endif /* USE_QUEUE */
 }
 
 #ifdef USE_QUEUE
@@ -203,7 +203,7 @@ dmpm_free_queue(void)
   }
   DMP_UNLOCK_QUEUE();
 }
-#endif  // USE_QUEUE
+#endif  /* USE_QUEUE */
 
 /*****************************************************************************/
 /*
@@ -212,17 +212,17 @@ dmpm_free_queue(void)
 dmp_subscription_t *
 dmpm_new_subscription(void)
 { 
-  // allocate
+  /* allocate */
   dmp_subscription_t   *subscription;
 
   for (subscription = subscriptions_m; subscription < subscriptions_m + DMP_MAX_SUBSCRIPTIONS; ++subscription) {
     if (subscription->state == DMP_SUB_EMPTY) {
-      // clear values
+      /* clear values */
       memset(subscription, 0, sizeof(dmp_subscription_t));
       return subscription;
     }
   }
-  // oops out of resources  
+  /* oops out of resources  */
   acnlog(LOG_WARNING | LOG_DMPM,"dmpm_new_subscription: out of subscriptions");
   return NULL;
 }

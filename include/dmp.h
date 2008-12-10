@@ -41,13 +41,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acn_arch.h"
 #include "types.h"
 #include "component.h"
-//#include "sdt.h"
+/* #include "sdt.h" */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// Address/Data Encoded byte fields (header)
+/* Address/Data Encoded byte fields (header) */
 #define VIRTUAL_ADDRESS_BIT      0x80
 #define RELATIVE_ADDRESS_BIT     0x40
 #define ADDRESS_TYPE_MASK        0x30
@@ -60,14 +60,14 @@ extern "C" {
 /* ESTA registered protocol code */
 #define DMP_PROTOCOL_ID     2
 #define PROTO_DMP           DMP_PROTOCOL_ID
-// DMP reliable flag
+/* DMP reliable flag */
 enum
 {
 	NOT_RELIABLE,
 	RELIABLE
 };
 
-// address_size field
+/* address_size field */
 enum
 {
   ONE_OCTET_ADDRESS  = 0,
@@ -76,7 +76,7 @@ enum
   RESERVED           = 3,
 };
 
-// address_type field
+/* address_type field */
 enum
 {
   SINGLE_ADDRESS_SINGLE_DATA    = 0x00,
@@ -102,7 +102,7 @@ enum
   DMP_NO_SUBSCRIPT_SUPPORTED  = 11,
 };
 
-// DMP messsage types (commands)
+/* DMP messsage types (commands) */
 enum
 {
   DMP_GET_PROPERTY =          1,
@@ -145,7 +145,7 @@ typedef struct dmp_address_s
 typedef struct dmp_property_s {
   uint32_t        address;
   uint32_t        ref_count;
-  //dmp_property_t  *next;
+  /* dmp_property_t  *next; */
 } dmp_property_t;
 
 typedef struct dmp_subscription_s {
@@ -175,4 +175,4 @@ uint8_t* dmp_encode_address_header(dmp_address_t *dmp_address, uint8_t *encodeBy
 }
 #endif
 
-#endif //__dmp_h__
+#endif /* __dmp_h__ */
