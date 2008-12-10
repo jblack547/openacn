@@ -48,7 +48,7 @@ up as a macro. A simple version is provided for the few which don't
 */
 #if CONFIG_STACK_WIN32
 
-#include <winsock2.h>
+#include <winsock.h>
 #define aton(ip_str) inet_addr(ip_str)
 #define HAVE_aton 1
 
