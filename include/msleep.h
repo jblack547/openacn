@@ -40,7 +40,6 @@ Substitute a system function if we can
 */
 #if CONFIG_STACK_WIN32
 
-#include "sleep.h"
 #define msleep(msecs) Sleep(msecs)
 #define HAVE_msleep 1
 
