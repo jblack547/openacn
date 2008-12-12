@@ -85,7 +85,7 @@ void            rlpm_init(void)
 
 */
 /***********************************************************************************************/
-static rlp_listener_t *listeners = NULL;
+/* static rlp_listener_t *listeners = NULL; */ /* not used a this time*/
 static rlp_rxgroup_t  *rxgroups  = NULL;
 
 #if CONFIG_RLPMEM_STATIC
@@ -642,7 +642,7 @@ void rlpm_free_txbuf(struct rlp_txbuf_s *buf)
 			+ RLP_PREAMBLE_LENGTH \
 			+ sizeof(protocolID_t) \
 			+ sizeof(cid_t))
+
 #endif
 
-/* #endif	/* #elif CONFIG_RLPMEM_MALLOC */
 

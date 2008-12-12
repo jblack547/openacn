@@ -176,29 +176,6 @@ typedef enum {
 } SLPBoolean;
 
 
-/*=========================================================================*/
-/* Misc "adjustable" constants (I would not adjust the if I were you)      */
-/*=========================================================================*/
-/*#define SLPD_CONFIG_MAX_RECONN      2    /* max number tcp of reconnects   */
-/*                                         /* to complete an outgoing        */
-/*                                         /* transaction                    */
-
-/*#define SLPD_MAX_SOCKETS            128  /* maximum number of sockets      */
-
-/*#define SLPD_COMFORT_SOCKETS        64   /* a "comfortable" number of      */
-/*                                         /* of sockets.  Exceeding this    */
-/*                                         /* number will indicate a busy    */
-/*                                         /* agent                          */
-
-/*#define SLPD_CONFIG_CLOSE_CONN      900  /* max idle time (60 min) when    */
-/*                                         /* not busy                       */
-
-/*#define SLPD_CONFIG_BUSY_CLOSE_CONN 30   /* max idle time (30 sec) when    */
-/*                                         /* busy                           */
-
-/*#define SLPD_CONFIG_DA_FIND         900  /* minimum delay between active   */
-/*                                         /* discovery requests (15 min)    */
-
 #define DA_CLOSED    		0  /* closed, no active registrions. */
 #define DA_SEND_REG 		1  /* need to send registration */
 #define DA_WAIT_REG 		2  /* waiting for ack from registration */

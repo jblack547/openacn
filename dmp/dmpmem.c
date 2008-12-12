@@ -61,8 +61,8 @@ dmp_subscription_t subscriptions_m[DMP_MAX_SUBSCRIPTIONS];
 #define MAX_DMP_QUEUE 24
 
 /* local variables */
-/* static dmp_queue_t *input_ptr;        /* fifo input pointer*/ */
-/* static dmp_queue_t *output_ptr;       /* fifo output pointer */ */
+/* static dmp_queue_t *input_ptr;         */ /* fifo input pointer*/
+/* static dmp_queue_t *output_ptr;        */ /* fifo output pointer */
 dmp_queue_t dmp_queue[MAX_DMP_QUEUE]; /* fifo */
 #endif
 

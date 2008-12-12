@@ -1312,6 +1312,8 @@ SLPError slp_send_srvrply(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code)
   SLPHeader   slp_header;
   SLPUrlEntry slp_urlentry;
 
+  SLP_UNUSED_ARG(ip);
+
   LOG_FSTART();
 
   if (!slp_socket) {
@@ -1489,6 +1491,8 @@ SLPError slp_send_reg(ip4addr_t ip, bool fresh)
   SLPHeader   slp_header;
   SLPUrlEntry slp_urlentry;
 
+  SLP_UNUSED_ARG(ip);
+
   LOG_FSTART();
 
   if (!slp_socket) {
@@ -1594,6 +1598,8 @@ SLPError slp_send_dereg(ip4addr_t ip)
   SLPString   slp_string;
   SLPHeader   slp_header;
   SLPUrlEntry slp_urlentry;
+
+  SLP_UNUSED_ARG(ip);
 
   LOG_FSTART();
 
@@ -2093,7 +2099,7 @@ char       *scope_list;
     dda_timer.xmits = 1;
     dda_timer.xid = xid;
     #if SLP_IS_UA || SLP_IS_SA
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_receive_daadvert: sending a new request", dda_timer.xid);
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_receive_daadvert: sending a new request: %d", dda_timer.xid);
     return slp_discover_da(); /* send a service request for da discovery */
     #endif
   }
@@ -2139,6 +2145,8 @@ SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
   /* char        *url; */
   SLPString   slp_string;
   SLPHeader   slp_header;
+
+  SLP_UNUSED_ARG(ip);
 
   LOG_FSTART();
 
@@ -2228,7 +2236,9 @@ void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t
 
   LOG_FSTART();
 
+  SLP_UNUSED_ARG(socket);
   SLP_UNUSED_ARG(dest);
+  SLP_UNUSED_ARG(ref);
 
   ip_addr = netx_INADDR(source);
 
@@ -2287,7 +2297,7 @@ void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t
           #endif
           break;
         case SLP_FUNCT_SRVTYPERQST:       /* Service Type Request */
-          acnlog(LOG_DEBUG | LOG_SLP , "%slp_recv: Service Type Request");
+          acnlog(LOG_DEBUG | LOG_SLP , "slp_recv: Service Type Request");
           /* No Support Planned */
           break;
         case SLP_FUNCT_SRVTYPERPLY:       /* Service Type Reply */
@@ -2537,8 +2547,7 @@ SLPError slp_reg(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list)
 #endif /* SLP_IS_SA */
 
 #if SLP_IS_SA
-/*******************************************************************************
-
+/*******************************************************************************/
 /* TODO: Add support for more than one registration */
 /*******************************************************************************/
 /* FUNCTION TESTED */

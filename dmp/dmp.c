@@ -126,7 +126,10 @@ dmp_client_rx_handler(component_t *local_component, component_t *foreign_compone
   uint8_t    header = 0;
 
   UNUSED_ARG(is_reliable); /* this could be used in the future */
+  UNUSED_ARG(local_component);
   UNUSED_ARG(ref);
+  UNUSED_ARG(local_component);
+  UNUSED_ARG(foreign_component);
 
   /* data points to the first byte (flags byte) of a specific DMP PDU message (like Set Property) */
   /* data_len is the total number of bytes in th DMP PDU */
@@ -198,7 +201,7 @@ dmp_client_rx_handler(component_t *local_component, component_t *foreign_compone
 	    break;
 	  case DMP_SET_PROPERTY:
 	    acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_SET_PROPERTY");
-	    /* app_rx_subscribe(local_component, foreign_component, header, datap, data_size); /* /* DEBUG */
+	    /* app_rx_subscribe(local_component, foreign_component, header, datap, data_size); */ /* DEBUG */
 	    /* app_rx_set_property(local_component, foreign_component, header, datap, data_size); */
 	    break;
 	  case DMP_SUBSCRIBE:
@@ -292,7 +295,7 @@ uint8_t* dmp_encode_address_header(dmp_address_t *dmp_address, uint8_t *encode_b
 	  	datap = marshalU32(datap , (uint8_t)dmp_address->address_start);
     	break;
     default:
-      acnlog(LOG_WARNING | LOG_DMP,"dmp_encode_address_header: Address length not valid... %x", dmp_address->address_size);
+      acnlog(LOG_WARNING | LOG_DMP,"dmp_encode_address_header: Address length not valid... %lx", dmp_address->address_size);
   }
 
   /* if the address type is non-zero then a range address was specified */

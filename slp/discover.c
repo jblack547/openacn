@@ -185,8 +185,8 @@ bool get_attribute_str(char** next_attr, char**attr_str)
 
 static void attrrqst_callback(int error, char *attr_list)
 {
-  uint8_t *cid;
-  uint8_t *dcid;
+  uint8_t *cid = NULL;
+  uint8_t *dcid = NULL;
   char cid_str[37]             = {'\0'};
   char fctn_str[ACN_FCTN_SIZE] = {'\0'};
   char uacn_str[ACN_FCTN_SIZE] = {'\0'};
