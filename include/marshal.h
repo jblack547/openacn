@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __marshal_h__
 #define __marshal_h__ 1
 
+#include "opt.h"
 #include "types.h"
 #include "uuid.h"
 

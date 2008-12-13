@@ -56,7 +56,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* System includes */
 #include <string.h>
-#include <datatypes.h>
+/* #include <datatypes.h> */
 #include <assert.h>
 
 /* OpenACN includes */

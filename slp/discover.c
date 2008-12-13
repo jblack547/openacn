@@ -61,7 +61,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "slp.h"
 #include "sdt.h"
 #include "component.h"
-#include "acn_port.h"
 
 /* this module */
 #include "discover.h"

@@ -78,7 +78,6 @@ Notes:
 #include "acnlog.h"     /* acn log functions */
 #include "marshal.h"    /* machine independent packing and unpacking of data */
 #include "mcast_util.h" /* handy multicast utilities */
-#include "acn_port.h"
 #include "ntoa.h"
 
 #if 0

@@ -93,7 +93,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "ntoa.h"
 #include "aton.h"
-#include "acn_port.h"
 
 /* other includes */
 #include "netsock.h"  /* network socket storage */
