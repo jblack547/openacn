@@ -41,15 +41,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opt.h"
 
 #if CONFIG_STACK_NETBURNER
-#include "includes.h"       // netburner types
+#include "includes.h"       /* netburner types */
 #include "have_types.h"
 
 #define printf(format, ...) iprintf(format, ##__VA_ARGS__)
 
-extern OS_CRIT DASemaphore; // semaphore to protect directory agent list
-#define ACN_PORT_PROTECT()        0;OSLock()//OSCritEnter(&DASemaphore, 0)
-#define ACN_PORT_UNPROTECT(pval)  OSUnlock()//OSCritLeave(&DASemaphore)
-#define acn_protect_t int  // this is not used
+extern OS_CRIT DASemaphore; /* semaphore to protect directory agent list */
+#define ACN_PORT_PROTECT()        0;OSLock()/* OSCritEnter(&DASemaphore, 0) */
+#define ACN_PORT_UNPROTECT(pval)  OSUnlock()/* OSCritLeave(&DASemaphore) */
+#define acn_protect_t int  /* this is not used */
 
 #define ntohl(x) x
 #define htonl(x) x

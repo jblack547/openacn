@@ -43,7 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if CONFIG_STACK_WIN32
 #include "Windows.h"
 
-// ignore warnings:
+/* ignore warnings: */
 /* This function or variable may be unsafe. Consider using xxx instead. 
    To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. */
 /* #define _CRT_SECURE_NO_WARNINGS <- does not seem to work*/
@@ -54,8 +54,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "have_types.h"
 
-//TODO: need to define this!
-//extern OS_CRIT DASemaphore; // semaphore to protect directory agent list
+/* TODO: need to define this! */
+/* extern OS_CRIT DASemaphore; */ /* semaphore to protect directory agent list */
 typedef int acn_protect_t;
 #define ACN_PORT_PROTECT()        acn_port_protect()
 #define ACN_PORT_UNPROTECT(x)     acn_port_unprotect(x)

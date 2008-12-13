@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __user_opt_h__
 #define __user_opt_h__ 1
 
-//#define CONFIG_RLP_SINGLE_CLIENT 0x4541ffff
+/* #define CONFIG_RLP_SINGLE_CLIENT 0x4541ffff */
 #define	CONFIG_STACK_BSD       1
 #define	CONFIG_LOCALIP_ANY 0  
 #define CONFIG_ACNLOG ACNLOG_STDERR

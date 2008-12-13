@@ -51,7 +51,7 @@ void *new_semephore()
 {
 
 	OSSemInit(& MySemaphore,0);
-	OSSemPost(& MySemaphore); // Add one to the semaphores value
+	OSSemPost(& MySemaphore); /* Add one to the semaphores value */
 	return NULL;
 }
 
@@ -67,7 +67,7 @@ void *get_semephore()
 	}
 
 
-		// We timed out the 5 seconds}else {// We got the semaphore}
+		/* We timed out the 5 seconds}else we got the semaphore} */
 
 	return NULL;
 }

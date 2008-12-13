@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id: netxface.c 109 2008-02-29 20:13:47Z bflorac $
+	$Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -65,7 +65,7 @@ void netx_init(void)
 int
 netx_udp_open(struct netxsocket_s *rlpsock, localaddr_t localaddr)
 {
-  struct udp_pcb *netx_pcb;        // common Protocol Control Block
+  struct udp_pcb *netx_pcb;        /* common Protocol Control Block */
 
   if (rlpsock->nativesock) {
     acnlog(LOG_WARNING | LOG_NETI, "netx_udp_open : already open");
@@ -78,12 +78,12 @@ netx_udp_open(struct netxsocket_s *rlpsock, localaddr_t localaddr)
 
   rlpsock->nativesock = netx_pcb;
 
-  // BIND:sets local_ip and local_port
+  /* BIND:sets local_ip and local_port */
   if (!udp_bind(netx_pcb, LCLAD_INADDR(localaddr), LCLAD_PORT(localaddr)) == ERR_OK)
     return -1;
 
   if (LCLAD_PORT(localaddr) == NETI_PORT_EPHEM) {
-// if port was 0, then the stack should have given us a port, so assign it back
+/* if port was 0, then the stack should have given us a port, so assign it back */
     NSK_PORT(*rlpsock) = netx_pcb->local_port;
   }  else {
     NSK_PORT(*rlpsock) = LCLAD_PORT(localaddr);
@@ -92,7 +92,7 @@ netx_udp_open(struct netxsocket_s *rlpsock, localaddr_t localaddr)
 	NSK_INADDR(*rlpsock) = LCLAD_INADDR(localaddr);
 #endif
 
-  // UDP Callback
+  /* UDP Callback */
   udp_recv(netx_pcb, netxhandler, rlpsock);
 
   return 0;
@@ -168,7 +168,7 @@ netx_send_to(
   if (!rlpsock || !rlpsock->nativesock)
     return -1;
 
-  //struct ip_addr *ipaddr,
+  /* struct ip_addr *ipaddr, */
   addr = NETI_INADDR(destaddr);
   dest_addr.addr = addr;
 
@@ -214,7 +214,7 @@ netx_send_to(
     pbuf_free(pkt);
     /* 0 is OK */
     if (result == 0) {
-      // we will assume it all went!
+      /* we will assume it all went! */
       return datalen;
     }
   } else {
@@ -247,16 +247,16 @@ netxhandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr
   netx_addr_t remhost;
   ip4addr_t dest_inaddr;
 
-  // arg is contains netsock
+  /* arg is contains netsock */
 
   UNUSED_ARG(pcb);
 
   NETI_INADDR(&remhost) = addr->addr;
   NETI_PORT(&remhost) = port;
 
-  // We don't have destination address in our callback
-  // Turns out that the destinaion address is just after the location
-  // of the source address
+  /* We don't have destination address in our callback */
+  /* Turns out that the destinaion address is just after the location */
+  /* of the source address */
   dest_inaddr = ((struct ip_addr*)((char*)addr + sizeof(struct ip_addr)))->addr;
 
   rlp_process_packet(arg, p->payload, p->tot_len, dest_inaddr, &remhost);

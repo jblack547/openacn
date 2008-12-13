@@ -29,7 +29,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 
-# 	$Id: Makefile 89 2008-02-04 21:35:24Z philipnye $
+# 	$Id$
 # 
 ##########################################################################
 #

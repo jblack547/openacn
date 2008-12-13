@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ip.h"
 #include "udp.h"
 #include "multicast.h"
-#include "system.h"  // this is needed for ConfigRecord
+#include "system.h"  /* this is needed for ConfigRecord */
 #include "ip_addr.h"
 
 #include <startnet.h>
@@ -64,8 +64,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /************************************************************************/
 /* local memory */
-OS_FIFO netx_fifo;    // FIFO to store all incoming UPD packets
-int native_sock = 1;  // we dont really have socket but we need some marker...
+OS_FIFO netx_fifo;    /* FIFO to store all incoming UPD packets */
+int native_sock = 1;  /* we dont really have socket but we need some marker... */
 
 
 #ifdef __cplusplus
@@ -111,7 +111,7 @@ void netx_free_txbuf(void * pkt)
  */
 void netx_release_txbuf(void * pkt)
 {
-//  delete (UDPPacket*)pkt;
+/*  delete (UDPPacket*)pkt; */
 }
 
 
@@ -218,13 +218,13 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
     The call returns the number of characters sent, or negitive if an error occurred.
 */
 int netx_send_to(
-	netxsocket_t      *netsock,    // contains a flag if port is open and the local port number
-	const netx_addr_t *destaddr,   // contians dest port and ip numbers
-	void              *pkt,        // pointer data packet if type UPDPacket (return from netx_new_txbuf())
-	size_t             datalen     // length of data
+	netxsocket_t      *netsock,    /* contains a flag if port is open and the local port number */
+	const netx_addr_t *destaddr,   /* contians dest port and ip numbers */
+	void              *pkt,        /* pointer data packet if type UPDPacket (return from netx_new_txbuf()) */
+	size_t             datalen     /* length of data */
 )
 {
-  ip4addr_t dest_addr;   // this is a long int
+  ip4addr_t dest_addr;   /* this is a long int */
   int       dest_port;
 
   LOG_FSTART();
@@ -262,7 +262,7 @@ int netx_send_to(
   ((UDPPacket*)pkt)->SetSourcePort(NSK_PORT(netsock));
   ((UDPPacket*)pkt)->SetDestinationPort(dest_port);
   ((UDPPacket*)pkt)->SetDataSize(datalen);
-  // send the packet to destination IP address
+  /* send the packet to destination IP address */
   ((UDPPacket*)pkt)->Send(dest_addr);
   /* we will assume it all went! */
   /*acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: sent"); */
@@ -281,7 +281,7 @@ netx_poll(void)
   netx_addr_t  source;
   netx_addr_t  dest;
 
-  //LOG_FSTART();
+  /* LOG_FSTART(); */
 
   /* Construct a UDP packet object using the FIFO. */
   /* This constructor will block until we have received a packet in this fifo */
@@ -290,7 +290,7 @@ netx_poll(void)
 
   /* Did we get a valid packet? */
   /* If invalid, just ignore it and get the next one. */
-  if (newUDPPacket.Validate()) { // UDPPacket member function
+  if (newUDPPacket.Validate()) { /* UDPPacket member function */
     acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: data");
     /* UDPPacket member functions to get variables */
     pUDPData = newUDPPacket.GetDataBuffer();         /* pointer to UDP data */
@@ -301,9 +301,9 @@ netx_poll(void)
     netx_PORT(&dest) = newUDPPacket.GetDestinationPort();             /* source port */
 
     /* call our handler */
-    //acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: source port: %d", newUDPPacket.GetSourcePort());
-//    acnlog(LOG_DEBUG | LOG_NETX,  "netx_poll, source port %d, address: %s", newUDPPacket.GetSourcePort(), ntoa(newUDPPacket.GetSourceAddress()));
-//    acnlog(LOG_DEBUG | LOG_NETX,  "netx_poll, dest port %d, address: %s", newUDPPacket.GetDestinationPort(), ntoa(newUDPPacket.GetDestinationAddress()));
+    /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: source port: %d", newUDPPacket.GetSourcePort()); */
+/*    acnlog(LOG_DEBUG | LOG_NETX,  "netx_poll, source port %d, address: %s", newUDPPacket.GetSourcePort(), ntoa(newUDPPacket.GetSourceAddress())); */
+/*    acnlog(LOG_DEBUG | LOG_NETX,  "netx_poll, dest port %d, address: %s", newUDPPacket.GetDestinationPort(), ntoa(newUDPPacket.GetDestinationAddress())); */
 
 
     netx_handler((char *)pUDPData, length, &source, &dest);
@@ -313,7 +313,7 @@ netx_poll(void)
     return 0;
   }
   /* Note: the UDP packet is automatically deleted with the call of the destructor here */
-  //acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: timeout");
+  /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: timeout"); */
   return 0;
 }
 
@@ -361,13 +361,13 @@ ip4addr_t netx_getmyip(netx_addr_t *destaddr)
 	int inf;
   UNUSED_ARG(destaddr);
 
-	// get interface
+	/* get interface */
   inf = GetFirstInterface();
 
-  // force refresh of structure
- 	GetIfConfig(inf);		// perhaps this should be done globally once at boot!
+  /* force refresh of structure */
+ 	GetIfConfig(inf);		/* perhaps this should be done globally once at boot! */
 
- 	// get IP
+ 	/* get IP */
   return InterfaceIP(inf);
 }
 
@@ -382,13 +382,13 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
 	int inf;
   UNUSED_ARG(destaddr);
 
-	// get interface
+	/* get interface */
   inf = GetFirstInterface();
 
-  // force refresh of structure
- 	GetIfConfig(inf);		// perhaps this should be done globally once at boot!
+  /* force refresh of structure */
+ 	GetIfConfig(inf);		/* perhaps this should be done globally once at boot! */
 
- 	// get IP Mask
+ 	/* get IP Mask */
   return InterfaceMASK(inf);
 }
 

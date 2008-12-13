@@ -36,17 +36,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if CONFIG_STACK_NETBURNER /* don't build if not configured for use  */
 
-//#ifdef __cplusplus
-//extern "C" {
-//#endif
+#ifdef __cplusplus */
+extern "C" { */
+#endif */
 
 struct ip_addr {
   unsigned long addr;
 };
 
-//#ifdef __cplusplus
-//}
-//#endif
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* CONFIG_STACK_NETBURNER */
 
