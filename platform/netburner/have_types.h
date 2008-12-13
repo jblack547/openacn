@@ -34,7 +34,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef HAVE_TYPES_H_
 #define HAVE_TYPES_H_
 
+#include "opt.h"
+
 #if CONFIG_STACK_NETBURNER
+#include "acn_port.h"
 #define __HAVE_uint8_t 1
 #define __HAVE_int8_t 1
 #define __HAVE_uint16_t 1

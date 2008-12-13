@@ -55,7 +55,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "netxface.h"
 #include "netsock.h"
 #include "acnlog.h"
-#include "inet.h"
+#include "ntoa.h"
 
 /************************************************************************/
 #define INPACKETSIZE DEFAULT_MTU
@@ -65,7 +65,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /************************************************************************/
 /* local memory */
 OS_FIFO netx_fifo;    // FIFO to store all incoming UPD packets
-int native_sock = 0;  // we dont really have socket but we need some marker...
+int native_sock = 1;  // we dont really have socket but we need some marker...
 
 
 #ifdef __cplusplus

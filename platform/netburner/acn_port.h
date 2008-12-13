@@ -50,13 +50,11 @@ extern OS_CRIT DASemaphore; // semaphore to protect directory agent list
 #define ACN_PORT_PROTECT()        0;OSLock()//OSCritEnter(&DASemaphore, 0)
 #define ACN_PORT_UNPROTECT(pval)  OSUnlock()//OSCritLeave(&DASemaphore)
 #define acn_protect_t int  // this is not used
-#endif /* CONFIG_STACK_NETBURNER */
 
-#if CONFIG_STACK_LWIP
-#include "lwip/sys.h"
-#define acn_protect_t sys_prot_t
-#define ACN_PORT_PROTECT() sys_arch_protect()
-#define ACN_PORT_UNPROTECT(pval) sys_arch_unprotect(pval)
-#endif
+#define ntohl(x) x
+#define htonl(x) x
+#define htons(x) x
+
+#endif /* CONFIG_STACK_NETBURNER */
 
 #endif
