@@ -1237,7 +1237,7 @@ SLPError slp_discover_da(void)
     da_ip_list(slp_string.str);
     slp_string.len = strlen(slp_string.str);
     offset = packSLP_STR(offset, &slp_string);
-    acnlog(LOG_DEBUG | LOG_SLP, "slp_discover_da: [%s]",slp_string.str);
+    acnlog(LOG_DEBUG | LOG_SLP, "slp_discover_da: [%s] xid=%d",slp_string.str, slp_header.xid);
     SLP_FREE(slp_string.str);
   } else {
     acnlog(LOG_DEBUG | LOG_SLP, "slp_discover_da: Memory allocation error");
