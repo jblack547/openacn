@@ -1,7 +1,6 @@
 /*--------------------------------------------------------------------*/
 /*
-
-Copyright (c) 2007, Engineering Arts (UK)
+Copyright (c) 2008, Electronic Theatre Controls, Inc.
 
 All rights reserved.
 
@@ -14,7 +13,7 @@ met:
  * Redistributions in binary form must reproduce the above copyright
    notice, this list of conditions and the following disclaimer in the
    documentation and/or other materials provided with the distribution.
- * Neither the name of Engineering Arts nor the names of its
+ * Neither the name of Electronic Theatre Controls, Inc. nor the names of its
    contributors may be used to endorse or promote products derived from
    this software without specific prior written permission.
 
@@ -32,61 +31,46 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 	$Id$
 
+  Description:
+    wrapper for OS semaphore.
 */
-/*--------------------------------------------------------------------*/
 
-#ifndef __user_opt_h__
-#define __user_opt_h__ 1
+#include "opt.h"
+#if NEVER /* NOT USED AT THE MOMENT */
 
-/* #define CONFIG_MARSHAL_INLINE 0 */
+#include "types.h"
+#include "acn_arch.h"
 
-/* #define BYTE_ORDER BIG_ENDIAN */
+#include "constants.h"
 
-#define CONFIG_STACK_NETBURNER 0
-#define CONFIG_STACK_LWIP      0
-#define CONFIG_STACK_BSD       1
-#define CONFIG_STACK_WIN32     0
+#include "semaphore.h"
 
-#define MAX_RLP_SOCKETS 2    /* need 2 for sdt */
-/* #define MAX_LISTENERS     */ /* need 2 for sdt plus one for each component */
-                                /* that wants to join us: 20 bytes each */
+OS_SEM MySemaphore;
 
+void *new_semephore()
+{
 
-#define MAX_TXBUFS   50
+	OSSemInit(& MySemaphore,0);
+	OSSemPost(& MySemaphore); /* Add one to the semaphores value */
+	return NULL;
+}
 
-#define CONFIG_SLP   1
-#define CONFIG_RLP   1
-#define CONFIG_SDT   1
-#define CONFIG_DMP   1
+void *give_semephore()
+{
+	return NULL;
+}
 
-#define CONFIG_RLPMEM_MALLOC 0
-#define CONFIG_RLPMEM_STATIC 1
+void *get_semephore()
+{
+	if (OSSemPend(& MySemaphore, 5*TICKS_PER_SECOND)==OS_TIMEOUT) {
 
-/* see everything */
-#define CONFIG_LOGLEVEL LOG_DEBUG
-
-#define SDT_MAX_COMPONENTS          10
-#define SDT_MAX_CHANNELS            10
-#define SDT_MAX_MEMBERS             40
-
-/* but filter on these */
-#define LOG_RLP    LOG_NONE
-#define LOG_RLPM   LOG_NONE
-#define LOG_SDT    LOG_NONE
-#define LOG_SDTM   LOG_NONE
-#define LOG_NSK    LOG_NONE
-#define LOG_NETX   LOG_NONE
-#define LOG_SLP    LOG_NONE
-#define LOG_DMP    LOG_NONE
-#define LOG_DMPM   LOG_NONE
-#define LOG_MISC   LOG_NONE
-#define LOG_ASSERT LOG_NONE
-#define LOG_STAT   LOG_LOCAL0
+	}
 
 
-#define CONFIG_RLP_SINGLE_CLIENT 1 /* PROTO_SDT */
+		/* We timed out the 5 seconds}else { We got the semaphore} */
 
-/* #define CONFIG_ACNLOG ACNLOG_SYSLOG */
-/* #define CONFIG_LOCALIP_ANY       0 */
+	return NULL;
+}
 
 #endif
+

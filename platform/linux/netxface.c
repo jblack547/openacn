@@ -35,13 +35,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #include "opt.h"
+#include "types.h"
 #include "acn_arch.h"
-#include "netxface.h"
-#include "rlp.h"
-#include "rlpmem.h"
-#include "acnlog.h"
 
+#if CONFIG_STACK_BSD
+#include <malloc.h>
+#include <netinet\in.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+
+#include "netxface.h"
+#include "netsock.h"
+#include "acnlog.h"
+#include "ntoa.h"
+
+/************************************************************************/
 #define INPACKETSIZE DEFAULT_MTU
+#define LOG_FSTART() acnlog(LOG_DEBUG | LOG_NETX, "%s :...", __func__)
+
+/************************************************************************/
+/* local memory */
+
 
 /************************************************************************/
 /*
@@ -49,8 +63,53 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 void netx_init(void)
 {
-	return;
+  static bool initialized = 0;
+  
+  acnlog(LOG_DEBUG|LOG_NETX,"netx_init");
+  
+  if (!initialized) {
+    /* init required sub modules */
+    nsk_netsocks_init();
+    /* don't process twice */
+    initialized = 1;
+  }
+  return;
 }
+
+
+/************************************************************************/
+void *netx_new_txbuf(int size)
+{
+  UNUSED_ARG(size);
+  return malloc(sizeof(UDPPacket));
+}
+
+/************************************************************************/
+void netx_free_txbuf(void * pkt)
+{
+  free(pkt);
+}
+
+/************************************************************************/
+/* Called when we are done with our buffer. This is done for ports that
+ * require the buffer to be freed after a packet is sent. If the stack
+ * takes care of this itself, this can do nothing;
+ */
+void netx_release_txbuf(void * pkt)
+{
+  UNUSED_ARG(pkt);
+/*  delete (UDPPacket*)pkt; */
+}
+
+
+
+/************************************************************************/
+/* Get pointer to data inside tranmit buffer */
+char *netx_txbuf_data(void *pkt)
+{
+  return (char*)(pkt);
+}
+
 
 /************************************************************************/
 /*
@@ -58,273 +117,413 @@ void netx_init(void)
     Open a "socket" with a given local port number
     The call returns 0 if OK, non-zero if it fails.
 */
+
+#define SOCKADDR struct sockaddr
+#define SOCKET_ERROR -1
 static const int optionOn = 1;
 static const int optionOff = 0;
 
-int
-netx_udp_open(struct netxsocket_s *rlpsock, localaddr_t *localaddr)
+int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 {
-	int bsdsock;
-	int rslt;
-#if CONFIG_LOCALIP_ANY
-	netx_addr_t bindaddr;
-#endif
-	netx_addr_t *bindp;
+  netx_addr_t addr;
+  int         ret;
 
-	bsdsock = socket(PF_INET, SOCK_DGRAM, 0);
-	if (bsdsock < 0) return -errno;
-/*
-	rslt = fctl(bsdsock, F_SETFL, O_NONBLOCK);
-	if (rslt < 0) goto fail;
-*/
-    rslt = setsockopt (bsdsock, SOL_SOCKET, SO_REUSEADDR, (void *)&optionOn, sizeof(optionOn));
-	if (rslt < 0) goto fail;
+  /* open a unicast socket */ 
+  LOG_FSTART();
 
-#if CONFIG_LOCALIP_ANY
-	bindp = &bindaddr;
-	NETI_INIT_ADDR(bindp, LCLAD_INADDR(localaddr), LCLAD_PORT(localaddr));
-#else
-	bindp = *localaddr;
-#endif
+    
+  /* if this socket is already open */
+  if (netsock->nativesock) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : already open");
+    return -1;
+  }
+  
+  /* flag that the socket is open */
+  netsock->nativesock = socket(PF_INET, SOCK_DGRAM, 0);
 
-	/*
-	FIXME
-	If we simply use INADDR_ANY when binding, then sockets may receive spurious 
-	multicast messages. These will be corrctly rejected but have already made it
-	a long way up the stack.
-	We should enumerate our interfaces and pick the default multicast interface.
+  if (!netsock->nativesock) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : socket fail");
+    return 1; /* FAIL */
+  }
 
-	hint: "In determining or selecting outgoing interfaces, the following
-	ioctls might be useful: SIOCGIFADDR (to get an interface's address),
-	SIOCGIFCONF (to get the list of all the interfaces) and SIOCGIFFLAGS
-	(to get an interface's flags and, thus, determine whether the
-	interface is multicast capable or not -the IFF_MULTICAST flag-)."
-	man netdevice for more info.
-	*/
+  #if 0
+  Now done in netx_change_group()
+  ret = setsockopt(netsock->nativesock, SOL_SOCKET, SO_REUSEADDR, (void *)&optionOn, sizeof(optionOn));
+  if (ret < 0) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : setsockopt:SO_REUSEADDR fail");
+    close(netsock->nativesock);
+    netsock->nativesock = 0;
+    return 1; /* FAIL */
+  }
+  #endif
 
-	rslt = bind(bsdsock, (struct sockaddr *)bindp, sizeof(netx_addr_t));
-	if (rslt < 0) goto fail;
+  netx_INIT_ADDR(&addr, LCLAD_INADDR(*localaddr), LCLAD_PORT(*localaddr));
 
-	rlpsock->nativesock = bsdsock;
-	if (LCLAD_PORT(localaddr) == NETI_PORT_EPHEM)
-	{
-		/* find the ephemeral port which has been assigned */
-		socklen_t addrlen;
+  /*
+  FIXME
+  If we simply use INADDR_ANY when binding, then sockets may receive spurious 
+  multicast messages. These will be corrctly rejected but have already made it
+  a long way up the stack.
+  We should enumerate our interfaces and pick the default multicast interface.
 
-		addrlen = sizeof(netx_addr_t);
-		rslt = getsockname(bsdsock, (struct sockaddr *)bindp, &addrlen);
-		if (rslt < 0) goto fail;
-	}
-#if CONFIG_LOCALIP_ANY
-	NSK_PORT(*rlpsock) = NETI_PORT(bindp);
-#else
-	memcpy(&rlpsock->localaddr, bindp, sizeof(netx_addr_t));
-#endif
+  hint: "In determining or selecting outgoing interfaces, the following
+  ioctls might be useful: SIOCGIFADDR (to get an interface's address),
+  SIOCGIFCONF (to get the list of all the interfaces) and SIOCGIFFLAGS
+  (to get an interface's flags and, thus, determine whether the
+  interface is multicast capable or not -the IFF_MULTICAST flag-)."
+  man netdevice for more info.
+  */
+
+  ret =  bind(netsock->nativesock, (SOCKADDR *)&addr, sizeof(addr));
+
+  if (ret == SOCKET_ERROR) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : bind fail, port:%d", ntohs(LCLAD_PORT(*localaddr)));
+    close(netsock->nativesock);
+    netsock->nativesock = 0;
+    return 1; /* FAIL */
+  }
+  
+  /* save the passed in address/port number into the passed in netxsocket_s struct */
+  NSK_PORT(netsock) = LCLAD_PORT(*localaddr);
 
 	/* we will need information on destination address used */
-	rslt = setsockopt (bsdsock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
-	if (rslt < 0) goto fail;
+	ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
+	if (ret == SOCKET_ERROR) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : setsockopt:IP_PKTINFO fail");
+    close(netsock->nativesock);
+    netsock->nativesock = 0;
+    return 1; /* FAIL */
+  }
 
-	/* turn on loop-back of multicast packets */
-	/*
-	FIXME
-	We should dynamically manage IP_MULTICAST_LOOP and only turn it on when
-	we need to (i.e. when a client within the host wants to receive on a group
-	which is also generated within the host).
-	*/
-	rslt = setsockopt (bsdsock, IPPROTO_IP, IP_MULTICAST_LOOP, (void *)&optionOn, sizeof(optionOn));
-	if (rslt < 0) goto fail;
-
-	return 0;
-fail:
-	rslt = -errno;
-	close(bsdsock);
-	return rslt;
+  acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : open port:%d", ntohs(NSK_PORT(netsock)));
+  
+  /* Note: A separate thread will call netx_poll() to look for received messages */
+  return 0;
 }
 
-int
-netx_change_group(struct netxsocket_s *rlpsock, ip4addr_t localGroup, int operation)
-{
-	int rslt;
-	struct ip_mreqn multireq;
-
-	if (!is_multicast(localGroup)) return 0;
-
-#if CONFIG_LOCALIP_ANY
-	multireq.imr_address.s_addr = INADDR_ANY;
-#else
-	multireq.imr_address.s_addr = NSK_INADDR(*rlpsock);
-#endif
-	multireq.imr_ifindex = 0;
-	multireq.imr_multiaddr.s_addr = localGroup;
-
-	rslt = setsockopt(rlpsock->nativesock, IPPROTO_IP, operation, (void *)&multireq, sizeof(multireq));
-	printf("setsockopt %s returns %d\n", 
-		(operation == NETI_JOINGROUP) ? "join group" : (operation == NETI_LEAVEGROUP) ? "leave group" : "unknown",
-		rslt);
+/************************************************************************/
 /*
+  netx_udp_close()
+    Close "socket"
 */
-	return rslt;
+void netx_udp_close(netxsocket_t *netsock)
+{
+  LOG_FSTART();
+
+  /* if it's already closed */
+  if (!netsock->nativesock) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_close : upd not open");
+    return;
+  }
+
+  /* close port */
+  close(netsock->nativesock);
+  /* clear flag that it's in use */ 
+  netsock->nativesock = 0;
+
+}
+
+
+/************************************************************************/
+/*
+  netx_change_group
+    Parameter operation specifies netx_JOINGROUP or netx_LEAVEGROUP
+    The call returns 0 if OK, non-zero if it fails.
+    localGroup - multicast group IP address.
+*/
+/************************************************************************/
+int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operation)
+{
+  struct ip_mreq     mreq;
+  int    ret;
+  int    ip_ttl;
+  int    opt_val;
+
+  LOG_FSTART();
+  
+  /* if the IP passed in is not a valid multicast address */
+  if (!is_multicast(local_group)) {
+	 return -1;
+  }
+
+  acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group, port: %d, group: %s", ntohs(NSK_PORT(netsock)), ntoa(local_group));
+
+  /* socket should have some options if enabled for multicast */
+
+  /* allow reuse of the local port number */
+  ret = setsockopt(netsock->nativesock, SOL_SOCKET, SO_REUSEADDR, (void *)&optionOn, sizeof(optionOn));
+  /* TODO: why does this fail? */
+  #if 0
+  if (ret == SOCKET_ERROR) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt: SO_REUSEADDR fail");
+    return 1; /* fail */
+  }
+  #endif
+
+  /* set the IP TTL */
+  ip_ttl = 2;
+  ret = setsockopt(netsock->nativesock,  IPPROTO_IP, IP_MULTICAST_TTL, (char *)&ip_ttl,  sizeof(ip_ttl));
+  if (ret == SOCKET_ERROR) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_TTL fail");
+    return 1; /* fail */
+  }
+
+  /* turn off loop back on multicast */
+  ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)&optionOff, sizeof(opt_val)); 
+  if (ret == SOCKET_ERROR) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_LOOP fail");
+    return 1; /* fail */
+  }
+
+  mreq.imr_multiaddr.s_addr = local_group;
+#if CONFIG_LOCALIP_ANY
+	mreq.imr_interface.s_addr = INADDR_ANY;
+#else
+	mreq.imr_interface.s_addr = NSK_INADDR(*netsock);
+#endif
+  
+  /* result = ERR_OK which is defined as zero so return value is consistent */ 
+  if (operation == netx_JOINGROUP) {
+    setsockopt(netsock->nativesock, IPPROTO_IP, IP_ADD_MEMBERSHIP,  (void *)&mreq, sizeof(mreq));
+    acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group: added");
+  } else {
+    setsockopt(netsock->nativesock, IPPROTO_IP, IP_DROP_MEMBERSHIP,  (void *)&mreq, sizeof(mreq));
+    acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group: dropped");
+  }
+  return 0; /* OK */
 }
 
 /************************************************************************/
 /*
   netx_send_to()
-    Send message to give address
+    Send message to given address
     The call returns the number of characters sent, or negitive if an error occurred. 
 */
-
-int
-netx_send_to(
-	struct netxsocket_s *netsock,
-	const netx_addr_t *destaddr,
-	uint8_t *data,
-	size_t datalen
+int netx_send_to(
+	netxsocket_t      *netsock,    /* contains a flag if port is open and the local port number */
+	const netx_addr_t *destaddr,   /* contians dest port and ip numbers */
+	void              *pkt,        /* pointer data packet if type UPDPacket (return from netx_new_txbuf()) */
+	size_t             datalen     /* length of data */
 )
 {
-	return sendto(netsock->nativesock, data, datalen, 0, (const struct sockaddr *)destaddr, sizeof(netx_addr_t));
+  netx_addr_t  dest_addr;
+
+  LOG_FSTART();
+
+  /* if the port is not open or we have no packet */
+  if (!netsock) {
+    acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: !netsocket");
+    return -1;
+  }
+  if (!netsock->nativesock) {
+    acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: !nativesock");
+    return -1;
+  }
+    
+  if (!pkt) {
+    acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: !pkt");
+    return -1;
+  }
+  
+  /* get dest IP and port from the calling routine */
+  /* TODO: For now I'm going to copy to insure sin_family is set */
+  netx_INIT_ADDR(&dest_addr, netx_INADDR(destaddr), netx_PORT(destaddr));
+
+  /* create a new UDP packet */
+  /* Note: we don' need to copy as we are passing in a UDPPacket  
+   *   get buffer
+   * UDPPacket pkt;	            
+   *   get address of where data will go in the packet
+   * UdpBuffer = pkt.GetDataBuffer();
+   *   copy data into packet
+   * memcpy(UdpBuffer, data, datalen);
+   */
+  
+  sendto(netsock->nativesock, (char *)pkt, datalen, 0, (SOCKADDR *)&dest_addr, sizeof(dest_addr));
+
+  /* we will assume it all went! */
+  /*acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: sent"); */
+  return datalen;
 }
+
 /************************************************************************/
 /*
   Poll for input
 */
-#include <poll.h>
-#include <stdlib.h>
-
-extern uint8_t *netx_newpacket(int size);
-#define netx_newpacket(size) malloc(size)
-extern void *netx_freepacket(uint8_t *pkt);
-#define netx_freepacket(pkt) free(pkt)
-
+/* TODO: need to place this better */
+/* TODO: This should not be hard code...and we should check size */
+static UDPPacket recv_buffer;
 int
-netx_poll(struct netxsocket_s **sockps, int numsocks)
+netx_poll(void)
 {
-	struct pollfd pfd[MAX_RLP_SOCKETS];
-	struct netxsocket_s *nsocks[MAX_RLP_SOCKETS];
-	int i;
-	int rslt;
-	uint8_t *buf;
-	int haderr;
+  int                 length;
+  int                 addr_len = sizeof(netx_addr_t);
+  fd_set              socks;
+  netxsocket_t       *nsk; 
+  netx_nativeSocket_t high_sock = 0;
+  struct timeval      timeout;  /* Timeout for select */
+  int                 readsocks;
+ 
+  netx_addr_t         source;
+  netx_addr_t         dest;
+  
+  /* LOG_FSTART(); */
 
-	UNUSED_ARG(sockps);
+  FD_ZERO(&socks);
 
-	if (sockps == NULL)
-	{
-		struct netxsocket_s *sockp;
+  /* abort if we have no sockets yet */
+  nsk = nsk_first_netsock();
+  if (!nsk) {
+    /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: no sockets"); */
+    return 1;
+  }
+  while (nsk) {
+    FD_SET(nsk->nativesock,&socks);
+    if (nsk->nativesock > high_sock) {
+      high_sock= nsk->nativesock;
+    }
+    nsk = nsk_next_netsock(nsk);
+  }
+  
+  /* TODO: what should timeout be? */
+  timeout.tv_sec = 10;
+	timeout.tv_usec = 0;
+  readsocks = select(high_sock+1, &socks, NULL, NULL, &timeout);
+  if (readsocks < 0) {
+    acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: select fail: %d", errno);
+    return 1; /* fail */
+  }
+  if (readsocks > 0) {
+    nsk = nsk_first_netsock();
+    while (nsk && nsk->nativesock) {
+      if (FD_ISSET(nsk->nativesock,&socks)) {
+        /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: recvfrom..."); */
+        length = recvfrom(nsk->nativesock, recv_buffer, sizeof(recv_buffer), 0, (SOCKADDR *)&source, &addr_len);
 
-		for (sockp = rlpm_first_netsock(), i = 0; sockp != NULL; sockp = rlpm_next_netsock(sockp), ++i)
-		{
-			nsocks[i] = sockp;
-			pfd[i].fd = sockp->nativesock;
-			pfd[i].events = POLLIN;
-		}
-		numsocks = i;
-		sockps = nsocks;
-	}
-	else
-	{
-		for (i = 0; i < numsocks; ++i)
-		{
-			pfd[i].fd = sockps[i]->nativesock;
-			pfd[i].events = POLLIN;
-		}
-	}
+        if (length < 0) {
+          acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: recvfrom fail: %d", errno);
+          return(1); /* fail */
+        }
+        if (length > 0) {
+          /* TODO: This need to be network in localaddress form! */
+          netx_PORT(&dest) = LCLAD_PORT(nsk->localaddr);
+          netx_INADDR(&dest) = LCLAD_INADDR(nsk->localaddr);
 
-	rslt = poll(pfd, numsocks, 0);
-	if (rslt <= 0) return rslt;
+          /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handoff"); */
+          netx_handler(recv_buffer, length, &source, &dest);
+          /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handled"); */
+/*          return 0; */
+        } else {
+          acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: length = 0");
+          return(0); /* ok but no data */
+        }
+      }
+      nsk = nsk_next_netsock(nsk);
+    }
+  } 
+  /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: no data"); */
+  return 0;
+}      
 
-	buf = netx_newpacket(INPACKETSIZE);
-	haderr = 0;
+/************************************************************************/
+/* 
+  netihandler()
+    Socket call back 
+    This is the routine that gets called when a new UDP message is available.
+*/
+void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest)
+{
+  netxsocket_t *socket;
+  localaddr_t   host;
 
-	for (i = 0; i < numsocks; ++i)
-		if ((pfd[i].revents & POLLIN))
-		{
-			uint8_t pktinfo[64];
-			struct iovec bufvec[1];
-			struct msghdr hdr;
-			struct cmsghdr *cmp;
-			ip4addr_t dest_inaddr;
-			struct netxsocket_s *netsock;
-			netx_addr_t remhost;
+  acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: ...");
 
-			netsock = sockps[i];
-			bufvec->iov_base = buf;
-			bufvec->iov_len = INPACKETSIZE;
-			hdr.msg_name = &remhost;
-			hdr.msg_namelen = sizeof(remhost);
-			hdr.msg_iov = bufvec;
-			hdr.msg_iovlen = 1;
-			hdr.msg_control = pktinfo;
-			hdr.msg_controllen = sizeof(pktinfo);
-			hdr.msg_flags = 0;
-
-			dest_inaddr = NETI_GROUP_UNICAST;
-
-    		rslt = recvmsg(netsock->nativesock, &hdr, 0);
-			if (rslt < 0)
-			{
-				haderr = errno;
-				perror("recvmsg");
-				continue;
-			}
-
-			for (cmp = CMSG_FIRSTHDR(&hdr); cmp != NULL; cmp = CMSG_NXTHDR(&hdr, cmp))
-			{
-				if (cmp->cmsg_level == IPPROTO_IP && cmp->cmsg_type == IP_PKTINFO)
-				{
-					ip4addr_t pktaddr;
-
-					pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr;
-					if (is_multicast(pktaddr))
-					{
-						dest_inaddr = pktaddr;
-					}
-					printf("Socket %d: packet for %8x:%u\n", netsock->nativesock, ntohl(pktaddr), ntohs(NSK_PORT(*netsock)));
-				}
-			}
-			rlp_process_packet(netsock, buf, rslt, dest_inaddr, &remhost);
-		}
-
-	netx_freepacket(buf);
-	return haderr;
+  /* save get destination address */
+#if CONFIG_LOCALIP_ANY  
+  LCLAD_PORT(host) = netx_PORT(dest);
+#else
+  LCLAD_INADDR(host) = netx_INADDR(dest);
+  LCLAD_PORT(host) = netx_PORT(dest);
+#endif  
+  
+  /* see if we have anyone registered for this socket */
+  socket = nsk_find_netsock(&host);
+  if (socket) {
+    if (socket->data_callback) {
+      (*socket->data_callback)(socket, (uint8_t *)data, length, dest, source, NULL);
+      return;
+    }
+  }
+  acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: no callback, port: %d", LCLAD_PORT(host));
 }
+
 
 /************************************************************************/
 /*
   netx_getmyip()
 
 */
-
 #if CONFIG_NET_IPV4
-
-ip4addr_t
-netx_getmyip(netx_addr_t *destaddr)
+ip4addr_t netx_getmyip(netx_addr_t *destaddr)
 {
 /*
 FIXME
 Should find the local IP address which would be used to send to
 the given remote address. For now we just get the first address
 */
-	char scratchbuf[256];
-	int rslt;
-	struct addrinfo *ilist;
-	ip4addr_t myaddr;
-	UNUSED_ARG(destaddr);
+  int fd;
+  struct ifreq ifr;
 
-	static const struct addrinfo hint = {
-		.ai_family = NETI_FAMILY,
-		.ai_socktype = SOCK_DGRAM
-	};
+  UNUSED_ARG(destaddr);
 
-	rslt = gethostname(scratchbuf, sizeof(scratchbuf));
-	if (rslt != 0) return 0;
-	rslt = getaddrinfo(scratchbuf, NULL, &hint, &ilist);
-	if (rslt != 0 || ilist == NULL) return 0;
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+  ifr.ifr_addr.sa_family = AF_INET;
+  strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+  ioctl(fd, SIOCGIFADDR, &ifr);
+  close(fd);
 
-	myaddr = ((struct sockaddr_in *)(ilist->ai_addr))->sin_addr.s_addr;
+  return ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
 
-	freeaddrinfo(ilist);
-	return myaddr;
+/* this works too */
+/*
+	char    s[256];
+  struct  hostent *local_host;
+  struct  in_addr *in;
+
+  UNUSED_ARG(destaddr);
+
+  gethostname(s, 256);
+  local_host = gethostbyname(s);
+  if (local_host) {
+    in = (struct in_addr *) (local_host->h_addr_list[0]);
+    return (in->s_addr);
+  }
+  return 0;
+*/
 }
-#endif	/* CONFIG_NET_IPV4 */
+
 /************************************************************************/
+/*
+  netx_getmyipmask()
+  Note: this only returns the fisrt one found and may not be correct if there are multple NICs
+*/
+ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
+{
+  UNUSED_ARG(destaddr);
+
+  int fd;
+  struct ifreq ifr;
+
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+  ifr.ifr_addr.sa_family = AF_INET;
+  strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+  ioctl(fd, SIOCGIFNETMASK, &ifr);
+  close(fd);
+
+  return ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
+}
+
+#endif	/* CONFIG_NET_IPV4 */
+
+#endif /* CONFIG_STACK_BSD */
+

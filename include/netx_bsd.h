@@ -49,6 +49,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <netdb.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* UDPPACKETSIZE is max size of Ethernet packet - see epi20 for discussion */
+#define UDPPACKETSIZE 1514
+
+typedef char UDPPacket[UDPPACKETSIZE];
+
 #if CONFIG_NET_IPV4
 #ifndef HAVE_port_t
   typedef uint16_t port_t;  /* net endpoint is a port */
@@ -106,11 +115,10 @@ typedef void netx_callback_t (
 
 /************************************************************************/
 
+
 #if CONFIG_NET_IPV4
 #define netx_FAMILY AF_INET
-#define netx_INADDR_ANY INADDR_ANY
-#define netx_INADDR_NONE INADDR_NONE
-#endif
+#endif /* CONFIG_NET_IPV4 */
 
 typedef int netx_nativeSocket_t;
 typedef struct sockaddr_in netx_addr_t;
@@ -118,7 +126,6 @@ typedef struct sockaddr_in netx_addr_t;
 /* operations performed on netx_addr_t */
 #define netx_PORT(addrp) (addrp)->sin_port
 #define netx_INADDR(addrp) (addrp)->sin_addr.s_addr
-#define netx_INADDR_S(addrp) (addrp)->sin_addr
 #define netx_INIT_ADDR_STATIC(inaddr, port) {netx_FAMILY, (port), {inaddr}}
 #define netx_INIT_ADDR(addrp, addr, port) ( \
 		(addrp)->sin_family = netx_FAMILY, \
@@ -143,10 +150,11 @@ typedef void netx_process_packet_t (
 /************************************************************************/
 #if CONFIG_LOCALIP_ANY
 struct netxsocket_s {
-	netx_nativeSocket_t nativesock;
-	port_t localaddr;
+  netx_nativeSocket_t    nativesock;      /* pointer to native socket structure */
+  port_t                 localaddr;       /* local address */
+  netx_process_packet_t *data_callback;   /* pointer to call back when data is available */
 };
-#define NETX_SOCK_HAS_CALLBACK 0
+#define NETX_SOCK_HAS_CALLBACK 1
 
 /* operations when looking at netxsock_t */
 #define NSK_PORT(x) ((x)->localaddr)
@@ -160,15 +168,17 @@ struct netxsocket_s {
 /* operation when looking at localaddr_t */
 #define LCLAD_PORT(x) x
 #define LCLAD_INADDR(x) netx_INADDR_ANY
+
 #define netx_LCLADDR(x) netx_PORT(x)
 
 #else /* !CONFIG_LOCALIP_ANY */
 
 struct netxsocket_s {
-	netx_nativeSocket_t nativesock;
-	netx_addr_t localaddr;
+	netx_nativeSocket_t   *nativesock;     /* pointer to native socket structure */
+	netx_addr_t            localaddr;      /* local address */
+  netx_process_packet_t *data_callback;  /* pointer to call back when data is available */
 };
-#define NETX_SOCK_HAS_CALLBACK 0
+#define NETX_SOCK_HAS_CALLBACK 1
 
 #define NSK_PORT(x) netx_PORT(&(x)->localaddr)
 #define NSK_INADDR(x) netx_INADDR(&(x)->localaddr)
@@ -177,6 +187,7 @@ typedef netx_addr_t *localaddr_t;
 
 #define LCLAD_PORT(x) netx_PORT(x)
 #define LCLAD_INADDR(x) netx_INADDR(x)
+
 #define netx_LCLADDR(x) (x)
 
 #endif /* !CONFIG_LOCALIP_ANY */
@@ -196,16 +207,19 @@ extern void  netx_release_txbuf(void * pkt);
 extern void  netx_free_txbuf(void *pkt);
 extern char *netx_txbuf_data(void *pkt);
 
-#define netx_udp_close(netsock) close((netsock)->nativesock)
+/* operation argument for netx_change_group */
+/* #define netx_udp_close(netsock) close((netsock)->nativesock) */
 
 #define netx_JOINGROUP IP_ADD_MEMBERSHIP
 #define netx_LEAVEGROUP IP_DROP_MEMBERSHIP
 
+/************************************************************************/
 #if CONFIG_NET_IPV4
 ip4addr_t netx_getmyip(netx_addr_t *destaddr);
 ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 #endif /* CONFIG_NET_IPV4 */
 
+/************************************************************************/
 #ifndef netx_PORT_NONE
 #define netx_PORT_NONE 0
 #endif
@@ -228,6 +242,10 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 
 #ifndef netx_INIT_ADDR 
 #define netx_INIT_ADDR(addrp, addr, port) (netx_INADDR(addrp) = (addr), netx_PORT(addrp) = (port))
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif	/* #if CONFIG_STACK_BSD && !defined(__netx_bsd_h__) */
