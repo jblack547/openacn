@@ -48,7 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define MAX_RLP_SOCKETS 2    /* need 2 for sdt */
 /* #define MAX_LISTENERS      /* need 2 for sdt plus one for each component */
-/*                              that wants to join us: 20 bytes each */ */
+/*                              that wants to join us: 20 bytes each        */ 
 
 
 #define MAX_TXBUFS   50
