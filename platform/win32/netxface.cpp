@@ -1,7 +1,7 @@
 /*--------------------------------------------------------------------*/
 /*
 
-Copyright (c) 2007, Engineering Arts (UK)
+Copyright (c) 2007, Engineering Arts (UK) 
 
 All rights reserved.
 
