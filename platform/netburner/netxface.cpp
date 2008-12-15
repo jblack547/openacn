@@ -45,7 +45,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "udp.h"
 #include "multicast.h"
 #include "system.h"  /* this is needed for ConfigRecord */
-#include "ip_addr.h"
 
 #include <startnet.h>
 #include <netinterface.h>
@@ -67,10 +66,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 OS_FIFO netx_fifo;    /* FIFO to store all incoming UPD packets */
 int native_sock = 1;  /* we dont really have socket but we need some marker... */
 
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /************************************************************************/
 /*
@@ -392,8 +387,5 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
   return InterfaceMASK(inf);
 }
 
-#ifdef __cplusplus
-}
-#endif
 #endif	/* CONFIG_NET_IPV4 */
 
