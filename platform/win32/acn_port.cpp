@@ -35,38 +35,41 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 /*--------------------------------------------------------------------*/
-#include "Windows.h"
-#include "stdio.h"
+#include <windows.h>
+#include <stdio.h>
+
+#include "opt.h"
+#include "types.h"
+#include "acn_arch.h"
 #include "acn_port.h"
 
 static CRITICAL_SECTION CriticalSection;
-static int protect_count = 0;
 static bool initialized = 0;
 
 
-acn_protect_t acn_port_protect(void)
+acn_protect_t 
+acn_port_protect(void)
 {
-
   /* printf("protect count: %d\n", protect_count); */
-  if (protect_count == 0) {
-    /* printf("is zero\n"); */
-    if (!initialized) {
-      /* printf("init\n"); */
-      InitializeCriticalSection(&CriticalSection);
-      initialized = 1;
-    }
-    /* printf("crit\n"); */
-    EnterCriticalSection(&CriticalSection);
-    protect_count++;
+  if (!initialized) {
+    /* printf("init\n"); */
+    InitializeCriticalSection(&CriticalSection);
+    initialized = 1;
   }
+  /* printf("crit\n"); */
+  EnterCriticalSection(&CriticalSection);
   return 0;
 }
-void acn_port_unprotect(acn_protect_t param)
+
+void
+acn_port_unprotect(acn_protect_t param)
 {
-  protect_count--;
-  if (protect_count == 0) {
-    /* printf("notcrit\n"); */
-    LeaveCriticalSection(&CriticalSection);
+  UNUSED_ARG(param);
+  /* printf("notcrit\n"); */
+  LeaveCriticalSection(&CriticalSection);
+  if (CriticalSection.RecursionCount == 0) {
+    DeleteCriticalSection(&CriticalSection);
+    initialized = 0;
   }
 }
 
