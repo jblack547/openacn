@@ -42,16 +42,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <malloc.h>
 #include <winsock.h>
 #include <Windows.h>
+#include <Iphlpapi.h>
 #pragma comment(lib, "wsock32.lib")
-#endif
+#pragma comment(lib, "Iphlpapi.lib") /* for getting ip mask */
 
-/* #include "acn_arch.h" */
-#include "acn_port.h"
 #include "netxface.h"
 #include "netsock.h"
 #include "acnlog.h"
 #include "ntoa.h"
-/* #include "inet.h" */
 
 
 /************************************************************************/
@@ -126,6 +124,9 @@ char *netx_txbuf_data(void *pkt)
     The call returns 0 if OK, non-zero if it fails.
 */
 
+static const int optionOn = 1;
+static const int optionOff = 0;
+
 int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 {
   netx_addr_t addr;
@@ -149,9 +150,33 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
     return 1; /* FAIL */
   }
 
-  /* TODO: Set reuse option? */
+  #if 0
+  Now done in netx_change_group()
+  ret = setsockopt(netsock->nativesock, SOL_SOCKET, SO_REUSEADDR, (void *)&optionOn, sizeof(optionOn));
+  if (ret < 0) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : setsockopt:SO_REUSEADDR fail");
+    close(netsock->nativesock);
+    netsock->nativesock = 0;
+    return 1; /* FAIL */
+  }
+  #endif
 
   netx_INIT_ADDR(&addr, LCLAD_INADDR(*localaddr), LCLAD_PORT(*localaddr));
+
+  /*
+  FIXME
+  If we simply use INADDR_ANY when binding, then sockets may receive spurious 
+  multicast messages. These will be corrctly rejected but have already made it
+  a long way up the stack.
+  We should enumerate our interfaces and pick the default multicast interface.
+
+  hint: "In determining or selecting outgoing interfaces, the following
+  ioctls might be useful: SIOCGIFADDR (to get an interface's address),
+  SIOCGIFCONF (to get the list of all the interfaces) and SIOCGIFFLAGS
+  (to get an interface's flags and, thus, determine whether the
+  interface is multicast capable or not -the IFF_MULTICAST flag-)."
+  man netdevice for more info.
+  */
 
   ret =  bind(netsock->nativesock, (SOCKADDR *)&addr, sizeof(addr));
 
@@ -164,6 +189,18 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 
   /* save the passed in address/port number into the passed in netxsocket_s struct */
   NSK_PORT(netsock) = LCLAD_PORT(*localaddr);
+
+  /* this does not work in WIN32 */
+  # if 0
+  /* we will need information on destination address used */
+	ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
+	if (ret == SOCKET_ERROR) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : setsockopt:IP_PKTINFO fail");
+    close(netsock->nativesock);
+    netsock->nativesock = 0;
+    return 1; /* FAIL */
+  }
+  #endif
   
   acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : open port:%d", ntohs(NSK_PORT(netsock)));
   
@@ -209,7 +246,6 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
 {
   ip_mreq     mreq;
   int         ret;
-  bool        flag;
   int         ip_ttl;
 
   LOG_FSTART();
@@ -221,11 +257,10 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
 
   acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group, port: %d, group: %s", ntohs(NSK_PORT(netsock)), ntoa(local_group));
 
-  /* socket should ahve some options if enabled for multicast */
+  /* socket should have some options if enabled for multicast */
 
   /* allow reuse of the local port number */
-  flag = true;
-  ret = setsockopt(netsock->nativesock,  SOL_SOCKET, SO_REUSEADDR, (char *)&flag,  sizeof(flag));
+  ret = setsockopt(netsock->nativesock,  SOL_SOCKET, SO_REUSEADDR, (char *)&optionOn,  sizeof(optionOn));
   if (ret == SOCKET_ERROR) {
     acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:SO_REUSEADDR fail");
     return 1; /* fail */
@@ -239,22 +274,27 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
     return 1; /* fail */
   }
 
-  /* opt_val = FALSE; */
-  /* ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)opt_val, sizeof(opt_val)); */
-  /* if (ret == SOCKET_ERROR) { */
-  /*  acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_LOOP fail"); */
-  /*  return 1; /* fail */
-  /* } */
+  /* turn off loop back on multicast */
+  ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)&optionOff, sizeof(optionOff));
+  if (ret == SOCKET_ERROR) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_LOOP fail");
+    return 1; /* fail */
+  }
 
   mreq.imr_multiaddr.s_addr = local_group;
-  mreq.imr_interface.s_addr = INADDR_ANY;
+#if CONFIG_LOCALIP_ANY
+	mreq.imr_interface.s_addr = INADDR_ANY;
+#else
+	mreq.imr_interface.s_addr = NSK_INADDR(*netsock);
+#endif
+
   
   /* result = ERR_OK which is defined as zero so return value is consistent */ 
   if (operation == netx_JOINGROUP) {
     setsockopt(netsock->nativesock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq));
     acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group: added");
   } else {
-    setsockopt (netsock->nativesock, IPPROTO_IP, IP_DROP_MEMBERSHIP, (char*)&mreq, sizeof(mreq));
+    setsockopt(netsock->nativesock, IPPROTO_IP, IP_DROP_MEMBERSHIP, (char*)&mreq, sizeof(mreq));
     acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group: dropped");
   }
   return 0; /* OK */
@@ -437,6 +477,23 @@ FIXME
 Should find the local IP address which would be used to send to
 the given remote address. For now we just get the first address
 */
+UNUSED_ARG(destaddr);
+
+IP_ADAPTER_INFO * FixedInfo;
+ULONG ulOutBufLen;
+
+FixedInfo = (IP_ADAPTER_INFO *) GlobalAlloc( GPTR, sizeof( IP_ADAPTER_INFO ) );
+ulOutBufLen = sizeof( IP_ADAPTER_INFO );
+
+if ( ERROR_SUCCESS != GetAdaptersInfo( FixedInfo, &ulOutBufLen ) ) {
+  return 0;
+}
+
+return inet_addr( FixedInfo->IpAddressList.IpAddress.String );
+
+
+/* this works too...
+/* 
 	char    s[256];
   struct  hostent *local_host;
   struct  in_addr *in;
@@ -450,20 +507,33 @@ the given remote address. For now we just get the first address
     return (in->s_addr);
   }
   return 0;
+*/
 }
 
 
 /************************************************************************/
 /*
   netx_getmyipmask()
-
+  Note: this only returns the fisrt one found and may not be correct if there are multple NICs
 */
 ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
 {
-  UNUSED_ARG(destaddr);
-  /* TODO: Implement me */
+IP_ADAPTER_INFO * FixedInfo;
+ULONG ulOutBufLen;
+
+UNUSED_ARG(destaddr);
+
+FixedInfo = (IP_ADAPTER_INFO *) GlobalAlloc( GPTR, sizeof( IP_ADAPTER_INFO ) );
+ulOutBufLen = sizeof( IP_ADAPTER_INFO );
+
+if ( ERROR_SUCCESS != GetAdaptersInfo( FixedInfo, &ulOutBufLen ) ) {
   return 0;
 }
 
+return inet_addr( FixedInfo->IpAddressList.IpMask.String );
+}
+
 #endif	/* CONFIG_NET_IPV4 */
+
+#endif /* CONFIG_STACK_WIN32 */
 
