@@ -45,8 +45,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>   /* for sleep */
 
 #include <ctype.h>    /* toupper...*/
-/* #include "/usr/include/ctype.h"    /* toupper...*/ */
-/* #include "../../include/ctype.h"      /* toupper, isdigit, isxdigit */ */
 #include "have_types.h"
 
 /* TODO: need to define this! */
@@ -69,6 +67,6 @@ void           acn_port_unprotect(acn_protect_t param);
 #endif
 
 
-#endif /* CONFIG_STACK_WIN32 */
+#endif /* CONFIG_STACK_BSD */
 
 #endif

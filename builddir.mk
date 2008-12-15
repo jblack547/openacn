@@ -47,7 +47,7 @@
 ##########################################################################
 # Include configuration stuff
 #
-include .opts.mk
+#include .opts.mk
 ##########################################################################
 # PLATFORM is normally in the platform directory
 #
@@ -164,11 +164,11 @@ clean :
 ##########################################################################
 # Track dependencies
 #
-${DEPDIR}/%.d: %.c
-	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
-	| sed 's/^\([^ :]\+\)\.o:/\1.o \1.d:/' > $@
-
-include ${patsubst ${OBJDIR}/%.o, ${DEPDIR}/%.d, ${OBJS}}
+#${DEPDIR}/%.d: %.c
+#	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
+#	| sed 's/^\([^ :]\+\)\.o:/\1.o \1.d:/' > $@
+#
+#include ${patsubst ${OBJDIR}/%.o, ${DEPDIR}/%.d, ${OBJS}}
 
 ##########################################################################
 # ts is a target for miscellaneous debug and doesn't do much
@@ -180,15 +180,15 @@ ts:
 # .opts.mk contains Make relevant options extracted from the
 # configuration headers opt.h and user_opt.h
 #
-.opts.mk: ${ACNROOT}/opts.mk.c
-	${CPP} ${CPPFLAGS} $< ${CCOUTPUT}$@
+#.opts.mk: ${ACNROOT}/opts.mk.c
+#	${CPP} ${CPPFLAGS} $< ${CCOUTPUT}$@
 
 # Make sure we have its dependencies OK
-${DEPDIR}/opts.mk.d: opts.mk.c
-	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
-	| sed 's/^\([^ :]\+\)\.o:/.\1 \1.d:/' > $@
+#${DEPDIR}/opts.mk.d: opts.mk.c
+#	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
+#	| sed 's/^\([^ :]\+\)\.o:/.\1 \1.d:/' > $@
 
-include ${DEPDIR}/opts.mk.d
+#include ${DEPDIR}/opts.mk.d
 
 ##########################################################################
 # .defs produces a complete preprocessor dump of the symbols defined in a
