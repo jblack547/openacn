@@ -39,8 +39,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __byteorder_h__
 #define __byteorder_h__
 
-//TODO: not used at this time so commented out for now as to not to cause 
-//      confusion
+/* TODO: not used at this time so commented out for now as to not to cause
+   confusion */
 
 /*
 uint16_t swap16(uint16_t n);

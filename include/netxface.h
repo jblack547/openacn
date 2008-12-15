@@ -50,6 +50,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "epi20.h"
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #if CONFIG_STACK_BSD
 #include "netx_bsd.h"
 #elif CONFIG_STACK_LWIP
@@ -60,6 +65,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "netx_netburner.h"
 #elif CONFIG_STACK_WIN32
 #include "netx_win32.h"
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif	/* #ifndef __netxface_h__ */
