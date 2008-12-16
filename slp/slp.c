@@ -162,8 +162,9 @@ uint32_t      msticks;          /* tick counter (used for some debugging) */
 static void (*srvrqst_callback) (int error, char *url) = NULL;
 static void (*attrrqst_callback) (int error, char *attr_list) = NULL;
 
-uint16_t      srvrqst_xid = 0;  /* xid of service request sent (not including da search) */
-uint16_t      attrrqst_xid = 0; /* xid of attribute request sent */
+/* TODO: this could/should be also be a malloc() version with linked list */
+#define MAX_RQST 50
+uint16_t      xids[MAX_RQST];  /* xid of service request, attribute request and service registrations */
 #endif
 
 /*=========================================================================*/
@@ -326,6 +327,48 @@ void da_ip_list(char *str)
       first = SLP_FALSE;
     }
   }
+}
+
+/* TODO: These need to be flushed if they expire! */
+/******************************************************************************/
+int __xid_save(uint16_t xid)
+{
+  int x;
+  printf("save_xid: %d\n", xid);
+  for (x=0;x<MAX_RQST;x++) {
+    if (xids[x] == 0) {
+      xids[x] = xid;
+      return true;
+    }
+  }
+  return false;
+}
+
+/******************************************************************************/
+int __xid_test(uint16_t xid)
+{
+  int x;
+  printf("test_xid: %d\n", xid);
+  for (x=0;x<MAX_RQST;x++) {
+    if (xids[x] == xid) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/******************************************************************************/
+int __xid_clear(uint16_t xid)
+{
+  int x;
+  printf("clear_xid: %d\n", xid);
+  for (x=0;x<MAX_RQST;x++) {
+    if (xids[x] == xid) {
+      xids[x] = 0;
+      return true;
+    }
+  }
+  return false;
 }
 
 #if SLP_IS_SA || SLP_IS_UA
@@ -1034,7 +1077,7 @@ SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
   offset = packUINT24(offset, length);  /* length */
 
   srvrqst_callback = callback;
-  srvrqst_xid = slp_header.xid;
+  __xid_save(slp_header.xid);
 
   /* create address */
   netx_INADDR(&dest_addr) = SLP_MCAST_ADDRESS;
@@ -1409,13 +1452,8 @@ SLPError slp_receive_srvrply(ip4addr_t ip, SLPHeader *header, char *data)
 
   LOG_FSTART();
 
-  /* error, did not ask for a reply! */
-  if (!srvrqst_xid)
-    return(SLP_UNEXPECTED_MSG);
-
   /* error, xid does not match, this may not be an error so return OK */
-  if (srvrqst_xid != header->xid) {
-    srvrqst_xid = 0;
+  if (!__xid_test(header->xid)) {
     return (SLP_OK);
   }
 
@@ -1431,7 +1469,7 @@ SLPError slp_receive_srvrply(ip4addr_t ip, SLPHeader *header, char *data)
     /* TODO, should we have some sanity limit on the number of URLs to parse? */
     while (url_count) {
       /* callback with URL */
-      unpackURL_ENTRY(data, &urlentry);
+      data = unpackURL_ENTRY(data, &urlentry);
       /* rest of data void if we have authentication */
       if (urlentry.num_auth_blocks)
         break;
@@ -1447,7 +1485,7 @@ SLPError slp_receive_srvrply(ip4addr_t ip, SLPHeader *header, char *data)
     }
   }
   /* reset xid */
-  srvrqst_xid = 0;
+  __xid_clear(header->xid);
   return SLP_OK;
 }
 #endif /* SLP_IS_UA */
@@ -1551,8 +1589,11 @@ SLPError slp_send_reg(ip4addr_t ip, bool fresh)
   offset = data + 2; /* point to where length will go, 2 bytes from start of msg */
   offset = packUINT24(offset, length);  /* put length in msg */
 
+  /* save xid */
+  __xid_save(slp_header.xid);
+
   /* create address */
-  netx_INADDR(&dest_addr) = SLP_MCAST_ADDRESS;
+  netx_INADDR(&dest_addr) = ip;
   netx_PORT(&dest_addr) = SLP_RESERVED_PORT;
 
   /* send it */
@@ -1840,10 +1881,10 @@ SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags,
   offset = packUINT24(offset, length);  /* length */
 
   attrrqst_callback = callback;
-  attrrqst_xid = slp_header.xid;
+  __xid_save(slp_header.xid);
 
   /* create address */
-  netx_INADDR(&dest_addr) = SLP_MCAST_ADDRESS;
+  netx_INADDR(&dest_addr) = ip;/* SLP_MCAST_ADDRESS; */
   netx_PORT(&dest_addr) = SLP_RESERVED_PORT;
 
   /* send it */
@@ -1892,13 +1933,8 @@ SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data)
 
   LOG_FSTART();
 
-  /* error, did not ask for a reply! */
-  if (!attrrqst_xid)
-    return(SLP_UNEXPECTED_MSG);
-
   /* error, xid does not match, this may not be an error so return OK */
-  if (attrrqst_xid != header->xid) {
-    attrrqst_xid = 0;
+  if (!__xid_test(header->xid)) {
     return (SLP_OK);
   }
 
@@ -1921,7 +1957,7 @@ SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data)
     SLP_FREE(attr_list);
   }
   /* reset xid */
-  srvrqst_xid = 0;
+  __xid_clear(header->xid);
   return SLP_OK;
 }
 #endif /* SLP_IS_UA */
@@ -1950,12 +1986,19 @@ SLPError slp_receive_svrack(ip4addr_t ip, SLPHeader *header, char *data)
 
   LOG_FSTART();
 
+  if (!__xid_test(header->xid )) {
+    /* not mine */
+    return SLP_OK;
+  }
+
   data = unpackUINT16(data, &error_code);
   if (error_code == SLP_OK) {
     da_service_ack(ip);
   } else {
     da_delete(ip);
   }
+  __xid_clear(header->xid);
+
   return SLP_OK;
 }
 #endif /* SLP_IS_SA */
@@ -2385,12 +2428,12 @@ void slp_init(void)
     srv_type_len = 0;
 
     msticks = 0;
+    
+    memset(&xids, 0, sizeof(xids));
 
     initialized = 1;
   }
 }
-
-
 
 /*******************************************************************************
   start up SLP
