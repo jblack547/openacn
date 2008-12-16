@@ -40,7 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if CONFIG_STACK_BSD
 #include <malloc.h>
-#include <netinet\in.h>
+#include <netinet/in.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 
