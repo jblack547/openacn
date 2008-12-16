@@ -419,11 +419,11 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t acc
   acn_protect_t  protect;
 
   #if LOG_DEBUG | LOG_SDT
-  char  uuid_text[37];
-  uuidToText(cid, uuid_text);
+  char  cid_text[37];
+  cidToText(cid, cid_text);
   #endif
 
-  acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_component: %s", uuid_text);
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_component: %s", cid_text);
 
   /* See if we have this already */
   component = sdt_find_component(cid);
@@ -441,9 +441,9 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t acc
     components = component;
     /* assign values */
     if (cid)
-      uuidCopy(component->cid, cid);
+      cidCopy(component->cid, cid);
     if (dcid)
-      uuidCopy(component->dcid, dcid);
+      cidCopy(component->dcid, dcid);
     /* component->fctn[0] = 0; */ /* default 0 */
     /* component->uacn[0] = 0; */ /* default 0 */
       component->access = access;
@@ -480,13 +480,13 @@ sdt_del_component(component_t *component)
 
 
   #if LOG_DEBUG | LOG_SDT
-  char  uuid_text[37];
-  uuidToText(component->cid, uuid_text);
+  char  cid_text[37];
+  cidToText(component->cid, cid_text);
   #endif
 
   assert(component);
 
-  acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_component: %s", uuid_text);
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_component: %s", cid_text);
 
   /* remove this component from other components member list */
   cur = components;
@@ -812,7 +812,7 @@ sdt_find_component(const cid_t cid)
   component = components;
 
   while(component) {
-    if (uuidIsEqual(component->cid, cid)) {
+    if (cidIsEqual(component->cid, cid)) {
       return (component);
     }
     component = component->next;
@@ -1641,7 +1641,7 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component, bool i
   buffer = marshalU16(buffer, 49 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
   /* buffer = marshalU16(buffer, 43 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG); */
   buffer = marshalU8(buffer, SDT_JOIN);
-  buffer = marshalUUID(buffer, foreign_component->cid);
+  buffer = marshalCID(buffer, foreign_component->cid);
   buffer = marshalU16(buffer, foreign_member->mid);
   buffer = marshalU16(buffer, local_channel->number);
 
@@ -1723,7 +1723,7 @@ sdt_tx_join_accept(sdt_member_t *local_member, component_t *local_component, com
   /* vector */
   buffer = marshalU8(buffer, SDT_JOIN_ACCEPT);
   /* data */
-  buffer = marshalUUID(buffer, foreign_component->cid);
+  buffer = marshalCID(buffer, foreign_component->cid);
   buffer = marshalU16(buffer, foreign_component->tx_channel->number);
   buffer = marshalU16(buffer, local_member->mid);
   buffer = marshalU32(buffer, foreign_component->tx_channel->reliable_seq);
@@ -1776,7 +1776,7 @@ sdt_tx_join_refuse(const cid_t foreign_cid, component_t *local_component, const 
   /* vector */
   buffer = marshalU8(buffer, SDT_JOIN_REFUSE);
   /* data */
-  buffer = marshalUUID(buffer, foreign_cid);
+  buffer = marshalCID(buffer, foreign_cid);
   buffer = marshalU16(buffer, foreign_channel_num); /* leader's channel # */
   buffer = marshalU16(buffer, local_mid);           /* mid that the leader was assigning to me */
   buffer = marshalU32(buffer, foreign_rel_seq);     /* leader's channel rel seq # */
@@ -1831,7 +1831,7 @@ sdt_tx_leaving(component_t *foreign_component, component_t *local_component, sdt
 
   buffer = marshalU16(buffer, 28 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
   buffer = marshalU8(buffer, SDT_LEAVING);
-  buffer = marshalUUID(buffer, foreign_component->cid);
+  buffer = marshalCID(buffer, foreign_component->cid);
   buffer = marshalU16(buffer, foreign_channel->number);
   buffer = marshalU16(buffer, local_member->mid);
   buffer = marshalU32(buffer, foreign_channel->reliable_seq);
@@ -1896,7 +1896,7 @@ sdt_tx_nak(component_t *foreign_component, component_t *local_component, uint32_
   /* FIXME -  add proper nak storm suppression? */
   buffer = marshalU16(buffer, 35 /* Length of this pdu */ | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
   buffer = marshalU8(buffer, SDT_NAK);
-  buffer = marshalUUID(buffer, foreign_component->cid);
+  buffer = marshalCID(buffer, foreign_component->cid);
   buffer = marshalU16(buffer, foreign_channel->number);
   buffer = marshalU16(buffer, local_member->mid);
   buffer = marshalU32(buffer, foreign_channel->reliable_seq);		/* last known good one */
@@ -1981,8 +1981,8 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
   joinp = join; /* points to data section of join message which starts with dest CID */
 
   /* get destination cid out of the message */
-  unmarshalUUID(joinp, local_cid);
-  joinp += UUIDSIZE;
+  unmarshalCID(joinp, local_cid);
+  joinp += CIDSIZE;
 
   /* see if this the dest CID matches one of our local components */
   local_component = sdt_find_component(local_cid);
@@ -2246,8 +2246,8 @@ sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_accept, uint32_t
   }
 
   /* verify leader CID */
-  unmarshalUUID(join_accept, local_cid);
-  join_accept += UUIDSIZE;
+  unmarshalCID(join_accept, local_cid);
+  join_accept += CIDSIZE;
   local_component = sdt_find_component(local_cid);
   if (!local_component) {
     acnlog(LOG_NOTICE | LOG_SDT, "sdt_rx_join_accept: not for me");
@@ -2363,8 +2363,8 @@ sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t
   }
 
   /* get leader */
-  unmarshalUUID(join_refuse, local_cid);
-  join_refuse += UUIDSIZE;
+  unmarshalCID(join_refuse, local_cid);
+  join_refuse += CIDSIZE;
   local_component = sdt_find_component(local_cid);
   if (!local_component) {
     acnlog(LOG_NOTICE | LOG_SDT, "sdt_rx_join_refuse: Not for me");
@@ -2440,8 +2440,8 @@ sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_le
   }
 
   /* get leader cid */
-  unmarshalUUID(leaving, local_cid);
-  leaving += UUIDSIZE;
+  unmarshalCID(leaving, local_cid);
+  leaving += CIDSIZE;
   local_component = sdt_find_component(local_cid);
   if (!local_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_leaving: local_component not found");
@@ -2518,8 +2518,8 @@ sdt_rx_nak(const cid_t foreign_cid, const uint8_t *nak, uint32_t data_len)
   }
 
   /* get Leader CID */
-  unmarshalUUID(nak, local_cid);
-  nak += UUIDSIZE;
+  unmarshalCID(nak, local_cid);
+  nak += CIDSIZE;
   local_component = sdt_find_component(local_cid);
   if (!local_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_nak: local_component not found");
@@ -4255,7 +4255,7 @@ void sdt_stats(void)
 {
   component_t    *component;
   uint32_t          x = 1;
-  char  uuid_text[37];
+  char  cid_text[37];
   uint32_t  addr;
   uint16_t  port;
   sdt_channel_t *channel;
@@ -4265,10 +4265,10 @@ void sdt_stats(void)
   while(component) {
     acnlog(LOG_INFO | LOG_STAT, "------------------------");
     acnlog(LOG_INFO | LOG_STAT, "Component: %ld", x);
-    uuidToText(component->cid, uuid_text);
-    acnlog(LOG_INFO | LOG_STAT, "CID: %s", uuid_text);
-    uuidToText(component->dcid, uuid_text);
-    acnlog(LOG_INFO | LOG_STAT, "DCID: %s", uuid_text);
+    cidToText(component->cid, cid_text);
+    acnlog(LOG_INFO | LOG_STAT, "CID: %s", cid_text);
+    cidToText(component->dcid, cid_text);
+    acnlog(LOG_INFO | LOG_STAT, "DCID: %s", cid_text);
     acnlog(LOG_INFO | LOG_STAT, "fctn: %s", component->fctn);
     acnlog(LOG_INFO | LOG_STAT, "uacn: %s", component->uacn);
     switch (component->access) {

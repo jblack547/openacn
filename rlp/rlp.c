@@ -396,7 +396,7 @@ rlp_add_pdu(
 		memcpy(pdup, rlpPreamble, RLP_PREAMBLE_LENGTH);
 		pdup += RLP_PREAMBLE_LENGTH;
 		/* add the source CID */
-		marshalUUID(pdup + 2 + sizeof(protocolID_t), buf->owner->cid);
+		marshalCID(pdup + 2 + sizeof(protocolID_t), buf->owner->cid);
 	}
 
 	/* PDU length and flags */

@@ -56,7 +56,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "ntoa.h"
 #include "aton.h"
-#include "uuid.h"
+#include "cid.h"
 #include "epi18.h"
 #include "slp.h"
 #include "sdt.h"
@@ -98,14 +98,14 @@ static const char predicate_fmt[]  = "(csl-esta.dmp=*%s)";
 static void create_attr_list(char *new_attr_list, component_t *component) 
 {
   char *ip_str;
-  char cid_str[UUID_STR_SIZE];
-  char dcid_str[UUID_STR_SIZE];
+  char cid_str[CID_STR_SIZE];
+  char dcid_str[CID_STR_SIZE];
   char access_str[3] = {'\0'};
 
   /* if we received a non-zero pointer to the destination string */
   if (new_attr_list) {
-    uuidToText(component->cid, cid_str);
-    uuidToText(component->dcid, dcid_str);
+    cidToText(component->cid, cid_str);
+    cidToText(component->dcid, dcid_str);
     switch (component->access) {
       case accDEVICE:
         access_str[0] = 'd';
@@ -133,10 +133,10 @@ static void create_attr_list(char *new_attr_list, component_t *component)
 /* Create a ACN URL string from component cid */
 static void create_url(char *new_url, component_t *component)
 {
-  char cid_str[UUID_STR_SIZE];
+  char cid_str[CID_STR_SIZE];
 
   /* convert the CID to a string */
-  uuidToText(component->cid, cid_str);
+  cidToText(component->cid, cid_str);
   /* put the CID string into the URL string */
   sprintf(new_url, acn_reg_fmt, cid_str);
 }
@@ -184,8 +184,8 @@ bool get_attribute_str(char** next_attr, char**attr_str)
 
 static void attrrqst_callback(int error, char *attr_list)
 {
-  uint8_t *cid = NULL;
-  uint8_t *dcid = NULL;
+  cid_t cid = {0};
+  cid_t dcid = {0};
   char cid_str[37]             = {'\0'};
   char fctn_str[ACN_FCTN_SIZE] = {'\0'};
   char uacn_str[ACN_FCTN_SIZE] = {'\0'};
@@ -206,32 +206,6 @@ static void attrrqst_callback(int error, char *attr_list)
   char *s;
   char *e;
 
-  /* local function to get attribute block */
-  /* TODO: do we need auto below */
-#ifdef NEVER
-  auto bool get_attribute_str(void);
-  bool get_attribute_str(void)
-  {
-    char *s;
-    char *e;
-    /* find '(' */
-    s = strchr(next_attr, '(');
-    if (s) {
-      s = s + 1;
-      /* now find mataching */
-      e = strchr(s, ')');
-      if (e) {
-        next_attr = e + 1;
-        *e = 0;
-        attr_str = s;
-        return 1;
-      }
-    }
-    attr_str = NULL;
-    return 0;
-  }
-#endif
-
   if (!error) {
     printf("attrrqst callback: %s\n",attr_list);
     /* start from the first one */
@@ -242,7 +216,7 @@ static void attrrqst_callback(int error, char *attr_list)
       /* CID ? */
       if (!strncmp(attr_str, "cid=", 4)) {
         strncpy(cid_str, attr_str+4, 36);
-        textToUuid(cid_str, cid);
+        textToCid(cid_str, cid);
         printf("cid: %s\n",cid_str);
         continue;
       }
@@ -265,7 +239,7 @@ static void attrrqst_callback(int error, char *attr_list)
           p = strchr(p, ':');
           if (p) {
             strncpy(cid_str, p+1, 36);
-            textToUuid(cid_str, dcid);
+            textToCid(cid_str, dcid);
             printf("dcid: %s\n",cid_str);
           }
         }
@@ -318,13 +292,13 @@ static void attrrqst_callback(int error, char *attr_list)
 
   /* create a component for this CID */
 #if CONFIG_SDT
-  if (!uuidIsNull(cid)) {
+  if (!cidIsNull(cid)) {
   	/* use the CID to get the address of the component structure */
     /* why is this commeted out? */
     /* comp = sdt_find_component(cid); */ /* COMMENTED OUT */
     /* if it was found */
     if (comp) {
-      uuidCopy(comp->dcid, dcid);
+      cidCopy(comp->dcid, dcid);
       netx_PORT(&comp->adhoc_addr) = htons(port);
       netx_INADDR(&comp->adhoc_addr) = htonl(ip);
     } else {

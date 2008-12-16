@@ -120,8 +120,8 @@ From epi10 r4:
 
 /*
 */
-	uuidPart = (UUID_NODE(comp->cid)[4] << 8) | UUID_NODE(comp->cid)[5];
-	uuidPart ^= (uint16_t)UUID_TIME_LOW(comp->cid);
+	uuidPart = (CID_NODE(comp->cid)[4] << 8) | CID_NODE(comp->cid)[5];
+	uuidPart ^= (uint16_t)CID_TIME_LOW(comp->cid);
 	comp->dyn_mcast = uuidPart & dyn_mask;
 	return 0;
 }

@@ -97,7 +97,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* other includes */
 #include "netsock.h"  /* network socket storage */
 
-#include "uuid.h"     /* manage uuids */
+#include "cid.h"     /* manage uuids */
 #include "pack.h"     /* to pack and unpack data strucures */
 #include "msleep.h"    /* platform dependent delay */
 

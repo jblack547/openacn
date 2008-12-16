@@ -36,8 +36,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*--------------------------------------------------------------------*/
 /* Universally Unique Identifier (UUID). RFC 4122 */
 
-#ifndef __uuid_h__
-#define __uuid_h__ 1
+#ifndef __cid_h__
+#define __cid_h__ 1
 
 #include <stdio.h>
 #include "opt.h"
@@ -48,59 +48,51 @@ extern "C" {
 #endif
 
 /*
-For most purposes a UUID is simply an array of 16 octets
+For most purposes a CID is simply an array of 16 octets
 */
-#define UUIDSIZE 16
-#define UUID_STR_SIZE 37  /* includeing null termination */
+#define CIDSIZE 16
+#define CID_STR_SIZE 37  /* includeing null termination */
 
-/* msvc++ has this defined so we need to undefine it */
-#ifdef uuid_t
-#undef uuid_t
-#endif
+/* generic cid as array */
+typedef uint8_t cid_t[CIDSIZE];
 
-/* generic uuid as array */
-typedef uint8_t uuid_t[UUIDSIZE];
-
-/* same by another name */
-typedef uuid_t cid_t;
-
-static const uuid_t  null_cid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+static const cid_t  null_cid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 /*
   Macros to access the internal structure
   Fields are in Network byte order
 */
-#define UUID_TIME_LOW(uuid) ntohl(*(uint32_t *)(uuid))
-#define UUID_TIME_MID(uuid) ntohs(*(uint16_t *)((uuid) + 4))
-#define UUID_TIME_HIV(uuid) ntohs(*(uint16_t *)((uuid) + 6))
-#define UUID_CLKSEQ_HI(uuid) (*((uuid) + 8))
-#define UUID_CLKSEQ_LOW(uuid) (*((uuid) + 9))
-#define UUID_NODE(uuid) ((uuid) + 10)
+#define CID_TIME_LOW(cid) ntohl(*(uint32_t *)(cid))
+#define CID_TIME_MID(cid) ntohs(*(uint16_t *)((cid) + 4))
+#define CID_TIME_HIV(cid) ntohs(*(uint16_t *)((cid) + 6))
+#define CID_CLKSEQ_HI(cid) (*((cid) + 8))
+#define CID_CLKSEQ_LOW(cid) (*((cid) + 9))
+#define CID_NODE(cid) ((cid) + 10)
 
-int textToUuid(const char *uuidText, uuid_t uuidp);
-char *uuidToText(const uuid_t uuidp, char *uuidText);
+int textToCid(const char *cidText, cid_t cidp);
+char *cidToText(const cid_t cidp, char *cidText);
 
 /* Macro version of functions */
-#define uuidIsEqual(uuid1, uuid2) (memcmp(uuid1, uuid2, sizeof(uuid_t)) == 0)
-#define uuidNull(uuid) (memset(uuid, 0, sizeof(uuid_t)))
-#define uuidIsNull(uuid) (memcmp(uuid, &null_cid, sizeof(uuid_t)) == 0)
-#define uuidCopy(uuid1, uuid2) (memcpy(uuid1, uuid2, sizeof(uuid_t)))
+#define cidIsEqual(cid1, cid2) (memcmp(cid1, cid2, sizeof(cid_t)) == 0)
+#define cidNull(cid) (memset(cid, 0, sizeof(cid_t)))
+#define cidIsNull(cid) (memcmp(cid, &null_cid, sizeof(cid_t)) == 0)
+#define cidCopy(cid1, cid2) (memcpy(cid1, cid2, sizeof(cid_t)))
 
-#if !defined(uuidIsEqual)
-int uuidIsEqual(const uuid_t uuid1, const uuid_t uuid2);
+#if !defined(cidIsEqual)
+int cidIsEqual(const cid_t cid1, const cid_t cid2);
 #endif
-#if !defined(uuidNull)
-void uuidNull(uuid_t uuid);
+#if !defined(cidNull)
+void cidNull(cid_t cid);
 #endif
-#if !defined(uuidIsNull)
-int  uuidIsNull(const uuid_t uuid);
+#if !defined(cidIsNull)
+int  cidIsNull(const cid_t cid);
 #endif
-#if !defined(uuidCopy)
-void uuidCopy(uuid_t uuid1, const uuid_t uuid2);
+#if !defined(cidCopy)
+void cidCopy(cid_t cid1, const cid_t cid2);
 #endif
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __uuid_h__ */
+#endif /* __cid_h__ */

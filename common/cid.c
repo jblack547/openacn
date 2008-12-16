@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opt.h"
 #include "types.h"
 #include "acn_arch.h"
-#include "uuid.h"
+#include "cid.h"
 #include <ctype.h>
 
 /* stack independent calls usually found in ctype.h*/
@@ -49,26 +49,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 /******************************************************************************/
-/* Convert text based UUID to uuit_t 
+/* Convert text based CID to uuit_t 
  * Input format example: D1F6F109-8A48-4435-8157-A226604DEA89
  * Returns 0 OK or non-zere if error in format found
  */
-int textToUuid(const char *uuidText, uuid_t uuidp)
+int textToCid(const char *cidText, cid_t cidp)
 {
 	uint8_t *bytp;
 	uint16_t byt;
 
 	byt = 1;	/* bit provides a shift marker */
 
-	for (bytp = uuidp; bytp < uuidp + UUIDSIZE; ++uuidText) {
-		if (*uuidText == '-') continue;	/* ignore dashes */
-		if (isdigit(*uuidText)) {
-			byt = (byt << 4) | (*uuidText - '0');
+	for (bytp = cidp; bytp < cidp + CIDSIZE; ++cidText) {
+		if (*cidText == '-') continue;	/* ignore dashes */
+		if (isdigit(*cidText)) {
+			byt = (byt << 4) | (*cidText - '0');
 		} else 
-			if (isxdigit(*uuidText)) {
-			  byt = (byt << 4) | (toupper(*uuidText) - 'A' + 10);
+			if (isxdigit(*cidText)) {
+			  byt = (byt << 4) | (toupper(*cidText) - 'A' + 10);
 		  } else {
-			  while (bytp < uuidp + UUIDSIZE) *bytp++ = 0;
+			  while (bytp < cidp + CIDSIZE) *bytp++ = 0;
 			  return -1;	/* error terminates */
 			}
 		if (byt >= 0x100) {
@@ -85,83 +85,83 @@ const char hexdig[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a',
 
 /******************************************************************************/
 /*
-Make a string from a UUID
+Make a string from a CID
 Returns pointer to end of string
 */
-char *uuidToText(const uint8_t *uuidp, char *uuidText)
+char *cidToText(const uint8_t *cidp, char *cidText)
 {
 	int octet;
 
 	for (octet = 0; octet < 16; octet++) {
-		*uuidText++ = tohex(*uuidp >> 4);
-		*uuidText++ = tohex(*uuidp & 0x0f);
-		++uuidp;
+		*cidText++ = tohex(*cidp >> 4);
+		*cidText++ = tohex(*cidp & 0x0f);
+		++cidp;
 
 		switch(octet) {
 			case 3 :
 			case 5 :
 			case 7 :
 			case 9 :
-				*uuidText++ = '-';
+				*cidText++ = '-';
 			default :
 				break;
 		}
 	}
-	*uuidText = '\0';	/* terminate the string */
-	return uuidText;
+	*cidText = '\0';	/* terminate the string */
+	return cidText;
 }
 
 /* Also see MACROS defined in header */
-#if !defined(uuidIsEqual)
+#if !defined(cidIsEqual)
 /*****************************************************************************/
 /*
- * Compares 2 UUIDs
+ * Compares 2 CIDs
  * Returns non-zero if equal.
  */
-int uuidIsEqual(const uuid_t uuid1, const uuid_t uuid2)
+int cidIsEqual(const cid_t cid1, const cid_t cid2)
 {
 	int count = 16;
 
-	while (*uuid1++ == *uuid2++) if (--count == 0) return 1;
+	while (*cid1++ == *cid2++) if (--count == 0) return 1;
 	return 0;
 }
 #endif
 
-#if !defined(uuidNull)
+#if !defined(cidNull)
 /* 
- * Fulls UUID with zeros
+ * Fulls CID with zeros
  */
 /*****************************************************************************/
-void uuidNull(uuid_t uuid)
+void cidNull(cid_t cid)
 {
   int count = 16;
 
 	while (count--) {
-    *uuid = 0;;
+    *cid = 0;;
   }
 }
 #endif
 
-#if !defined(uuidIsNull)
+#if !defined(cidIsNull)
 /*****************************************************************************/
 /* 
- * Test UUID to see if is NULL
+ * Test CID to see if is NULL
  * Returns non-zero if NULL
  */
-int uuidIsNull(const uuid_t uuid)
+int cidIsNull(const cid_t cid)
 {
-  return uuidIsEqual(uuid, null_cid);
+  return cidIsEqual(cid, null_cid);
 }
 #endif
 
-#if !defined(uuidCopy)
+#if !defined(cidCopy)
 /*****************************************************************************/
-void uuidCopy(uuid_t uuid1, const uuid_t uuid2)
+void cidCopy(cid_t cid1, const cid_t cid2)
 {
 	int count = 16;
 
 	while (count--) {
-    *uuid1++ = *uuid2++;
+    *cid1++ = *cid2++;
   }
 }
 #endif

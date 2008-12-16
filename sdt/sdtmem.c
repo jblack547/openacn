@@ -69,7 +69,7 @@ sdtm_init(void)
   sdt_resend_t       *resend;
 	for (channel = channels_m; channel < channels_m + SDT_MAX_CHANNELS; ++channel) channel->number = 0;
 	for (member = members_m; member < members_m + SDT_MAX_MEMBERS; ++member) member->component = NULL;
-	for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; ++component) uuidNull(component->cid);
+	for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; ++component) cidNull(component->cid);
 	for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; ++resend) resend->expires_ms = 0;
 }    
 
@@ -158,7 +158,7 @@ sdtm_new_component(void)
 
   /* find and empty one */
   for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; component++) {
-		if (uuidIsNull(component->cid)) {
+		if (cidIsNull(component->cid)) {
       /* clear values */
       memset(component, 0, sizeof(component_t));
       return component;
@@ -177,7 +177,7 @@ void
 sdtm_free_component(component_t *component)
 {
   acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_component");
-  uuidNull(component->cid); /* mark it empty */
+  cidNull(component->cid); /* mark it empty */
 }
 
 /*****************************************************************************/

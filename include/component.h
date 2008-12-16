@@ -44,7 +44,7 @@ Information structures and handling relating to components
 #include "types.h"
 #include "acn_arch.h"
 
-#include "uuid.h"
+#include "cid.h"
 #include "netxface.h"
 #include "byteorder.h"
 

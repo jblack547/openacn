@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opt.h"
 #include "types.h"
-#include "uuid.h"
+#include "cid.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -76,9 +76,9 @@ static __inline uint8_t *marshalU32(uint8_t *data, uint32_t u32)
 	return data + 4;
 }
 
-static __inline uint8_t *marshalUUID(uint8_t *data, const uint8_t *uuid)
+static __inline uint8_t *marshalCID(uint8_t *data, const uint8_t *cid)
 {
-	return (uint8_t *)memcpy(data, uuid, sizeof(uuid_t)) + sizeof(uuid_t);
+	return (uint8_t *)memcpy(data, cid, sizeof(cid_t)) + sizeof(cid_t);
 }
 
 static __inline uint8_t *marshalVar(uint8_t *data, const uint8_t *src, uint16_t size)
@@ -107,9 +107,9 @@ static __inline uint32_t unmarshalU32(const uint8_t *data)
 	return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) | (data[2] << 8) | data[3];
 }
 
-static __inline uint8_t *unmarshalUUID(const uint8_t *data, uint8_t *uuid)
+static __inline uint8_t *unmarshalCID(const uint8_t *data, uint8_t *cid)
 {
-	return (uint8_t *)memcpy(uuid, data, sizeof(uuid_t));
+	return (uint8_t *)memcpy(cid, data, sizeof(cid_t));
 }
 
 static __inline uint16_t unpackVar(const uint8_t *data, uint8_t *dest)
@@ -153,8 +153,8 @@ static __inline p_string_t *unmarshal_p_string(const uint8_t *data, p_string_t *
 					| ((uint8_t *)(datap))[2] << 8 \
 					| ((uint8_t *)(datap))[3])
 
-#define marshalUUID(data, uuid) ((uint8_t*)memcpy((uint8_t *)(data), (uint8_t *)(uuid), sizeof(uuid_t)) + sizeof(uuid_t))
-#define unmarshalUUID(data, uuid) ((uint8_t*)memcpy((uint8_t *)(uuid), (uint8_t *)(data), sizeof(uuid_t)))
+#define marshalCID(data, cid) ((uint8_t*)memcpy((uint8_t *)(data), (uint8_t *)(cid), sizeof(cid_t)) + sizeof(cid_t))
+#define unmarshalCID(data, cid) ((uint8_t*)memcpy((uint8_t *)(cid), (uint8_t *)(data), sizeof(cid_t)))
 
 #define marshalVar(datap, srcp, len) \
 					( \
