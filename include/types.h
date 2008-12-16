@@ -118,6 +118,7 @@ typedef sint8_t int8_t;
   #ifndef uint32_t
     #if (ULONG_MAX == 4294967295UL)
       typedef unsigned long int uint32_t;
+      #define __uint32_t_defined /* for linux*/
       #define __HAVE_uint32_t 1
     #elif (UINT_MAX == 4294967295UL)
       typedef unsigned int uint32_t; /* this is used for netburner */
