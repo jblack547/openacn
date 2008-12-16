@@ -91,6 +91,9 @@ static const char  attr_list_fmt[]    =
 (device-description=$:tftp://%s/$.ddl)";
 static const char predicate_fmt[]  = "(csl-esta.dmp=*%s)";
 
+/* must be at least one space */
+static const char default_uacn[] = "uacn";
+static const char default_fctn[] = "fctn";
 
 /* Local variables */
 
@@ -101,6 +104,8 @@ static void create_attr_list(char *new_attr_list, component_t *component)
   char cid_str[CID_STR_SIZE];
   char dcid_str[CID_STR_SIZE];
   char access_str[3] = {'\0'};
+  const char *uacn;
+  const char *fctn;
 
   /* if we received a non-zero pointer to the destination string */
   if (new_attr_list) {
@@ -123,10 +128,23 @@ static void create_attr_list(char *new_attr_list, component_t *component)
 		
     /* convert the IP string */
     ip_str = ntoa(netx_getmyip(NULL));
+
+    /* don't let these be blank or slpd will croak */
+    /* perhaps it would be better to just not include them if empty */
+    if (component->fctn[0] != 0) {
+      fctn = component->fctn;
+    } else {
+      fctn = default_fctn;
+    }
+    if (component->uacn[0] != 0) {
+      uacn = component->uacn;
+    } else {
+      uacn = default_uacn;
+    }
     
     /* create the attribute string for SLP discovery */
-    sprintf(new_attr_list, attr_list_fmt, cid_str, component->fctn, component->uacn, ip_str, SDT_ADHOC_PORT, access_str, dcid_str, ip_str);
-    /*                                    %s       %s               %s               %s      %d                 %s           %s        %s */
+    sprintf(new_attr_list, attr_list_fmt, cid_str, fctn, uacn, ip_str, SDT_ADHOC_PORT, access_str, dcid_str, ip_str);
+    /*                                    %s       %s    %s    %s      %d              %s          %s        %s */
   }
 }
 
