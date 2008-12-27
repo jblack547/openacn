@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opt.h"
 #include "types.h"
+//#include "acn_port.h"
 #include "cid.h"
 
 #ifdef __cplusplus
@@ -84,7 +85,7 @@ static __inline uint8_t *marshalCID(uint8_t *data, const uint8_t *cid)
 static __inline uint8_t *marshalVar(uint8_t *data, const uint8_t *src, uint16_t size)
 {
 	memcpy( marshalU16(data, size + 2), src, size);
-	return data + size + 2;	
+	return data + size + 2;
 }
 
 static __inline uint8_t *marshal_p_string(uint8_t *data, const p_string_t *str)

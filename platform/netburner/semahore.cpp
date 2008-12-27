@@ -36,11 +36,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "opt.h"
-#if CONFIG_STACK_NETBURNER
-
 #include "types.h"
-#include "acn_arch.h"
+#include "acn_port.h"
+#include "acnlog.h"
 
+#if CONFIG_STACK_NETBURNER
 #include "constants.h"
 
 #include "semaphore.h"

@@ -36,7 +36,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*--------------------------------------------------------------------*/
 #include "opt.h"
 #include "types.h"
-#include "acn_arch.h"
+#include "acn_port.h"
+#include "acnlog.h"
+
 #include "cid.h"
 #include <ctype.h>
 
@@ -49,7 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 /******************************************************************************/
-/* Convert text based CID to uuit_t 
+/* Convert text based CID to uuit_t
  * Input format example: D1F6F109-8A48-4435-8157-A226604DEA89
  * Returns 0 OK or non-zere if error in format found
  */
@@ -64,7 +66,7 @@ int textToCid(const char *cidText, cid_t cidp)
 		if (*cidText == '-') continue;	/* ignore dashes */
 		if (isdigit(*cidText)) {
 			byt = (byt << 4) | (*cidText - '0');
-		} else 
+		} else
 			if (isxdigit(*cidText)) {
 			  byt = (byt << 4) | (toupper(*cidText) - 'A' + 10);
 		  } else {
@@ -128,7 +130,7 @@ int cidIsEqual(const cid_t cid1, const cid_t cid2)
 #endif
 
 #if !defined(cidNull)
-/* 
+/*
  * Fulls CID with zeros
  */
 /*****************************************************************************/
@@ -144,7 +146,7 @@ void cidNull(cid_t cid)
 
 #if !defined(cidIsNull)
 /*****************************************************************************/
-/* 
+/*
  * Test CID to see if is NULL
  * Returns non-zero if NULL
  */

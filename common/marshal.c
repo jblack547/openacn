@@ -35,12 +35,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 
-/*
-#include <stddef.h>
-*/
 #include <string.h>
+
 #include "opt.h"
 #include "types.h"
+#include "acn_port.h"
+#include "acnlog.h"
+
 #include "marshal.h"
 /*
 Removed all routines. They are now declared static inline in marshal.h

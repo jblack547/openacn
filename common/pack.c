@@ -30,7 +30,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 	$Id$
-  
+
   Description:
     Handy processor dependent routines to pack and unpack data structures
  */
@@ -39,23 +39,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opt.h"
 #include "types.h"
+#include "acn_port.h"
+#include "acnlog.h"
 
 #include "pack.h"
 
 /* PACK ******************************************************************************** */
-char *packSTR(char *charptr, char *val) 
-{ 
+char *packSTR(char *charptr, char *val)
+{
   int cnt;
   cnt = strlen(val);
   memcpy(charptr, val, cnt);
   return charptr + cnt;
 }
 
-char *packSTRlen(char *charptr, char *val, uint32_t len) 
-{ 
+char *packSTRlen(char *charptr, char *val, uint32_t len)
+{
   uint32_t cnt;
   uint32_t dif;
-  
+
   cnt = strlen(val);
   if (cnt >= len) {
   	memcpy(charptr, val, len);
@@ -68,14 +70,14 @@ char *packSTRlen(char *charptr, char *val, uint32_t len)
   return charptr + len;
 }
 
-   
+
 char *packMEM(char *charptr, char *val, uint32_t cnt)
 {
-  memcpy(charptr, val, cnt); 
+  memcpy(charptr, val, cnt);
   return charptr + cnt;
 }
 
-char *packUINT8(char *charptr, uint8_t val) 
+char *packUINT8(char *charptr, uint8_t val)
 {
   charptr[0] = val;
   return charptr + 1;
@@ -96,7 +98,7 @@ char *packUINT24(char *charptr, uint32_t val)
   return charptr + 3;
 }
 
-char *packUINT32(char *charptr, uint32_t val) 
+char *packUINT32(char *charptr, uint32_t val)
 {
   charptr[0] = (val >> 24) & 0xff;
   charptr[1] = (val >> 16) & 0xff;
@@ -106,27 +108,27 @@ char *packUINT32(char *charptr, uint32_t val)
 }
 
 /* UNPACK ****************************************************************************** */
-char *unpackUINT8(char *charptr, uint8_t *val) 
+char *unpackUINT8(char *charptr, uint8_t *val)
 {
   *val = (uint8_t)charptr[0];/* *((uint8_t*)charptr++); */
   return charptr+1;
 }
 
-char *unpackUINT16(char *charptr, uint16_t *val) 
+char *unpackUINT16(char *charptr, uint16_t *val)
 {
   *val  = (uint16_t)((uint8_t)charptr[0])<<8;
   *val |= (uint16_t)(uint8_t)charptr[1];
   return charptr + 2;
 }
 
-char *unpackUINT24(char *charptr, uint32_t *val) 
+char *unpackUINT24(char *charptr, uint32_t *val)
 {
   *val  = (uint16_t)((uint8_t)charptr[0])<<16;
   *val |= (uint16_t)((uint8_t)charptr[1])<<8;
   *val |= (uint16_t)((uint8_t)charptr[2]);
   return charptr + 3;
 }
-   
+
 char *unpackUINT32(char *charptr, uint32_t *val)
 {
   *val  = (uint32_t)((uint8_t)charptr[0])<<24;

@@ -36,7 +36,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*--------------------------------------------------------------------*/
 #include "opt.h"
 #include "types.h"
-#include "acn_arch.h"
+#include "acn_port.h"
+#include "acnlog.h"
 
 #if CONFIG_STACK_NETBURNER
 
@@ -50,10 +51,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <netinterface.h>
 #endif
 
-#include "acn_arch.h"
 #include "netxface.h"
 #include "netsock.h"
-#include "acnlog.h"
 #include "ntoa.h"
 
 /************************************************************************/
