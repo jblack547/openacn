@@ -45,7 +45,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>   /* for sleep */
 
 #include <ctype.h>    /* toupper...*/
-#include "have_types.h"
+
+/* BSD hase it's own version of these*/
+#define HAVE_htons
+#define HAVE_htonl
+#define HAVE_ntohs
+#define HAVE_ntohl
+#include "byteorder.h"
 
 /* TODO: need to define this! */
 /* extern OS_CRIT DASemaphore; */ /* semaphore to protect directory agent list */

@@ -65,6 +65,9 @@ Notes:
 
 #include "opt.h"
 #include "types.h"
+#include "acn_port.h"
+#include "acnlog.h"
+
 #include "acn_arch.h"
 
 #if CONFIG_SDT
@@ -234,17 +237,17 @@ sdt_get_adhoc_port(void)
 int
 sdt_init(void)
 {
-  static bool initializedState = 0;
+  static bool initialized_state = 0;
 
   /* Prevent reentry */
-  if (initializedState) {
-    acnlog(LOG_WARNING | LOG_SDT,"sdt_init: already initialized");
+  if (initialized_state) {
+    acnlog(LOG_INFO | LOG_SDT,"sdt_init: already initialized");
     return FAIL;
   }
+  initialized_state = 1;
 
   rlp_init();
   sdtm_init();
-  initializedState = 1;
 
   return OK;
 }

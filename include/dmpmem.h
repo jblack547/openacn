@@ -37,7 +37,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __dmpmem_h__ 1
 
 #include "opt.h"
-#include "acn_arch.h"
 #include "component.h"
 #include "dmp.h"
 

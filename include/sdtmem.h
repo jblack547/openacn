@@ -39,7 +39,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __sdtmem_h__ 1
 
 #include "opt.h"
-#include "acn_arch.h"
 
 #ifdef __cplusplus
 extern "C" {

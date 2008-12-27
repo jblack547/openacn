@@ -35,13 +35,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 /*--------------------------------------------------------------------*/
+
+#include "acn_port.h"
+
 #include <windows.h>
 #include <stdio.h>
 
 #include "opt.h"
 #include "types.h"
-#include "acn_arch.h"
-#include "acn_port.h"
+
 
 static CRITICAL_SECTION CriticalSection;
 static bool initialized = 0;

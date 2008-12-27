@@ -42,18 +42,32 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if CONFIG_STACK_NETBURNER
 #include "includes.h"       /* netburner types */
-#include "have_types.h"
+
+/* NETBURNER does not have it's own version of these (nor does it really need them)*/
+/*
+#define HAVE_htons
+#define HAVE_htonl
+#define HAVE_ntohs
+#define HAVE_ntohl
+*/
+#include "byteorder.h"
 
 #define printf(format, ...) iprintf(format, ##__VA_ARGS__)
 
 extern OS_CRIT DASemaphore; /* semaphore to protect directory agent list */
 #define ACN_PORT_PROTECT()        0;OSLock()/* OSCritEnter(&DASemaphore, 0) */
 #define ACN_PORT_UNPROTECT(pval)  OSUnlock()/* OSCritLeave(&DASemaphore) */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define acn_protect_t int  /* this is not used */
 
-#define ntohl(x) x
-#define htonl(x) x
-#define htons(x) x
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif /* CONFIG_STACK_NETBURNER */
 

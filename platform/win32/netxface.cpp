@@ -36,19 +36,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*--------------------------------------------------------------------*/
 #include "opt.h"
 #include "types.h"
-#include "acn_arch.h"
+#include "acn_port.h"
+#include "acnlog.h"
 
 #if CONFIG_STACK_WIN32
 #include <malloc.h>
-#include <winsock.h>
-#include <Windows.h>
+#include <ws2tcpip.h>
+
 #include <Iphlpapi.h>
-#pragma comment(lib, "wsock32.lib")
 #pragma comment(lib, "Iphlpapi.lib") /* for getting ip mask */
+/* #pragma comment(lib, "wsock32.lib") */
+#pragma comment(lib, "ws2_32.lib") /* our winsock */
 
 #include "netxface.h"
 #include "netsock.h"
-#include "acnlog.h"
 #include "ntoa.h"
 
 
@@ -68,6 +69,7 @@ WSADATA ws;
 void netx_init(void)
 {
   static bool initialized = 0;
+         int  res;
   
   acnlog(LOG_DEBUG|LOG_NETX,"netx_init");
   
@@ -75,7 +77,13 @@ void netx_init(void)
     /* init required sub modules */
     nsk_netsocks_init();
     /* init windows socket */
-    WSAStartup(0x0202,&ws);
+    res = WSAStartup(0x0202,&ws);
+    if (res != 0) {
+      acnlog(LOG_ERR | LOG_NETX, "netx_init : WSAStartup failed");
+      return;
+    }
+
+    /* TODO: the above should verify the verions is correct */
     /* don't process twice */
     initialized = 1;
   }
@@ -477,19 +485,25 @@ FIXME
 Should find the local IP address which would be used to send to
 the given remote address. For now we just get the first address
 */
-UNUSED_ARG(destaddr);
-
+ip4addr_t         result;
 IP_ADAPTER_INFO * FixedInfo;
 ULONG ulOutBufLen;
 
-FixedInfo = (IP_ADAPTER_INFO *) GlobalAlloc( GPTR, sizeof( IP_ADAPTER_INFO ) );
+UNUSED_ARG(destaddr);
+
+FixedInfo = (IP_ADAPTER_INFO *) malloc( sizeof( IP_ADAPTER_INFO ) );
 ulOutBufLen = sizeof( IP_ADAPTER_INFO );
 
+/* FIXME: this will fail if there is more than one adaptor or if adaptor has more than on IP */
 if ( ERROR_SUCCESS != GetAdaptersInfo( FixedInfo, &ulOutBufLen ) ) {
   return 0;
 }
 
-return inet_addr( FixedInfo->IpAddressList.IpAddress.String );
+result = inet_addr( FixedInfo->IpAddressList.IpAddress.String );
+
+free(FixedInfo);
+
+return result;
 
 
 /* this works too...
@@ -518,19 +532,24 @@ return inet_addr( FixedInfo->IpAddressList.IpAddress.String );
 */
 ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
 {
-IP_ADAPTER_INFO * FixedInfo;
-ULONG ulOutBufLen;
+ip4addr_t         result;
+IP_ADAPTER_INFO  *FixedInfo;
+ULONG             ulOutBufLen;
 
 UNUSED_ARG(destaddr);
 
-FixedInfo = (IP_ADAPTER_INFO *) GlobalAlloc( GPTR, sizeof( IP_ADAPTER_INFO ) );
+FixedInfo = (IP_ADAPTER_INFO *) malloc( sizeof( IP_ADAPTER_INFO ) );
 ulOutBufLen = sizeof( IP_ADAPTER_INFO );
 
+/* FIXME: this will fail if there is more than one adaptor or if adaptor has more than on IP */
 if ( ERROR_SUCCESS != GetAdaptersInfo( FixedInfo, &ulOutBufLen ) ) {
   return 0;
 }
+result = inet_addr( FixedInfo->IpAddressList.IpMask.String );
 
-return inet_addr( FixedInfo->IpAddressList.IpMask.String );
+free(FixedInfo);
+
+return result;
 }
 
 #endif	/* CONFIG_NET_IPV4 */

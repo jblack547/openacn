@@ -61,30 +61,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /************************************************************************/
 /*
- Network to native conversions are likewise defined in one of the standard
- includes for your stack or system e.g. <netinet/in.h>
- Note: These macros evaluate their arguments multiple times - use with caution
-*/
-
-#if !defined(ntohl)
-#define ntohl(x) __bswap_32(x)
-#endif
-
-#if !defined(ntohs)
-#define ntohs(x) __bswap_16(x)
-#endif
-
-#if !defined(htonl)
-#define htonl(x) __bswap_32(x)
-#endif
-
-#if !defined(htons)
-#define htons(x) __bswap_16(x)
-#endif
-
-/************************************************************************/
-/*
- Again there are likely to be (highly optimized) versions of these already.
+ There are likely to be (highly optimized) versions of these already.
 */
 
 #if !defined(__bswap_16)
@@ -100,5 +77,65 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       	| (((x) & 0x0000ff00) << 8) \
       	| (((x) & 0x000000ff) << 24) )
 #endif
+
+
+/************************************************************************/
+/*
+ Network to native conversions are likewise defined in one of the standard
+ includes for your stack or system e.g. <netinet/in.h>
+*/
+#if !defined(HAVE_ntohl)
+/*originals do not work intended */
+/* #define ntohl(x) __bswap_32(x) */
+#define ntohl(x) (x)
+#endif
+
+#if !defined(HAVE_ntohs)
+/*originals do not work intended */
+/* #define ntohs(x) __bswap_16(x) */
+#define ntohs(x) (x)
+#endif
+
+#if !defined(HAVE_htonl)
+/*originals do not work intended */
+/* #define htonl(x) __bswap_32(x) */
+#define htonl(x) (x)
+#endif
+
+#if !defined(HAVE_htons)
+/*originals do not work intended */
+/* #define htons(x) __bswap_16(x) */
+#define htons(x) (x)
+#endif
+
+/*  Improved calls (if needed)
+  if ntohl() is use like this:
+    x = ntohl(foo(x));
+  then, with the version below, foo(x) will only be called once and not
+  re-evaluated on each call.
+*/
+static __inline unsigned long int acn_ntohl(register unsigned long int x)
+{
+  register unsigned long int __x = x;
+  return __bswap_32(__x);
+}
+
+static __inline unsigned short acn_ntohs(register unsigned short int x)
+{
+  register unsigned short int __x = x;
+  return __bswap_16(__x);
+}
+
+static __inline unsigned long int acn_htonl(register unsigned long int x)
+{
+  register unsigned long int __x = x;
+  return __bswap_32(__x);
+}
+
+static __inline unsigned short acn_htons(register unsigned short int x)
+{
+  register unsigned short int __x = x;
+  return __bswap_16(__x);
+}
 
 #endif /* __byteorder_h__ */

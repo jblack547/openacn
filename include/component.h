@@ -42,11 +42,9 @@ Information structures and handling relating to components
 
 #include "opt.h"
 #include "types.h"
-#include "acn_arch.h"
 
 #include "cid.h"
 #include "netxface.h"
-#include "byteorder.h"
 
 #if CONFIG_DMP
 /* #include "dmp.h" */

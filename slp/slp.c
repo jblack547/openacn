@@ -83,7 +83,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* General ACN includes */
 #include "opt.h"
 #include "types.h"
-#include "acn_arch.h"
+#include "acn_port.h"
 #include "acnlog.h"
 
 /* platform dependent network interface*/
@@ -2400,39 +2400,40 @@ srand() should be called before slp_init
 void slp_init(void)
 {
   int x;
-  static bool initialized = 0;
+  static bool initialized_state = 0;
 
   LOG_FSTART();
-
-  if (!initialized) {
-    /* initialize sub modules */
-    nsk_netsocks_init();
-    netx_init();
-
-    /* sequential transaction id */
-    xid = rand();
-    /* clear da_list */
-    for (x=0;x<MAX_DA;x++) {
-      memset(&da_list[x], 0, sizeof(SLPDa_list));
-    }
-    /* clear timer counts */
-    memset(&dda_timer, 0, sizeof(SLPdda_timer));
-
-    attr_list = NULL;        /* attribute list */
-    attr_list_len = 0;
-
-    srv_url = NULL;
-    srv_url_len = 0;
-
-    srv_type = NULL;
-    srv_type_len = 0;
-
-    msticks = 0;
-    
-    memset(&xids, 0, sizeof(xids));
-
-    initialized = 1;
+  if (initialized_state) {
+    acnlog(LOG_INFO | LOG_SLP,"slp_init: already initialized");
+    return;
   }
+  initialized_state = 1;
+
+  /* initialize sub modules */
+  nsk_netsocks_init();
+  netx_init();
+
+  /* sequential transaction id */
+  xid = rand();
+  /* clear da_list */
+  for (x=0;x<MAX_DA;x++) {
+    memset(&da_list[x], 0, sizeof(SLPDa_list));
+  }
+  /* clear timer counts */
+  memset(&dda_timer, 0, sizeof(SLPdda_timer));
+
+  attr_list = NULL;        /* attribute list */
+  attr_list_len = 0;
+
+  srv_url = NULL;
+  srv_url_len = 0;
+
+  srv_type = NULL;
+  srv_type_len = 0;
+
+  msticks = 0;
+  
+  memset(&xids, 0, sizeof(xids));
 }
 
 /*******************************************************************************
@@ -2599,13 +2600,13 @@ SLPError slp_dereg(void)
 
   /* are we open? */
   if (!slp_socket) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrqst: SLP_NOT_OPEN:");
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_dereg: SLP_NOT_OPEN:");
     return SLP_NOT_OPEN;
   }
 
   /* did we have a valid registration? */
   if (!attr_list) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_reg: !attr_list");
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_dereg: !attr_list");
     return SLP_PARAMETER_BAD;
   }
 

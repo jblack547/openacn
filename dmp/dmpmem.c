@@ -35,13 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*--------------------------------------------------------------------*/
 #include "opt.h"
 #include "types.h"
+#include "acn_port.h"
 #include "acn_arch.h"
-
-/* #if CONFIG_STACK_NETBURNER */
-/* #include "includes.h"      */ /* netburner types */
-/* #include "have_types.h" */
-/* #include <ucos.h> */
-/* #endif */
 
 #if CONFIG_STACK_LWIP
 #include "lwip/pbuf.h"

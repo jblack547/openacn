@@ -41,7 +41,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opt.h"
 
 #if CONFIG_STACK_WIN32
-#include "Windows.h"
+/* using winsock 2 */
+#include <winsock2.h>
+
+/* WIN32 has it's own version of these */
+#define HAVE_htons
+#define HAVE_htonl
+#define HAVE_ntohs
+#define HAVE_ntohl
+#include "byteorder.h"
 
 /* ignore warnings: */
 /* This function or variable may be unsafe. Consider using xxx instead. 
@@ -52,10 +60,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* msvsc++ uses a different prefix */
 #define __func__ __FUNCTION__
 
-#include "have_types.h"
-
-/* TODO: need to define this! */
-/* extern OS_CRIT DASemaphore; */ /* semaphore to protect directory agent list */
+/* platform specific means to lock resources */
 typedef int acn_protect_t;
 #define ACN_PORT_PROTECT()        acn_port_protect()
 #define ACN_PORT_UNPROTECT(x)     acn_port_unprotect(x)
@@ -66,6 +71,7 @@ extern "C" {
 
 /* prevent other threads */
 acn_protect_t  acn_port_protect(void);
+
 /* allow other threads */
 void           acn_port_unprotect(acn_protect_t param);
 

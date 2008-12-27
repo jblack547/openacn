@@ -46,7 +46,6 @@ see aton.h
 */
 
 #if !defined(HAVE_aton)
-#include <stdio.h>
 #include <stdlib.h>
 #include "netxface.h"
 /*

@@ -39,15 +39,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* acnlog facility DEBUG_RLP is used for ACN:RLP */
 
 #include <string.h>
+
 #include "opt.h"
 #include "types.h"
+#include "acn_port.h"
+#include "acnlog.h"
+
 #include "acn_arch.h"
 
 #include "rlp.h"
 #include "acn_rlp.h"
 
 #include "rlpmem.h"
-#include "acnlog.h"
 
 #include "netsock.h"
 #include "netxface.h"
@@ -183,19 +186,21 @@ Initialize RLP (if not already done)
 int
 rlp_init(void)
 {
-	static bool initialized = 0;
+	static bool initialized_state = 0;
 
   LOG_FSTART();
 
-	if (!initialized)
-	{
-    /* initialize sub modules */
-    nsk_netsocks_init();
-    netx_init();
-		rlpm_init();
+  if (initialized_state) {
+    acnlog(LOG_INFO | LOG_SDT,"rlp_init: already initialized");
+    return FAIL;
+  }
+  initialized_state = 1;
 
-		initialized = 1;
-	}
+  /* initialize sub modules */
+  nsk_netsocks_init();
+  netx_init();
+	rlpm_init();
+
 	return 0;
 }
 
@@ -471,7 +476,7 @@ rlp_open_netsocket(localaddr_t *localaddr)
 	netsock->data_callback = rlp_process_packet;
 #endif
 
-	acnlog(LOG_DEBUG|LOG_RLP, "LOG_INFO|rlp_open_netsocket: port=%d", NSK_PORT(netsock));
+	acnlog(LOG_DEBUG|LOG_RLP, "rlp_open_netsocket: port=%d", NSK_PORT(netsock));
 
 	return netsock;
 }

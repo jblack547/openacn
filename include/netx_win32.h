@@ -41,8 +41,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if CONFIG_STACK_WIN32 && !defined(__netx_win32_h__)
 #define __netx_win32_h__ 1
 
-#include "winsock.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

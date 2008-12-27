@@ -62,6 +62,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* OpenACN includes */
 #include "opt.h"
 #include "types.h"
+#include "acn_port.h"
 #include "acn_arch.h"
 
 #if CONFIG_DMP

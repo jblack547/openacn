@@ -44,11 +44,11 @@ handling.
 
 #include "opt.h"
 #include "types.h"
-#include "acn_arch.h"
+#include "acn_port.h"
+#include "acnlog.h"
 
 #include "sdt.h"
 #include "sdtmem.h"
-#include "acnlog.h"
 
 #if CONFIG_SDTMEM_STATIC
 static sdt_channel_t    channels_m[SDT_MAX_CHANNELS];
@@ -66,11 +66,20 @@ sdtm_init(void)
 	sdt_channel_t   *channel;
   sdt_member_t    *member;
   component_t     *component;
-  sdt_resend_t       *resend;
+  sdt_resend_t    *resend;
+  static bool initialized_state = 0;
+
+  if (initialized_state) {
+    acnlog(LOG_INFO | LOG_SDTM,"sdtm_init: already initialized");
+    return;
+  }
+  initialized_state = 1;
+
 	for (channel = channels_m; channel < channels_m + SDT_MAX_CHANNELS; ++channel) channel->number = 0;
 	for (member = members_m; member < members_m + SDT_MAX_MEMBERS; ++member) member->component = NULL;
 	for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; ++component) cidNull(component->cid);
 	for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; ++resend) resend->expires_ms = 0;
+
 }    
 
 /*****************************************************************************/

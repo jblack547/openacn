@@ -366,6 +366,10 @@ netx_poll(void)
  
   netx_addr_t         source;
   netx_addr_t         dest;
+
+  struct cmsghdr     *cmp;
+  struct msghdr       hdr;
+
   
   /* LOG_FSTART(); */
 
@@ -405,6 +409,21 @@ netx_poll(void)
           return(1); /* fail */
         }
         if (length > 0) {
+
+#if 0
+          for (cmp = CMSG_FIRSTHDR(&hdr); cmp != NULL; cmp = CMSG_NXTHDR(&hdr, cmp)) {
+            if (cmp->cmsg_level == IPPROTO_IP && cmp->cmsg_type == IP_PKTINFO) {
+              ip4addr_t pktaddr;
+              pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr;
+              /* pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr; */
+              if (is_multicast(pktaddr)) {
+                /* dest = pktaddr; */
+                netx_PORT(&dest) = pktaddr;
+              }
+              /* printf("Socket %d: packet for %8x:%u\n", netsock->nativesock, ntohl(pktaddr), ntohs(NSK_PORT(*netsock))); */
+            }
+          }
+#endif  
           /* TODO: This need to be network in localaddress form! */
           netx_PORT(&dest) = LCLAD_PORT(nsk->localaddr);
           netx_INADDR(&dest) = LCLAD_INADDR(nsk->localaddr);

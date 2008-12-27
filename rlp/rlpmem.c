@@ -43,8 +43,8 @@ handling. See rlp.c for description of 3-level structure.
 #include <string.h>
 #include "opt.h"
 #include "types.h"
+#include "acn_port.h"
 #include "acnlog.h"
-#include "acn_arch.h"
 
 #include "netxface.h"
 #include "netsock.h"
@@ -499,23 +499,25 @@ rlpm_rxgroup_has_listeners(rlp_rxgroup_t *rxgroup)
 void
 rlpm_init(void)
 {
-  static bool initialized = 0;
+  static bool initialized_state = 0;
 
   acnlog(LOG_DEBUG|LOG_RLPM, "rlpm_init");
 
-  if (!initialized) {
-
-    /* initialize sub modules */
-    nsk_netsocks_init();
-    netx_init();
-
-    /* and our memory */
-    __init_txbufs();
-    __init_rxgroups();
-    __init_listeners();
-
-    initialized = 1;
+  if (initialized_state) {
+    acnlog(LOG_INFO | LOG_SDT,"rlpm_init: already initialized");
+    return;
   }
+  initialized_state = 1;
+
+  /* initialize sub modules */
+  nsk_netsocks_init();
+  netx_init();
+
+  /* and our memory */
+  __init_txbufs();
+  __init_rxgroups();
+  __init_listeners();
+
 }
 
 /***********************************************************************************************/

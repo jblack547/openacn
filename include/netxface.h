@@ -44,7 +44,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include "opt.h"
 #include "types.h"
-#include "acn_arch.h"
 
 #if CONFIG_EPI20
 #include "epi20.h"
