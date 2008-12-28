@@ -1561,13 +1561,6 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component, bool i
 
   /* create local channel */
   if (!local_channel) {
-    /* initialize multicast address */
-    if (!local_component->dyn_mcast) {
-      if (mcast_alloc_init(0,0,local_component)) {
-        acnlog(LOG_ERR | LOG_SDT, "sdt_tx_join : unable to allocate multicast address");
-        return FAIL;
-      }
-    }
     /* create channel */
     local_channel = sdt_add_channel(local_component, rand());
     if (!local_channel) {
@@ -2030,17 +2023,6 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
 
   /* if we don't have a tx channel for our CID, create one */
   if (!local_channel) {
-    /* if multicast address dyn_mcast has not been assigned yet for this component */
-    if (!local_component->dyn_mcast) {
-      /* assign it */
-      if (mcast_alloc_init(0,0,local_component)) {
-        acnlog(LOG_ERR | LOG_SDT, "sdt_rx_join : unable to allocate multicast address");
-        sdt_tx_join_refuse(foreign_cid, local_component, source_addr, foreign_channel_number, local_mid, foreign_reliable_seq, SDT_REASON_RESOURCES);
-        remove_allocations();
-        return;
-      }
-    }
-
     /* create a channel with a random channel number and put its address into our component */
     /* returns the address of the new channel structure */
     local_channel = sdt_add_channel(local_component, rand());
