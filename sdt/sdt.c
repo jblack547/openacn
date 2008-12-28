@@ -239,6 +239,8 @@ sdt_init(void)
 {
   static bool initialized_state = 0;
 
+  LOG_FSTART();
+
   /* Prevent reentry */
   if (initialized_state) {
     acnlog(LOG_INFO | LOG_SDT,"sdt_init: already initialized");
@@ -301,19 +303,19 @@ sdt_startup(bool acceptAdHoc)
     /* if the ad hoc socket is not open yet */
     if (!sdt_adhoc_socket) {
       /* TODO: this is just a hack until we get SLP working */
-      LCLAD_PORT(localaddr) = SDT_ADHOC_PORT;
+      LCLAD_PORT(localaddr) = htons(SDT_ADHOC_PORT);
       sdt_adhoc_socket = rlp_open_netsocket(&localaddr);
       /* sdt_adhoc_socket = rlp_open_netsocket(netx_PORT_EPHEM); */
       if (sdt_adhoc_socket) {
         sdt_adhoc_listener = rlp_add_listener(sdt_adhoc_socket, netx_GROUP_UNICAST, PROTO_SDT, sdt_rx_handler, NULL);
-        acnlog(LOG_DEBUG | LOG_SDT, "sdt_startup: adhoc port: %d", NSK_PORT(sdt_adhoc_socket));
+        acnlog(LOG_DEBUG | LOG_SDT, "sdt_startup: adhoc port: %d", ntohs(NSK_PORT(sdt_adhoc_socket)));
       } else {
         acnlog(LOG_ERR | LOG_SDT, "sdt_startup: unable to open adhoc port");
       }
     }
     /* if an SDT multicast socket has not been opened yet */
     if (!sdt_multicast_socket) {
-      LCLAD_PORT(localaddr) = SDT_MULTICAST_PORT;
+      LCLAD_PORT(localaddr) = htons(SDT_MULTICAST_PORT);
       sdt_multicast_socket = rlp_open_netsocket(&localaddr);
       /* Listeners for multicast will be added as needed */
     }
@@ -1574,7 +1576,7 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component, bool i
     }
     allocations |= ALLOCATED_LOCAL_CHANNEL;
     /* assign channel address */
-    netx_PORT(&local_channel->destination_addr) = SDT_MULTICAST_PORT;
+    netx_PORT(&local_channel->destination_addr) = htons(SDT_MULTICAST_PORT);
     netx_INADDR(&local_channel->destination_addr) = mcast_alloc_new(local_component);
   }
 
@@ -2050,7 +2052,7 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
     }
     allocations |= ALLOCATED_LOCAL_CHANNEL;
     /* assign mcast port and the next mcast IP address into the channel struct */
-    netx_PORT(&local_channel->destination_addr) = SDT_MULTICAST_PORT;
+    netx_PORT(&local_channel->destination_addr) = htons(SDT_MULTICAST_PORT);
     netx_INADDR(&local_channel->destination_addr) = mcast_alloc_new(local_component);
   }
 
@@ -4284,8 +4286,8 @@ void sdt_stats(void)
     #if CONFIG_EPI10
       acnlog(LOG_INFO | LOG_STAT, "dyn_mcast: %d", component->dyn_mcast);
     #endif
-    port = netx_PORT(&component->adhoc_addr);
-    addr = netx_INADDR(&component->adhoc_addr);
+    port = ntohs(netx_PORT(&component->adhoc_addr));
+    addr = ntohl(netx_INADDR(&component->adhoc_addr));
     acnlog(LOG_INFO | LOG_STAT, "ad_hoc: %s: %d", ntoa(addr), port);
     acnlog(LOG_INFO | LOG_STAT, "ad_hoc_exp: %d", component->adhoc_expires_at);
     acnlog(LOG_INFO | LOG_STAT, "auto_created: %d", component->auto_created);
@@ -4293,8 +4295,8 @@ void sdt_stats(void)
     if (channel) {
       acnlog(LOG_INFO | LOG_STAT, "chan-number: %d", channel->number);
       acnlog(LOG_INFO | LOG_STAT, " avail mid: %d", channel->available_mid);
-      port = netx_PORT(&channel->destination_addr);
-      addr = netx_INADDR(&channel->destination_addr);
+      port = ntohs(netx_PORT(&channel->destination_addr));
+      addr = ntohl(netx_INADDR(&channel->destination_addr));
       acnlog(LOG_INFO | LOG_STAT, " dest_addr: %s: %d", ntoa(addr), port);
       port = netx_PORT(&channel->source_addr);
       addr = netx_INADDR(&channel->source_addr);

@@ -468,7 +468,7 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
       return;
     }
   }
-  acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: no callback, port: %d", LCLAD_PORT(host));
+  acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: no callback, port: %d", ntohs(LCLAD_PORT(host)));
 }
 
 

@@ -1080,8 +1080,8 @@ SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
   __xid_save(slp_header.xid);
 
   /* create address */
-  netx_INADDR(&dest_addr) = SLP_MCAST_ADDRESS;
-  netx_PORT(&dest_addr) = SLP_RESERVED_PORT;
+  netx_INADDR(&dest_addr) = htonl(SLP_MCAST_ADDRESS);
+  netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
   netx_send_to(slp_socket, &dest_addr, pkt, length);
@@ -1311,8 +1311,8 @@ SLPError slp_discover_da(void)
 
   /* send it */
   /* create address */
-  netx_INADDR(&dest_addr) = SLP_MCAST_ADDRESS;
-  netx_PORT(&dest_addr) = SLP_RESERVED_PORT;
+  netx_INADDR(&dest_addr) = htonl(SLP_MCAST_ADDRESS);
+  netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
   netx_send_to(slp_socket, &dest_addr, pkt, length);
@@ -1406,8 +1406,8 @@ SLPError slp_send_srvrply(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code)
   offset = packUINT24(offset, length);  /* length */
 
   /* create address */
-  netx_INADDR(&dest_addr) = SLP_MCAST_ADDRESS;
-  netx_PORT(&dest_addr) = SLP_RESERVED_PORT;
+  netx_INADDR(&dest_addr) = htonl(SLP_MCAST_ADDRESS);
+  netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
   netx_send_to(slp_socket, &dest_addr, pkt, length);
@@ -1594,7 +1594,7 @@ SLPError slp_send_reg(ip4addr_t ip, bool fresh)
 
   /* create address */
   netx_INADDR(&dest_addr) = ip;
-  netx_PORT(&dest_addr) = SLP_RESERVED_PORT;
+  netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
   netx_send_to(slp_socket, &dest_addr, pkt, length);
@@ -1687,8 +1687,8 @@ SLPError slp_send_dereg(ip4addr_t ip)
   offset = packUINT24(offset, length);  /* length */
 
   /* create address */
-  netx_INADDR(&dest_addr) = SLP_MCAST_ADDRESS;
-  netx_PORT(&dest_addr) = SLP_RESERVED_PORT;
+  netx_INADDR(&dest_addr) = htonl(SLP_MCAST_ADDRESS);
+  netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
   netx_send_to(slp_socket, &dest_addr, pkt, length);
@@ -1762,8 +1762,8 @@ SLPError slp_send_svrack(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code)
   offset = packUINT24(offset, length);  /* length */
 
   /* create address */
-  netx_INADDR(&dest_addr) = SLP_MCAST_ADDRESS;
-  netx_PORT(&dest_addr) = SLP_RESERVED_PORT;
+  netx_INADDR(&dest_addr) = htonl(SLP_MCAST_ADDRESS);
+  netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
   netx_send_to(slp_socket, &dest_addr, pkt, length);
@@ -1884,8 +1884,8 @@ SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags,
   __xid_save(slp_header.xid);
 
   /* create address */
-  netx_INADDR(&dest_addr) = ip;/* SLP_MCAST_ADDRESS; */
-  netx_PORT(&dest_addr) = SLP_RESERVED_PORT;
+  netx_INADDR(&dest_addr) = ip;/* htonl(SLP_MCAST_ADDRESS); */
+  netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
   netx_send_to(slp_socket, &dest_addr, pkt, length);
@@ -2246,8 +2246,8 @@ SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
   offset = packUINT24(offset, length);  /* length */
 
   /* create address */
-  netx_INADDR(&dest_addr) = SLP_MCAST_ADDRESS;
-  netx_PORT(&dest_addr) = SLP_RESERVED_PORT;
+  netx_INADDR(&dest_addr) = htonl(SLP_MCAST_ADDRESS);
+  netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
   netx_send_to(slp_socket, &dest_addr, pkt, length);
@@ -2459,7 +2459,7 @@ SLPError slp_open(void)
   /* set address */
   IP4_ADDR(&slpmcast, 239,255,255,253);
 
-  LCLAD_PORT(localaddr) = SLP_RESERVED_PORT;
+  LCLAD_PORT(localaddr) = htons(SLP_RESERVED_PORT);
 
   /* get a netsock to track port usage*/
   slp_socket = nsk_new_netsock();

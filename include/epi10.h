@@ -38,17 +38,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __epi10_h__
 #define __epi10_h__ 1
 
-#define DD2IP(B3, B2, B1, B0) htonl(((B3 << 8 | B2) << 8 | B1) << 8 | B0)
+#define DD2NIP(B3, B2, B1, B0) htonl(((B3 << 8 | B2) << 8 | B1) << 8 | B0) /* in Network order */
+#define DD2HIP(B3, B2, B1, B0) (((B3 << 8 | B2) << 8 | B1) << 8 | B0)      /* in Host order    */
 
 /************************************************************************/
 /*
   Constants from EPI10 spec - in Network Byte order
 */
-#define E1_17_AUTO_SCOPE_ADDRESS  DD2IP( 239,192,0,0 )
-#define E1_17_AUTO_SCOPE_MASK     DD2IP( 255,252,0,0 )
+#define E1_17_AUTO_SCOPE_ADDRESS  DD2NIP( 239,192,0,0 )
+#define E1_17_AUTO_SCOPE_MASK     DD2NIP( 255,252,0,0 )
 
-#define EPI10_SCOPE_MIN_MASK      DD2IP( 255,192,0,0 )
-#define EPI10_SCOPE_MAX_MASK      DD2IP( 255,255,0,0 )
+#define EPI10_SCOPE_MIN_MASK      DD2NIP( 255,192,0,0 )
+#define EPI10_SCOPE_MAX_MASK      DD2NIP( 255,255,0,0 )
 
 /* Note EPI10_HOST_PART_MASK is not in network byte order */
 #define EPI10_HOST_PART_MASK 0xff

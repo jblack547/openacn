@@ -476,7 +476,7 @@ rlp_open_netsocket(localaddr_t *localaddr)
 	netsock->data_callback = rlp_process_packet;
 #endif
 
-	acnlog(LOG_DEBUG|LOG_RLP, "rlp_open_netsocket: port=%d", NSK_PORT(netsock));
+	acnlog(LOG_DEBUG|LOG_RLP, "rlp_open_netsocket: port=%d", ntohs(NSK_PORT(netsock)));
 
 	return netsock;
 }
@@ -494,7 +494,7 @@ rlp_close_netsocket(netxsocket_t *netsock)
 
 	netx_udp_close(netsock);
 	nsk_free_netsock(netsock);
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_close_netsocket: closed port=%d", NSK_PORT(netsock));
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_close_netsocket: closed port=%d", ntohs(NSK_PORT(netsock)));
 }
 
 /************************************************************************/
