@@ -110,7 +110,7 @@ void netx_free_txbuf(void * pkt)
 /************************************************************************/
 /* Called when we are done with our buffer. This is done for ports that
  * require the buffer to be freed after a packet is sent. If the stack
- * take care of this itself, this can do nothing;
+ * takes care of this itself, this can do nothing;
  */
 void netx_release_txbuf(void * pkt)
 {

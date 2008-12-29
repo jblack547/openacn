@@ -224,6 +224,10 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 #define netx_PORT_NONE 0
 #endif
 
+#ifndef netx_PORT_HOLD
+#define netx_PORT_HOLD 65535
+#endif
+
 #ifndef netx_PORT_EPHEM
 #define netx_PORT_EPHEM (port_t)0
 #endif

@@ -72,16 +72,19 @@ int native_sock = 1;  /* we dont really have socket but we need some marker... *
 */
 void netx_init(void)
 {
-  static bool initialized = 0;
+  static bool initialized_state = 0;
 
-  acnlog(LOG_DEBUG|LOG_NETX,"netx_init");
-
-  if (!initialized) {
-    /* init required sub modules */
-    nsk_netsocks_init();
-    OSFifoInit(&netx_fifo);
-    initialized = 1;
+  if (initialized_state) {
+    acnlog(LOG_INFO | LOG_NETX,"netx_init: already initialized");
+    return;
   }
+  /* don't process twice */
+  initialized_state = 1;
+  acnlog(LOG_DEBUG|LOG_NETX,"netx_init...");
+
+  /* init required sub modules */
+  nsk_netsocks_init();
+  OSFifoInit(&netx_fifo);
   return;
 }
 
@@ -132,7 +135,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   /* if this socket is already open */
   if (netsock->nativesock) {
     acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : already open");
-    return -1;
+    return FAIL;
   }
 
   /* flag that the socket is open */
@@ -148,7 +151,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : open port:%d", NSK_PORT(netsock));
 
   /* Note: A separate thread will call netx_poll() to look for received messages */
-  return 0;
+  return OK;
 }
 
 
@@ -188,7 +191,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
 
   /* if the IP passed in is not a valid multicast address */
   if (!is_multicast(local_group)) {
-	 return -1;
+	 return FAIL;
   }
 
   acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group, port, %d, group: %s", NSK_PORT(netsock), ntoa(local_group));
@@ -202,7 +205,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
     UnregisterMulticastFifo(local_group, NSK_PORT(netsock));
     acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group: deleted");
   }
-  return 0; /* OK */
+  return OK; /* OK */
 }
 
 /************************************************************************/
@@ -226,16 +229,16 @@ int netx_send_to(
   /* if the port is not open or we have no packet */
   if (!netsock) {
     acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: !netsocket");
-    return -1;
+    return FAIL;
   }
   if (!netsock->nativesock) {
     acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: !nativesock");
-    return -1;
+    return FAIL;
   }
 
   if (!pkt) {
     acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: !pkt");
-    return -1;
+    return FAIL;
   }
 
 
@@ -304,11 +307,11 @@ netx_poll(void)
     acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handled");
 
     /* send it to the ACN SLP UDP receiver */
-    return 0;
+    return FAIL;
   }
   /* Note: the UDP packet is automatically deleted with the call of the destructor here */
   /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: timeout"); */
-  return 0;
+  return OK;
 }
 
 /************************************************************************/
@@ -340,7 +343,7 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
       return;
     }
   }
-  acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: no callback, port: %d", LCLAD_PORT(host));
+  acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: no callback, port: %d", ntohs(LCLAD_PORT(host)));
 }
 
 

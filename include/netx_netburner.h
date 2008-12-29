@@ -107,7 +107,7 @@ typedef void netx_callback_t (
 
 #if CONFIG_NET_IPV4
 #define netx_FAMILY AF_INET
-#endif
+#endif /* CONFIG_NET_IPV4 */
 
 typedef int netx_nativeSocket_t;
 typedef struct sockaddr_in netx_addr_t;
@@ -143,21 +143,22 @@ struct netxsocket_s {
 	port_t localaddr;
   netx_process_packet_t *data_callback;  /* pointer to call back when data is available */
 };
-#define NETX_SOCK_HAS_CALLBACK 0
+#define NETX_SOCK_HAS_CALLBACK 1
 
 /* operations when looking at netxsock_t */
 #define NSK_PORT(x)     ((x)->localaddr)
-#define NSK_INADDR(x) netx_INADDR_ANY
+#define NSK_INADDR(x)   netx_INADDR_ANY
 
 #ifndef HAVE_localaddr_t
-	typedef port_t          localaddr_t;
-	#define HAVE_localaddr_t
+  typedef port_t          localaddr_t;
+  #define HAVE_localaddr_t
 #endif
 
 /* operation when looking at localaddr_t */
-#define LCLAD_PORT(x) x
-#define LCLAD_INADDR(x) netx_INADDR_ANY
-#define netx_LCLADDR(x) netx_PORT(x)
+#define LCLAD_PORT(x)   x
+#define LCLAD_INADDR(x) netx_INADDR_ANY  /* zero */
+
+/* #define netx_LCLADDR(x) netx_PORT(x) */
 
 #else /* !CONFIG_LOCALIP_ANY */
 
@@ -171,11 +172,12 @@ struct netxsocket_s {
 #define NSK_PORT(x)   netx_PORT(&(x)->localaddr)
 #define NSK_INADDR(x) netx_INADDR(&(x)->localaddr)
 
-typedef netx_addr_t *localaddr_t;
+typedef netx_addr_t    *localaddr_t;
 
-#define LCLAD_PORT(x) netx_PORT(x)
+#define LCLAD_PORT(x)   netx_PORT(x)
 #define LCLAD_INADDR(x) netx_INADDR(x)
-#define netx_LCLADDR(x) (x)
+
+/* #define netx_LCLADDR(x) (x) */
 
 #endif /* !CONFIG_LOCALIP_ANY */
 
@@ -207,6 +209,10 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 /************************************************************************/
 #ifndef netx_PORT_NONE
 #define netx_PORT_NONE 0
+#endif
+
+#ifndef netx_PORT_HOLD
+#define netx_PORT_HOLD 65535
 #endif
 
 #ifndef netx_PORT_EPHEM
