@@ -82,15 +82,21 @@ netxsocket_t *
 nsk_new_netsock(void)
 {
   netxsocket_t *socket;
+  acn_protect_t protect;
 
     /* get address to array of sockets */
   socket = sockets_tbl;
   /* while this entry is in use (port number in it is non-zero) */
-  while (NSK_PORT(socket) != netx_PORT_NONE)
+  protect = ACN_PORT_PROTECT();
+  while (NSK_PORT(socket) != netx_PORT_NONE) {
       /* point to the next entry in the array */
     if (++socket >= sockets_tbl + MAX_NSK_SOCKETS) {
+      ACN_PORT_UNPROTECT(protect);
       return NULL;
     }
+  }
+  NSK_PORT(socket) = netx_PORT_HOLD; /* give it a marker so we know it is used */
+  ACN_PORT_UNPROTECT(protect);
   return socket;
 }
 
@@ -102,6 +108,8 @@ void
 nsk_free_netsock(netxsocket_t *socket)
 {
   NSK_PORT(socket) = netx_PORT_NONE;
+  socket->nativesock = 0;
+  socket->data_callback = NULL;
 }
 
 /***********************************************************************************************/
@@ -111,16 +119,20 @@ nsk_free_netsock(netxsocket_t *socket)
 void
 nsk_netsocks_init(void)
 {
-  static bool initialized = 0;
+  static bool initialized_state = 0;
   netxsocket_t *socket;
 
+  if (initialized_state) {
+    acnlog(LOG_INFO | LOG_NSK,"nsk_netsocks_init: already initialized");
+    return;
+  }
+  initialized_state = 1;
   acnlog(LOG_DEBUG|LOG_NSK,"nsk_netsocks_init");
 
-  if (!initialized) {
-    for (socket = sockets_tbl; socket < sockets_tbl + MAX_NSK_SOCKETS; ++socket) {
-      NSK_PORT(socket) = netx_PORT_NONE;
-    }
-    initialized = 1;
+  for (socket = sockets_tbl; socket < sockets_tbl + MAX_NSK_SOCKETS; ++socket) {
+    NSK_PORT(socket) = netx_PORT_NONE;
+    socket->nativesock = 0;
+    socket->data_callback = NULL;
   }
 }
 

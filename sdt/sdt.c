@@ -239,14 +239,13 @@ sdt_init(void)
 {
   static bool initialized_state = 0;
 
-  LOG_FSTART();
-
   /* Prevent reentry */
   if (initialized_state) {
     acnlog(LOG_INFO | LOG_SDT,"sdt_init: already initialized");
     return FAIL;
   }
   initialized_state = 1;
+  LOG_FSTART();
 
   rlp_init();
   sdtm_init();
@@ -299,6 +298,16 @@ sdt_startup(bool acceptAdHoc)
   }
 
   if (acceptAdHoc) {
+    /* if an SDT multicast socket has not been opened yet */
+    if (!sdt_multicast_socket) {
+      LCLAD_PORT(localaddr) = htons(SDT_MULTICAST_PORT);
+      sdt_multicast_socket = rlp_open_netsocket(&localaddr);
+      if (!sdt_multicast_socket) {
+        acnlog(LOG_ERR | LOG_SDT, "sdt_startup: unable to open multicast port");
+        return FAIL;
+      }
+      /* Listeners for multicast will be added as needed */
+    }
     /* Open ad hoc channel on ephemeral port */
     /* if the ad hoc socket is not open yet */
     if (!sdt_adhoc_socket) {
@@ -311,13 +320,11 @@ sdt_startup(bool acceptAdHoc)
         acnlog(LOG_DEBUG | LOG_SDT, "sdt_startup: adhoc port: %d", ntohs(NSK_PORT(sdt_adhoc_socket)));
       } else {
         acnlog(LOG_ERR | LOG_SDT, "sdt_startup: unable to open adhoc port");
+        /* shut down multicast socket we opened above */
+        rlp_close_netsocket(sdt_multicast_socket);
+        sdt_multicast_socket = NULL;
+        return -FAIL;
       }
-    }
-    /* if an SDT multicast socket has not been opened yet */
-    if (!sdt_multicast_socket) {
-      LCLAD_PORT(localaddr) = htons(SDT_MULTICAST_PORT);
-      sdt_multicast_socket = rlp_open_netsocket(&localaddr);
-      /* Listeners for multicast will be added as needed */
     }
   }
   sdt_state = ssSTARTED;
@@ -675,7 +682,7 @@ sdt_add_member(sdt_channel_t *channel, component_t *component)
     /* member->nak           = */ /* default 0 */
     /* member->state         = */ /* deafult 0 = msEMPTY; */
     /* member->expiry_time_s = */ /* default 0 */
-    /* member->expires_ms    = */ /* default 0 */
+    member->expires_ms    = 5000;  /* default 0 */
     /* member->mak_retries   = */ /* default 0 */
 
     /* only used for local member */

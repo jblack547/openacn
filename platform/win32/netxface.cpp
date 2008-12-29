@@ -68,25 +68,28 @@ WSADATA ws;
 */
 void netx_init(void)
 {
-  static bool initialized = 0;
+  static bool initialized_state = 0;
          int  res;
   
-  acnlog(LOG_DEBUG|LOG_NETX,"netx_init");
-  
-  if (!initialized) {
-    /* init required sub modules */
-    nsk_netsocks_init();
-    /* init windows socket */
-    res = WSAStartup(0x0202,&ws);
-    if (res != 0) {
-      acnlog(LOG_ERR | LOG_NETX, "netx_init : WSAStartup failed");
-      return;
-    }
 
-    /* TODO: the above should verify the verions is correct */
-    /* don't process twice */
-    initialized = 1;
+  if (initialized_state) {
+    acnlog(LOG_INFO | LOG_NETX,"netx_init: already initialized");
+    return;
   }
+  /* don't process twice */
+  initialized_state = 1;
+  acnlog(LOG_DEBUG|LOG_NETX,"netx_init...");
+
+  /* init required sub modules */
+  nsk_netsocks_init();
+  /* init windows socket */
+  res = WSAStartup(0x0202,&ws);
+  if (res != 0) {
+    acnlog(LOG_ERR | LOG_NETX, "netx_init : WSAStartup failed");
+    return;
+  }
+
+  /* TODO: the above should verify the verions is correct */
   return;
 }
 
@@ -146,8 +149,8 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
     
   /* if this socket is already open */
   if (netsock->nativesock) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : already open");
-    return -1;
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : already open: %d", ntohs(LCLAD_PORT(*localaddr)));
+    return FAIL;
   }
   
   /* flag that the socket is open */
@@ -155,7 +158,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 
   if (!netsock->nativesock) {
     acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : socket fail");
-    return 1; /* FAIL */
+    return FAIL; /* FAIL */
   }
 
   #if 0
@@ -165,7 +168,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
     acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : setsockopt:SO_REUSEADDR fail");
     close(netsock->nativesock);
     netsock->nativesock = 0;
-    return 1; /* FAIL */
+    return FAIL; /* FAIL */
   }
   #endif
 
@@ -192,7 +195,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
     acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : bind fail, port:%d", ntohs(LCLAD_PORT(*localaddr)));
     closesocket(netsock->nativesock);
     netsock->nativesock = NULL;
-    return 1; /* FAIL */
+    return FAIL; /* FAIL */
   }
 
   /* save the passed in address/port number into the passed in netxsocket_s struct */
@@ -206,14 +209,14 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
     acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : setsockopt:IP_PKTINFO fail");
     close(netsock->nativesock);
     netsock->nativesock = 0;
-    return 1; /* FAIL */
+    return FAIL; /* FAIL */
   }
   #endif
   
-  acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : open port:%d", ntohs(NSK_PORT(netsock)));
+  acnlog(LOG_DEBUG | LOG_NETX, "netx_udp_open : port:%d", ntohs(NSK_PORT(netsock)));
   
   /* Note: A separate thread will call netx_poll() to look for received messages */
-  return 0;
+  return OK;
 }
 
 
@@ -260,7 +263,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
   
   /* if the IP passed in is not a valid multicast address */
   if (!is_multicast(local_group)) {
-	 return -1;
+	 return FAIL;
   }
 
   acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group, port: %d, group: %s", ntohs(NSK_PORT(netsock)), ntoa(local_group));
@@ -271,7 +274,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
   ret = setsockopt(netsock->nativesock,  SOL_SOCKET, SO_REUSEADDR, (char *)&optionOn,  sizeof(optionOn));
   if (ret == SOCKET_ERROR) {
     acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:SO_REUSEADDR fail");
-    return 1; /* fail */
+    return FAIL; /* fail */
   }
 
   /* set the IP TTL */
@@ -279,14 +282,14 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
   ret = setsockopt(netsock->nativesock,  IPPROTO_IP, IP_MULTICAST_TTL, (char *)&ip_ttl,  sizeof(ip_ttl));
   if (ret == SOCKET_ERROR) {
     acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_TTL fail");
-    return 1; /* fail */
+    return FAIL; /* fail */
   }
 
   /* turn off loop back on multicast */
   ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)&optionOff, sizeof(optionOff));
   if (ret == SOCKET_ERROR) {
     acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_LOOP fail");
-    return 1; /* fail */
+    return FAIL; /* fail */
   }
 
   mreq.imr_multiaddr.s_addr = local_group;
@@ -305,7 +308,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
     setsockopt(netsock->nativesock, IPPROTO_IP, IP_DROP_MEMBERSHIP, (char*)&mreq, sizeof(mreq));
     acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group: dropped");
   }
-  return 0; /* OK */
+  return OK; /* OK */
 }
 
 /************************************************************************/
@@ -328,16 +331,16 @@ int netx_send_to(
   /* if the port is not open or we have no packet */
   if (!netsock) {
     acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: !netsocket");
-    return -1;
+    return FAIL;
   }
   if (!netsock->nativesock) {
     acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: !nativesock");
-    return -1;
+    return FAIL;
   }
     
   if (!pkt) {
     acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: !pkt");
-    return -1;
+    return FAIL;
   }
   
   /* get dest IP and port from the calling routine */
@@ -390,14 +393,21 @@ netx_poll(void)
   nsk = nsk_first_netsock();
   if (!nsk) {
     /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: no sockets"); */
-    return 1;
+    return FAIL;
   }
   while (nsk) {
-    FD_SET(nsk->nativesock,&socks);
-    if (nsk->nativesock > high_sock) {
-      high_sock= nsk->nativesock;
+    /* make sure we assignged the socket */
+    if (nsk->nativesock) {
+      FD_SET(nsk->nativesock,&socks);
+      if (nsk->nativesock > high_sock) {
+        high_sock = nsk->nativesock;
+      }
     }
     nsk = nsk_next_netsock(nsk);
+  }
+  /* perhaps none were assigned */
+  if (high_sock == 0) {
+    return FAIL;
   }
   
   /* TODO: what should timeout be? */
@@ -406,7 +416,7 @@ netx_poll(void)
   readsocks = select(high_sock+1, &socks, NULL, NULL, &timeout);
   if (readsocks < 0) {
     acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: select fail: %d", WSAGetLastError());
-    return 1; /* fail */
+    return FAIL; /* fail */
   }
   if (readsocks > 0) {
     nsk = nsk_first_netsock();
@@ -416,7 +426,7 @@ netx_poll(void)
         length = recvfrom(nsk->nativesock, recv_buffer, sizeof(recv_buffer), 0, (SOCKADDR *)&source, &addr_len);
         if (length < 0) {
           acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: recvfrom fail: %d", WSAGetLastError());
-          return(1); /* fail */
+          return FAIL; /* fail */
         }
         if (length > 0) {
           /* TODO: This need to be network in localaddress form! */
@@ -426,17 +436,17 @@ netx_poll(void)
           /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handoff"); */
           netx_handler(recv_buffer, length, &source, &dest);
           /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handled"); */
-/*          return 0; */
+/*          return OK; */
         } else {
           acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: length = 0");
-          return(0); /* ok but no data */
+          return OK; /* ok but no data */
         }
       }
       nsk = nsk_next_netsock(nsk);
     }
   } 
   /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: no data"); */
-  return 0;
+  return OK;
 }      
 
 /************************************************************************/
@@ -475,7 +485,9 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
 /************************************************************************/
 /*
   netx_getmyip()
-
+  Note: this only returns the fisrt one found and may not be correct if there are multple NICs
+  or multiple IP address in one NIC
+  This function return address in network format
 */
 #if CONFIG_NET_IPV4
 ip4addr_t netx_getmyip(netx_addr_t *destaddr)
@@ -529,6 +541,8 @@ return result;
 /*
   netx_getmyipmask()
   Note: this only returns the fisrt one found and may not be correct if there are multple NICs
+  or multiple IP address in one NIC
+  This function return mask in network format
 */
 ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
 {

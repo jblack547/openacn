@@ -46,17 +46,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 
 static CRITICAL_SECTION CriticalSection;
-static bool initialized = 0;
+static bool initialized_state = 0;
 
 
 acn_protect_t 
 acn_port_protect(void)
 {
   /* printf("protect count: %d\n", protect_count); */
-  if (!initialized) {
+  if (!initialized_state) {
     /* printf("init\n"); */
+    initialized_state = 1;
     InitializeCriticalSection(&CriticalSection);
-    initialized = 1;
   }
   /* printf("crit\n"); */
   EnterCriticalSection(&CriticalSection);
@@ -71,7 +71,7 @@ acn_port_unprotect(acn_protect_t param)
   LeaveCriticalSection(&CriticalSection);
   if (CriticalSection.RecursionCount == 0) {
     DeleteCriticalSection(&CriticalSection);
-    initialized = 0;
+    initialized_state = 0;
   }
 }
 

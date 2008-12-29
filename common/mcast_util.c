@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "netxface.h"
 
+
 #if CONFIG_EPI10
 #include "epi10.h"
 
@@ -51,6 +52,7 @@ uint16_t dyn_mask;
 
 /************************************************************************/
 /* local version of ffs to avoid complexities in compiler               */
+/* The ffs() function shall find the first bit set (beginning with the least significant bit) in x */
 static __inline int ffs_1(register int x)
 {
   int p;
@@ -97,7 +99,7 @@ int mcast_alloc_init(
 
 	if ((scopeaddr & scopemask) != scopeaddr)
 	{
-		/* acnlog(LOG_ERR|LOG_LOCAL0,"mcast_alloc_init: Scope-address out of range."); */
+		acnlog(LOG_ERR|LOG_MISC,"mcast_alloc_init: Scope-address out of range.");
 		return -1;
 	}
 
@@ -111,11 +113,11 @@ From epi10 r4:
 	with lsb numbered as 1
 */
 	HostShift = ffs_1(ntohl(scopemask)) - 9;  /* 10 */
-	HostPart = ntohl(netx_getmyip(NULL)); /* 216.253.200.200 */
-	HostPart &= EPI10_HOST_PART_MASK; /* & 0xff  = 200 == 0xc8 */
-	HostPart <<= HostShift; /* TBD THIS CAME TO 0x32000 */
+	HostPart = ntohl(netx_getmyip(NULL));     /* 216.253.200.200 */
+	HostPart &= EPI10_HOST_PART_MASK;         /* & 0xff  = 200 == 0xc8 */
+	HostPart <<= HostShift;                   /* TBD THIS CAME TO 0x32000 */
 
-	dyn_mask = (1 << HostShift) - 1; /* 0x3FF */
+	dyn_mask = (1 << HostShift) - 1;          /* 0x3FF */
 
 	scope_and_host = scopeaddr | htonl(HostPart); /* 0xEFC32000 */
 
@@ -131,8 +133,9 @@ From epi10 r4:
 /*
   mcast_alloc_new may be defined as a macro
 */
+
 #ifndef mcast_alloc_new
-groupaddr_t mcast_alloc_new(local_component_t *comp)
+groupaddr_t mcast_alloc_new(component_t *comp)
 {
 
 	return scope_and_host | htonl((uint32_t)(dyn_mask & comp->dyn_mcast++));

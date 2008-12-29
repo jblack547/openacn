@@ -501,13 +501,12 @@ rlpm_init(void)
 {
   static bool initialized_state = 0;
 
-  acnlog(LOG_DEBUG|LOG_RLPM, "rlpm_init");
-
   if (initialized_state) {
     acnlog(LOG_INFO | LOG_SDT,"rlpm_init: already initialized");
     return;
   }
   initialized_state = 1;
+  acnlog(LOG_DEBUG|LOG_RLPM, "rlpm_init...");
 
   /* initialize sub modules */
   nsk_netsocks_init();

@@ -2402,12 +2402,12 @@ void slp_init(void)
   int x;
   static bool initialized_state = 0;
 
-  LOG_FSTART();
   if (initialized_state) {
     acnlog(LOG_INFO | LOG_SLP,"slp_init: already initialized");
     return;
   }
   initialized_state = 1;
+  LOG_FSTART();
 
   /* initialize sub modules */
   nsk_netsocks_init();

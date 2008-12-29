@@ -53,12 +53,23 @@ int mcast_alloc_init(ip4addr_t scopeaddr, ip4addr_t scopemask, component_t *comp
 */
 #define mcast_alloc_new(comp) (scope_and_host | htonl((uint32_t)(dyn_mask & (comp)->dyn_mcast++)))
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+
 #ifdef mcast_alloc_new
 extern ip4addr_t scope_and_host;	/* Network Byte Order */
 extern uint16_t dyn_mask;
 #else
-extern groupaddr_t mcast_alloc_new(local_component_t *comp);
+extern groupaddr_t mcast_alloc_new(component_t *comp);
 #endif
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif	/* CONFIG_EPI10 */
 
 #endif
