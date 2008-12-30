@@ -69,13 +69,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SDT_MAX_MEMBERS             40
 
 /* but filter on these */
-#define LOG_RLP    LOG_NONE
-#define LOG_RLPM   LOG_NONE
-#define LOG_SDT    LOG_NONE
-#define LOG_SDTM   LOG_NONE
-#define LOG_NSK    LOG_NONE
-#define LOG_NETX   LOG_NONE
-#define LOG_SLP    LOG_NONE
+#define LOG_RLP    LOG_LOCAL0
+#define LOG_RLPM   LOG_LOCAL0
+#define LOG_SDT    LOG_LOCAL0
+#define LOG_SDTM   LOG_LOCAL0
+#define LOG_NSK    LOG_LOCAL0
+#define LOG_NETX   LOG_LOCAL0
+#define LOG_SLP    LOG_LOCAL0
+#define LOG_DISC   LOG_LOCAL0
 #define LOG_DMP    LOG_NONE
 #define LOG_DMPM   LOG_NONE
 #define LOG_MISC   LOG_NONE

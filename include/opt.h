@@ -328,6 +328,9 @@ as required.
 #ifndef LOG_SLP
   #define LOG_SLP LOG_NONE
 #endif
+#ifndef LOG_DISC
+  #define LOG_DISC LOG_NONE
+#endif
 #ifndef LOG_DMP
   #define LOG_DMP LOG_NONE
 #endif

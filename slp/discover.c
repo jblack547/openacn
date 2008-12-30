@@ -39,8 +39,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* 5.1.2.	RFRs */
 /* Under the well known DCID (CAB91A8C-CC44-49b1-9398-1EF5C07C31C9): */
 
-/* TODO: change printf to acnlog... */
-
 /* Lib includes */
 #include <stdlib.h>
 
@@ -215,7 +213,9 @@ static void attrrqst_callback(int error, char *attr_list)
   component_t *comp = NULL;
 #endif
 
-  uint32_t  ip = 0;
+  ip4addr_t  ip = 0;
+  ip4addr_t  myip = 0;
+  ip4addr_t  mymask = 0;
   uint16_t  port = 0;
 
   char *next_attr;
@@ -225,7 +225,7 @@ static void attrrqst_callback(int error, char *attr_list)
   char *e;
 
   if (!error) {
-    printf("attrrqst callback: %s\n",attr_list);
+    acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: %s",attr_list);
     /* start from the first one */
     next_attr = attr_list;
     /* and rip thru each attribute block */
@@ -235,19 +235,19 @@ static void attrrqst_callback(int error, char *attr_list)
       if (!strncmp(attr_str, "cid=", 4)) {
         strncpy(cid_str, attr_str+4, 36);
         textToCid(cid_str, cid);
-        printf("cid: %s\n",cid_str);
+        acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: cid=%s",cid_str);
         continue;
       }
       /* fctn ? */
       if (!strncmp(attr_str, "acn-fctn=", 9)) {
         strncpy(fctn_str, attr_str+9, 63);
-        printf("fctn: %s\n",fctn_str);
+        acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: fctn=%s",fctn_str);
         continue;
       }
       /* uacn ? */
       if (!strncmp(attr_str, "acn-uacn=", 9)) {
         strncpy(uacn_str, attr_str+9, 63);
-        printf("fctn: %s\n",uacn_str);
+        acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: uacn=%s",uacn_str);
         continue;
       }
       /* dmp ? if so, get dcid, ip and port */
@@ -258,7 +258,7 @@ static void attrrqst_callback(int error, char *attr_list)
           if (p) {
             strncpy(cid_str, p+1, 36);
             textToCid(cid_str, dcid);
-            printf("dcid: %s\n",cid_str);
+            acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: dcid=%s",cid_str);
           }
         }
         /* these will look like this: esta.sdt/192.169.3.100:2487; */
@@ -284,13 +284,16 @@ static void attrrqst_callback(int error, char *attr_list)
               strncpy(port_str, s, e-s);
               port = atoi(port_str);
             }
-            if ((netx_getmyipmask(0) & netx_getmyip(0)) == (netx_getmyipmask(0) & ip)) {
-              printf("reachable ip: %s, %s\n",ip_str, port_str);
+            myip = netx_getmyip(0);
+            mymask = netx_getmyipmask(0);
+            if ((mymask & myip) == (mymask & ip)) {
+              acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: reachable ip=%s, %s",ip_str, port_str);
               /* got what we need - move on */
               break;  /* from while(p) */
             } else {
               ip = 0;
               port = 0;
+              break; /* from while(p) */
             }
           }
           /* see if there is another one in the same attribute (multiple nics)*/
@@ -300,20 +303,30 @@ static void attrrqst_callback(int error, char *attr_list)
       }
       if (!strncmp(attr_str, "device-description=", 19)) {
         strncpy(dd, attr_str+19, 63);
-        printf("dd: %s\n",dd);
+        acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: dd=%s",dd);
         continue;
       }
-    }
+    } /* of while */
   } else {
-    printf("attrrqst callback: error %d\n",error);
+    acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: error %d",error);
+    return;
+  }
+
+  if (!ip || !port) {
+    acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: ip or port not correct");
+    return;
   }
 
   /* create a component for this CID */
 #if CONFIG_SDT
   if (!cidIsNull(cid)) {
-  	/* use the CID to get the address of the component structure */
-    /* why is this commeted out? */
-    /* comp = sdt_find_component(cid); */ /* COMMENTED OUT */
+    /* am I looking in the mirror ? */
+    if (ip == myip) {
+      acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: Look! I see can myself!");
+      return;
+    }
+  	/* see if we already have this one */
+    comp = sdt_find_component(cid);
     /* if it was found */
     if (comp) {
       cidCopy(comp->dcid, dcid);
@@ -339,13 +352,14 @@ static void attrrqst_callback(int error, char *attr_list)
 static void srvrqst_callback(int error, char *url)
 {
   if (!error) {
-    printf("srvrqs callback: %s\n",url);
+    acnlog(LOG_DEBUG | LOG_DISC , "srvrqst_callback: %s", url);
+
     /* TODO: do we want to get all attributes or just the ones we know about */
 /*    slp_send_attrrqst(0, url,"cid,csl-esta.dmp,acn-fctn,acn-uacn", attrrqst_callback); */
     /* this will get all */
     slp_send_attrrqst(0, url, NULL, attrrqst_callback);
   } else {
-    printf("srvrqs callback: error %d\n",error);
+    acnlog(LOG_DEBUG | LOG_DISC , "srvrqst_callback: error %d", error);
   }
 }
 #endif
@@ -391,7 +405,7 @@ void discover_register(component_t *component)
 }
 
 /*
-void discover_deregister(void)
+void discover_deregister(component_t *component)
 {
   slp_dereg();
 }

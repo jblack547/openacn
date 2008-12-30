@@ -39,7 +39,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opt.h"
 #include "types.h"
-//#include "acn_port.h"
 #include "cid.h"
 
 #ifdef __cplusplus

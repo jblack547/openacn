@@ -61,6 +61,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define SLP_MTU                 600 /* Max SLP data packet (not including 44 bytes for header) */
 
+#define MAX_RQST                50  /* Size of static list of simultaneous request that can be handled 
+                                       for exmaple: if we are looking for a particular DCID and the DA
+                                       tells use about 25 of them, then we will send off 25 attribute
+                                       requests. So, this should be a few more than the number of devices
+                                       expected to be found. 
+                                    */
+
 /*=========================================================================*/
 /* SLP Constants                                                           */
 /*=========================================================================*/

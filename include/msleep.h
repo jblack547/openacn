@@ -52,7 +52,8 @@ Substitute a system function if we can
 #elif CONFIG_STACK_NETBURNER
 
 #include "constants.h"
-#define msleep(msecs) OSTimeDly(1000/TICKS_PER_SECOND/(msecs))
+#define msleep(msecs) OSTimeDly(msecs/(1000/TICKS_PER_SECOND))
+
 #define HAVE_msleep 1
 
 #else
