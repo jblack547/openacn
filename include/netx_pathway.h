@@ -176,6 +176,8 @@ typedef netx_addr_t *localaddr_t;
 void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest);
 
 extern void  netx_init(void);
+extern int   netx_startup(void);
+extern int   netx_shutdown(void);
 extern int   netx_poll(void);
 extern int   netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr);
 extern void  netx_udp_close(netxsocket_t *netsock);

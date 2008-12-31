@@ -484,7 +484,11 @@ rlp_open_netsocket(localaddr_t *localaddr)
 void
 rlp_close_netsocket(netxsocket_t *netsock)
 {
+  port_t  port;
+
   LOG_FSTART();
+
+  port = ntohs(NSK_PORT(netsock));
 
 	if (rlpm_netsock_has_rxgroups(netsock)) {
     acnlog(LOG_WARNING|LOG_RLP,"rlp_close_netsocket: not closed, active groups");
@@ -493,7 +497,7 @@ rlp_close_netsocket(netxsocket_t *netsock)
 
 	netx_udp_close(netsock);
 	nsk_free_netsock(netsock);
-  acnlog(LOG_DEBUG|LOG_RLP,"rlp_close_netsocket: closed port=%d", ntohs(NSK_PORT(netsock)));
+  acnlog(LOG_DEBUG|LOG_RLP,"rlp_close_netsocket: port=%d", port);
 }
 
 /************************************************************************/

@@ -1,6 +1,5 @@
 /*--------------------------------------------------------------------*/
 /*
-
 Copyright (c) 2008, Electronic Theatre Controsl, Inc.
 
 All rights reserved.
@@ -36,7 +35,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   TODO: Version that implements its own memory (hence it will copy) rather than use block from stack.
 
 */
-/*--------------------------------------------------------------------*/
+/***********************************************************************************************
+  NSK is a simple set of memory managment routines to maintain our sockets table
+  What is in the socket table is platform dependent and defined in the netx-<platform>.h files
+  Each table entry contains:
+    nativesock       - pointer or value to native socket reference
+    localaddr        - usually port number or perhaps address/portnumber in a multi home system
+   *data_callback    - pointer to callback when data is available
+ ***********************************************************************************************/
 
 #include "opt.h"
 #include "types.h"
@@ -54,14 +60,14 @@ netxsocket_t sockets_tbl[MAX_NSK_SOCKETS];
 
 /***********************************************************************************************/
 /*
-  find the socket (if any) with matching local address
+  find the socket (if any) with matching local address (port)
 */
 netxsocket_t *
 nsk_find_netsock(localaddr_t *localaddr)
 {
   netxsocket_t *socket;
 
-    /* get address to array of sockets */
+  /* get address to array of sockets */
   socket = sockets_tbl;
 #if CONFIG_LOCALIP_ANY
   /* while the port num in this socket entry is not equal to the port num passed in */
@@ -107,9 +113,14 @@ nsk_new_netsock(void)
 void
 nsk_free_netsock(netxsocket_t *socket)
 {
-  NSK_PORT(socket) = netx_PORT_NONE;
+  /* put these backt back to cleared state just in case*/
   socket->nativesock = 0;
   socket->data_callback = NULL;
+  /* We mark a free socket with a netx_PORT_NONE */
+  NSK_PORT(socket) = netx_PORT_NONE;
+#if !CONFIG_LOCALIP_ANY
+  NSK_INADDR(socket) = netx_INADDR_ANY;
+#endif
 }
 
 /***********************************************************************************************/
@@ -131,6 +142,9 @@ nsk_netsocks_init(void)
 
   for (socket = sockets_tbl; socket < sockets_tbl + MAX_NSK_SOCKETS; ++socket) {
     NSK_PORT(socket) = netx_PORT_NONE;
+    #if !CONFIG_LOCALIP_ANY
+      NSK_INADDR(socket) = netx_INADDR_ANY;
+    #endif
     socket->nativesock = 0;
     socket->data_callback = NULL;
   }
@@ -153,7 +167,7 @@ nsk_next_netsock(struct netxsocket_s *socket)
 
 /***********************************************************************************************/
 /*
- * first used socket
+ * First used socket
  */
 netxsocket_t *
 nsk_first_netsock(void)

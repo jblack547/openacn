@@ -59,7 +59,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /************************************************************************/
 /* local memory */
-WSADATA ws;
+WSADATA wsdata;
 
 
 /************************************************************************/
@@ -69,7 +69,6 @@ WSADATA ws;
 void netx_init(void)
 {
   static bool initialized_state = 0;
-         int  res;
   
 
   if (initialized_state) {
@@ -82,17 +81,31 @@ void netx_init(void)
 
   /* init required sub modules */
   nsk_netsocks_init();
-  /* init windows socket */
-  res = WSAStartup(0x0202,&ws);
-  if (res != 0) {
-    acnlog(LOG_ERR | LOG_NETX, "netx_init : WSAStartup failed");
-    return;
-  }
-
-  /* TODO: the above should verify the verions is correct */
   return;
 }
 
+/************************************************************************/
+int netx_startup(void)
+{
+  int  res;
+
+  /* init windows socket */
+  res = WSAStartup(0x0202,&wsdata);
+  if (res != 0) {
+    acnlog(LOG_ERR | LOG_NETX, "netx_init : WSAStartup failed");
+    return FAIL;
+  }
+  return OK;
+  /* TODO: the above should verify the verions is correct */
+}
+
+/************************************************************************/
+int netx_shutdown(void)
+{
+  /* Windows cleanup */
+  WSACleanup();
+  return OK;
+}
 
 /************************************************************************/
 void *netx_new_txbuf(int size)
@@ -228,6 +241,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 void netx_udp_close(netxsocket_t *netsock)
 {
   LOG_FSTART();
+  netx_nativeSocket_t hold;
 
   /* if it's already closed */
   if (!netsock->nativesock) {
@@ -235,14 +249,12 @@ void netx_udp_close(netxsocket_t *netsock)
     return;
   }
 
-  /* close port */
-  closesocket(netsock->nativesock);
+  /* a little safer to mark it not used before we actually nuke it */
+  hold = netsock->nativesock;
   /* clear flag that it's in use */ 
   netsock->nativesock = NULL;
-
-  /* Windows cleanup */
-  WSACleanup();
-
+  /* close socket */
+  closesocket(hold);
 }
 
 
@@ -507,6 +519,8 @@ FixedInfo = (IP_ADAPTER_INFO *) malloc( sizeof( IP_ADAPTER_INFO ) );
 ulOutBufLen = sizeof( IP_ADAPTER_INFO );
 
 /* FIXME: this will fail if there is more than one adaptor or if adaptor has more than on IP */
+/* if this fails, the ulOutBufLen will be filled with the size of the buffer needed...
+   and then we can retry */
 if ( ERROR_SUCCESS != GetAdaptersInfo( FixedInfo, &ulOutBufLen ) ) {
   return 0;
 }
@@ -517,6 +531,18 @@ free(FixedInfo);
 
 return result;
 
+#if 0
+/* this works if we need to get MAC at some time! */
+printf("your MAC is %02x-%02x-%02x-%02x-%02x-%02x\n", 
+       FixedInfo->Address[0],
+       FixedInfo->Address[1],
+       FixedInfo->Address[2],
+       FixedInfo->Address[3],
+       FixedInfo->Address[4],
+       FixedInfo->Address[5]
+);
+*/
+#endif
 
 /* this works too...
 /* 

@@ -330,7 +330,7 @@ void da_ip_list(char *str)
 int __xid_save(uint16_t xid)
 {
   int x;
-  printf("save_xid: %d\n", xid);
+  /* printf("save_xid: %d\n", xid); */
   for (x=0;x<MAX_RQST;x++) {
     if (xids[x] == 0) {
       xids[x] = xid;
@@ -344,7 +344,7 @@ int __xid_save(uint16_t xid)
 int __xid_test(uint16_t xid)
 {
   int x;
-  printf("test_xid: %d\n", xid);
+  /* printf("test_xid: %d\n", xid); */
   for (x=0;x<MAX_RQST;x++) {
     if (xids[x] == xid) {
       return true;
@@ -357,7 +357,7 @@ int __xid_test(uint16_t xid)
 int __xid_clear(uint16_t xid)
 {
   int x;
-  printf("clear_xid: %d\n", xid);
+  /* printf("clear_xid: %d\n", xid); */
   for (x=0;x<MAX_RQST;x++) {
     if (xids[x] == xid) {
       xids[x] = 0;

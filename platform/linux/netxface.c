@@ -81,6 +81,18 @@ void netx_init(void)
 
 
 /************************************************************************/
+int netx_startup(void)
+{
+  return OK;
+}
+
+/************************************************************************/
+int netx_shutdown(void)
+{
+  return OK;
+}
+
+/************************************************************************/
 void *netx_new_txbuf(int size)
 {
   UNUSED_ARG(size);
@@ -213,6 +225,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 void netx_udp_close(netxsocket_t *netsock)
 {
   LOG_FSTART();
+  netx_nativeSocket_t hold;
 
   /* if it's already closed */
   if (!netsock->nativesock) {
@@ -220,11 +233,12 @@ void netx_udp_close(netxsocket_t *netsock)
     return;
   }
 
-  /* close port */
-  close(netsock->nativesock);
+  /* a little safer to mark it not used before we actually nuke it */
+  hold = netsock->nativesock;
   /* clear flag that it's in use */ 
   netsock->nativesock = 0;
-
+  /* close socket */
+  close(hold);
 }
 
 
@@ -235,7 +249,6 @@ void netx_udp_close(netxsocket_t *netsock)
     The call returns 0 if OK, non-zero if it fails.
     localGroup - multicast group IP address.
 */
-/************************************************************************/
 int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operation)
 {
   struct ip_mreq     mreq;
