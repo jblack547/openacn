@@ -46,8 +46,10 @@
 #
 ##########################################################################
 # Include configuration stuff
+# This is generated from the user configuration - see below
 #
-#include .opts.mk
+include .opts.mk
+
 ##########################################################################
 # PLATFORM is normally in the platform directory
 #
@@ -104,7 +106,7 @@ endif
 # Set up some C compiler options and compile rules
 #
 ifeq "${COMPILER}" "gcc"
-CFLAGS+=-std=c99 -Wall -Wextra -Wno-uninitialized
+CFLAGS+=-std=c99 -pedantic -Wall -Wextra -Wno-uninitialized
 CFLAGS+=-D_XOPEN_SOURCE=600 -D_BSD_SOURCE=1
 endif
 
@@ -133,14 +135,21 @@ ${OBJDIR}/%.o: %.c
 #
 SUBDIRS:=${PLATFORM} common ${ACNPARTS}
 
-SUBDIRS:=${addprefix ${ACNROOT}/,${SUBDIRS}}
-vpath %.c ${SUBDIRS} ${ACNROOT}
+SUBDIRPATHS:=${addprefix ${ACNROOT}/,${SUBDIRS}}
+vpath %.c ${SUBDIRPATHS} ${ACNROOT}
+
 
 ##########################################################################
-# For now we just build and add all C files we find
+# For each subdir, we define a separate set of object files e.g. sdt_OBJS
+# and also add them to the all_OBJS list
 #
-OBJS:=${wildcard ${addsuffix /*.c, ${SUBDIRS}}}
-OBJS:=${patsubst %.c,${OBJDIR}/%.o,${notdir ${OBJS}}}
+define OBJSFORDIR
+${DIR}_SRC:=$${notdir $${wildcard ${addsuffix /*.c, ${ACNROOT}/${DIR}}}}
+${DIR}_OBJS:=$${patsubst %.c,${OBJDIR}/%.o,$${${DIR}_SRC}}
+all_OBJS+=$${${DIR}_OBJS}
+endef
+
+${foreach DIR, ${SUBDIRS}, ${eval ${OBJSFORDIR}}}
 
 ##########################################################################
 # Build rules
@@ -153,9 +162,29 @@ LIBRARY=${LIBDIR}/libacn.a
 
 all : ${LIBRARY}
 
-${LIBRARY}: ${OBJS}
+##########################################################################
+# Define a target for each subdir, allowing "make sdt" and the like
+#
+
+.PHONY: ${SUBDIRS}
+
+define SUBDIRRULE
+${DIR}: ${${DIR}_OBJS}
+
+endef
+
+${foreach DIR, ${SUBDIRS}, ${eval ${SUBDIRRULE}}}
+
+##########################################################################
+# Put all objects into a library
+#
+
+${LIBRARY}: ${all_OBJS}
 	ar rcs $@ $^
 
+##########################################################################
+# Housekeeping
+#
 .PHONY : clean
 
 clean :
@@ -164,24 +193,25 @@ clean :
 ##########################################################################
 # Track dependencies
 #
-#${DEPDIR}/%.d: %.c
-#	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
-#	| sed 's/^\([^ :]\+\)\.o:/\1.o \1.d:/' > $@
-#
-#include ${patsubst ${OBJDIR}/%.o, ${DEPDIR}/%.d, ${OBJS}}
+${DEPDIR}/%.d: %.c
+	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
+	| sed 's/^\([^ :]\+\)\.o:/\1.o \1.d:/' > $@
+
+include ${patsubst ${OBJDIR}/%.o, ${DEPDIR}/%.d, ${all_OBJS}}
 
 ##########################################################################
 # ts is a target for miscellaneous debug and doesn't do much
+#
 .PHONY : ts
 ts:
-	@echo ${ARCH} ${SYS} ${SUBDIRS}
+	@echo ${SUBDIRS} ${all_OBJS}
 
 ##########################################################################
 # .opts.mk contains Make relevant options extracted from the
 # configuration headers opt.h and user_opt.h
 #
-#.opts.mk: ${ACNROOT}/opts.mk.c
-#	${CPP} ${CPPFLAGS} $< ${CCOUTPUT}$@
+.opts.mk: ${ACNROOT}/opts.mk.c ${ACNROOT}/include/opt.h include/user_opt.h
+	${CPP} ${CPPFLAGS} $< ${CCOUTPUT}$@
 
 # Make sure we have its dependencies OK
 #${DEPDIR}/opts.mk.d: opts.mk.c
