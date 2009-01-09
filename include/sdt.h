@@ -53,10 +53,6 @@ necessary for accessing SDT from higher layers
 extern "C" {
 #endif
 
-/* ESTA registered protocol code */
-#define SDT_PROTOCOL_ID     1
-#define PROTO_SDT           SDT_PROTOCOL_ID
-
 /* PDU vector codes [SDT spec Table 3] */
 enum
 {
