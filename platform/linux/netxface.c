@@ -375,7 +375,7 @@ int
 netx_poll(void)
 {
   int                 length;
-  int                 addr_len = sizeof(netx_addr_t);
+  socklen_t           addr_len = sizeof(netx_addr_t);
   fd_set              socks;
   netxsocket_t       *nsk; 
   netx_nativeSocket_t high_sock = 0;
@@ -435,23 +435,19 @@ netx_poll(void)
         }
         if (length > 0) {
 
-#if 0
           for (cmp = CMSG_FIRSTHDR(&hdr); cmp != NULL; cmp = CMSG_NXTHDR(&hdr, cmp)) {
             if (cmp->cmsg_level == IPPROTO_IP && cmp->cmsg_type == IP_PKTINFO) {
               ip4addr_t pktaddr;
               pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr;
-              /* pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr; */
-              if (is_multicast(pktaddr)) {
-                /* dest = pktaddr; */
-                netx_PORT(&dest) = pktaddr;
-              }
-              /* printf("Socket %d: packet for %8x:%u\n", netsock->nativesock, ntohl(pktaddr), ntohs(NSK_PORT(*netsock))); */
+              netx_INIT_ADDR(&dest, is_multicast(pktaddr)? pktaddr: netx_GROUP_UNICAST, NSK_PORT(nsk));
+              acnlog(LOG_DEBUG | LOG_NETX , "Socket %d: packet for %8x:%u\n", nsk->nativesock, ntohl(pktaddr), ntohs(NSK_PORT(nsk)));
             }
           }
-#endif  
+#if 0
           /* TODO: This need to be network in localaddress form! */
           netx_PORT(&dest) = LCLAD_PORT(nsk->localaddr);
           netx_INADDR(&dest) = LCLAD_INADDR(nsk->localaddr);
+#endif  
 
           /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handoff"); */
           netx_handler(recv_buffer, length, &source, &dest);
@@ -500,7 +496,6 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
   }
   acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: no callback, port: %d", ntohs(LCLAD_PORT(host)));
 }
-
 
 /************************************************************************/
 /*
