@@ -261,7 +261,7 @@ rlpm_find_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr)
   rlp_rxgroup_t *rxgroup;
 
   /* treat all non-multicast as the same */
-  if (!is_multicast(groupaddr)) {
+  if (groupaddr != netx_GROUP_UNICAST && !is_multicast(groupaddr)) {
     groupaddr = netx_GROUP_UNICAST; /* set to zero */
   }
 

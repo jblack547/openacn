@@ -42,32 +42,30 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   Both Service Agent (SA) and User Agent (UA) are supported. Directory Agent (DA)
   is not supported. SA and UA modes can be used at the same time.
 
-  The functions marked FUNCTION TESTED have been tested to where I know they at least
-  don't crash and seem to work correcly but it does not mean they are ready for prime time.
-
   Limitations:
-  SA mode does not support operation without a DA available. Parts of the code needed
-  for this are in place but they have not been completed nor tested.
+  SA mode does not support operation without a DA available (at this time). Parts of 
+  the code needed for this are in place but they have not been completed nor tested.
   
-  Only supports one attribute list and therefor only one local component can be registered.
-
   Notes
   Do NOT use string functions on SLPString structures, they do NOT contain a terminating NULL!
   use getSLP_STR on it first to malloc and copy to a new string.
 
   SLP requires a slp_tick() to be called at 100 ms intervals.
 
-  TODO:
-  - Verifiy operation as network goes away and comes back...(could have new IP address!)
-  - As a UA, if we are looking for a service, should we change DA each time just in case
-    they are out of sync with other DA's?
+  The treading model uses ACN_PORT_PROTECT() and ACN_PORT_UNPROTECT(). This simple model
+  prevent two thread from using the same memory space.  Basically, the slp_tick() blocks
+  for it's entire loop. Likewies, slp_recv() does the same. All functions that can be 
+  called externally also block until they are complete. The exception to this is da_close()
+  which is only called by slp_close. It allows other thread to run while it times out
+  and closes.
+
+  TODO: (see list here)
+  - If IP changes, we will need to re-register everthing
   - What to do with authentication. Ignore, discard packet? SLP_AUTH
-  - Get rid of malloc and make statics? Change from mem_malloc to malloc if needed.
+  - Get rid of malloc and make statics?
   - Older versions of DA's using OpenSLP would send out Unsolicited DAadverts with xid != 0. This
     has been fixed so we can remove our special handling.
-  - make full malloc implementation.
-  - Currently only supports one attribute list and therefor only one 
-    local component can be registered...need to fix this.
+  - Perhaps msg_ should be done with MALLOC
 
   Versions:
   0.0.1   Initial release to test integration
@@ -85,17 +83,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acn_port.h"
 #include "acnlog.h"
 
-/* platform dependent network interface*/
+/* Platform dependent network interface*/
 #include "netxface.h"
-/*
-#include "inet.h"
-*/
 #include "ntoa.h"
 #include "aton.h"
 
-/* other includes */
+/* Other includes */
 #include "netsock.h"  /* network socket storage */
-
+#include "netsock.h"
+#include "netxface.h"
 #include "cid.h"     /* manage uuids */
 #include "pack.h"     /* to pack and unpack data strucures */
 #include "msleep.h"    /* platform dependent delay */
@@ -115,8 +111,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SLP_MALLOC(x)  malloc(x)
 #define SLP_FREE(x)    free(x)
 
+
+/* for LWIP only */
 /* Just a quick way to test memory allocation types */
 #define PBUF_TYPE PBUF_POOL
+
+
+/* Our message buffer uses the same three parameters for different messages types */
+/* so these make the code a bit more readable */
+#define MSG_SRV_TYPE(Msg)  (Msg->param1)
+#define MSG_SRV_URL(Msg)   (Msg->param2)
+#define MSG_ATTR_LIST(Msg) (Msg->param3)
+
+/* deregistration */
+#define MSG_SRV_URL(Msg)   (Msg->param2)
+
+/* service request */
+#define MSG_SRV_TYPE(Msg)  (Msg->param1)
+#define MSG_PREDICATE(Msg) (Msg->param2)
+
+/*attribute request */
+#define MSG_REQ_URL(Msg)   (Msg->param1) 
+#define MSG_TAGS(Msg)      (Msg->param2) 
 
 /*=========================================================================*/
 /* constants */
@@ -141,49 +157,43 @@ const uint16_t  sa_reg_len        = sizeof(sa_reg_str) - 1;
 uint16_t      xid;              /* sequential transaction id */
 SLPDa_list    da_list[MAX_DA];  /* note, this is fixed count! */
 SLPdda_timer  dda_timer;        /* timer to manage finding Directory Agents */
-char         *attr_list;        /* attribute list */
-uint16_t      attr_list_len;    /* attribute list length ( so we don't have to recount this often) */
-char         *srv_url;          /* service type URL */
-uint16_t      srv_url_len;
-char         *srv_type;         /* service type */
-uint16_t      srv_type_len;
 
 ip4addr_t     slpmcast;         /* multicast address for SLP */
 netxsocket_t *slp_socket = NULL;/* socket for slp to use */
 unsigned int  msticks;          /* tick counter (used for some debugging) */
 
-/* callback for srvrqst */
-/* TODO: NOTE! We only allow one active callback for each of these! */
-#if SLP_IS_UA
-static void (*srvrqst_callback) (int error, char *url) = NULL;
-static void (*attrrqst_callback) (int error, char *attr_list) = NULL;
-
+#if SLP_IS_UA || SLP_IS_SA
 /* TODO: this could/should be also be a malloc() version with linked list */
-uint16_t      xids[MAX_RQST];  /* xid of service request, attribute request and service registrations */
+#define MAX_REG_PROPS  10
+SLPMsg  Msgs[MAX_RQST];               /* for tracking sending, resending returned ack of messsages */
+SLPRegProp reg_props[MAX_REG_PROPS];  /*registration properties for each component */
 #endif
 
 /*=========================================================================*/
 /* local function declarations */
 /*=========================================================================*/
-void      da_ip_list(char *str);
-
+/* SA functions */
 #if SLP_IS_SA
-SLPError  da_service_ack(ip4addr_t ip);
-void      da_reg_idx(int idx);
-void      da_dereg(void);
-void      da_reg(void);
+SLPError  da_reg(SLPDa_list *da);
+void      da_reg_all(void);
+void      da_dereg_all(void);
+SLPError  da_reg_prop(SLPDa_list *da, SLPRegProp *reg_prop, int delay);
 #endif
 
 /* UA and SA functions */
 #if SLP_IS_SA || SLP_IS_UA
-SLPError  da_add(SLPDAAdvert *daadvert);
-SLPError  da_delete(ip4addr_t ip);
-int       da_count(void);
-void      da_clear(void);
-void      da_close(void);
-SLPError  slp_receive_daadvert(ip4addr_t ip, SLPHeader *header, char *data);
-SLPError  slp_discover_da(void);
-ip4addr_t da_first(void);
+void        da_ip_list(char *str);
+SLPError    da_add(SLPDAAdvert *daadvert);
+__inline    void da_delete(SLPDa_list *da);
+SLPError    da_delete_by_ip(ip4addr_t ip);
+void        da_delete_all(void);
+int         da_count(void);
+void        da_close(void);
+SLPError    slp_receive_daadvert(ip4addr_t ip, SLPHeader *header, char *data);
+SLPError    slp_discover_da(void);
+SLPDa_list *da_first(void);
+SLPDa_list *da_find_by_ip(ip4addr_t ip);
+SLPError    da_service_ack(SLPDa_list *da);
 #endif
 
 /* more packing/unpacking */
@@ -197,10 +207,9 @@ char *unpackURL_ENTRY(char* data, SLPUrlEntry *urlentry);
 
 /* UA only functions (also see header file) */
 #if SLP_IS_UA
-/* SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate, */
-/*  void (*callback) (int error, char *url)); */
+SLPError slp_send_srvrqst(SLPMsg *Msg);
 SLPError slp_receive_srvrply(ip4addr_t ip, SLPHeader *header, char *data);
-/* SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags, */
+SLPError slp_send_attrrqst(SLPMsg *Msg);
 /*  void (*callback) (int error, char *attributes)); */
 SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data);
 #endif
@@ -208,8 +217,8 @@ SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data);
 /* SA only functions */
 #if SLP_IS_SA
 SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid);
-SLPError slp_send_reg(ip4addr_t ip, bool fresh);
-SLPError slp_send_dereg(ip4addr_t ip);
+SLPError slp_send_reg(SLPMsg *Msg, bool fresh);
+SLPError slp_send_dereg(SLPMsg *Msg);;
 SLPError slp_receive_srvrqst(ip4addr_t ip, SLPHeader *header, char *data);
 SLPError slp_send_srvrply(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code);
 SLPError slp_receive_svrack(ip4addr_t ip, SLPHeader *header, char *data);
@@ -294,6 +303,171 @@ SLPError SLPFindSrvTypes( SLPHandle hslp,
                           void* cookie)
 */
 
+/******************************************************************************
+ The following msg_ functions manage a static memory pool of message buffer
+ These are used to track a messages and it's response and to provide data for 
+ resending a message
+ ******************************************************************************/
+
+/* static pointer to first in linked list */
+static SLPMsg *FirstMsg = NULL;
+
+/******************************************************************************/
+/* Find fisrt message in our pool */
+__inline SLPMsg *msg_first(void){
+  return FirstMsg;
+}
+
+/******************************************************************************/
+/* Create a new message */
+SLPMsg *msg_new(uint16_t xid){
+  SLPMsg *Msg = Msgs;
+
+  while (Msg < Msgs + MAX_RQST) {
+    if (Msg->xid == 0) {
+      Msg->counter = 0;
+      Msg->xid = xid;
+      /* now put the new one at the start of the link */
+      Msg->next = FirstMsg?FirstMsg:NULL;
+      FirstMsg = Msg;
+      return(Msg);
+    }
+    Msg++;
+  }
+  /* No free one found, return NULL */
+  return NULL;
+}
+
+/******************************************************************************/
+/* Free a message */
+SLPMsg *msg_free(SLPMsg *Msg)
+{
+  SLPMsg *aMsg;
+
+  /* if at top just nuke it */
+  if (Msg == FirstMsg) {
+    Msg->xid = 0;
+    /* And make the next message the first one */
+    FirstMsg = Msg->next;
+    return FirstMsg;
+  }
+  
+  /* otherwise we need to point around it */
+  aMsg = FirstMsg;
+  while (aMsg) {
+    if (aMsg->next == Msg) {
+      /* ok, the next one is the one we are looking for! */
+      aMsg->next = Msg->next;
+      Msg->xid = 0;
+      return Msg->next;
+    }
+    aMsg = aMsg->next;
+  }
+  /* Not found, return NULL */
+  return NULL;
+}
+
+/******************************************************************************/
+/* find a mesage based on it's xid */
+SLPMsg *msg_find_by_xid(uint16_t xid){
+  SLPMsg *Msg;
+
+  Msg = msg_first();
+  while (Msg) {
+    if (Msg->xid == xid) {
+      return(Msg);
+    }
+    Msg = Msg->next;
+  }
+  /* Not found, return NULL */
+  return NULL;
+}
+
+/******************************************************************************/
+/* Count the number of valid messages */
+int msg_count(void)
+{
+  SLPMsg *Msg;
+  int     cnt = 0;
+
+  Msg = msg_first();
+  while (Msg) {
+    cnt++;
+    Msg = Msg->next;
+  }
+  return cnt;
+}
+
+/******************************************************************************
+ The following msg_ functions manage a static memory pool of registration properties.
+ These are used to allow auto-registration to new DA's as they become available.
+ ******************************************************************************/
+
+/******************************************************************************/
+/* add a new registration property */
+SLPRegProp *reg_prop_add(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list)
+{
+  SLPRegProp *p = reg_props;
+
+  /* while we have three properties, we only use the first on as our key and empty flag */
+  while (p < reg_props + MAX_REG_PROPS) {
+    if (p->reg_srv_url == NULL) {
+      p->reg_srv_url = reg_srv_url;
+      p->reg_srv_type = reg_srv_type;
+      p->reg_attr_list = reg_attr_list;
+      return p;
+    }
+    p++;
+  }
+  /* No free one found, return NULL */
+  return NULL;
+}
+
+/******************************************************************************/
+/* delete a registration property */
+SLPError reg_prop_del(SLPRegProp *reg_prop) 
+{
+  reg_prop->reg_srv_url = NULL;
+  reg_prop->reg_srv_type = NULL;
+  reg_prop->reg_attr_list = NULL;
+  return SLP_OK;
+}
+
+/* find a registration property byt it's URL */
+SLPRegProp *reg_prop_find(char *reg_srv_url) 
+{
+  SLPRegProp *p = reg_props;
+
+  /* got to have a real string (even if empty) */
+  assert(reg_srv_url);
+
+  while (p < reg_props + MAX_REG_PROPS) {
+    if (p->reg_srv_url == reg_srv_url) {
+      return p;
+    }
+    p++;
+  }
+  return NULL;
+}
+
+
+/******************************************************************************/
+/* Count registration properties */
+int reg_prop_count(void) 
+{
+  SLPRegProp *p = reg_props;
+
+  int result = 0;
+
+  while (p < reg_props + MAX_REG_PROPS) {
+    if (p->reg_srv_url) {
+      result++;
+    }
+    p++;
+  }
+  return result;
+}
+
 /*============================================================================*/
 /* Some routines to manage our DA (directory agent) list
  * We manage a limited amount of Directory agents
@@ -304,68 +478,27 @@ SLPError SLPFindSrvTypes( SLPHandle hslp,
  * params : str - pointer to start of string
  * returns: void
  */
+#if SLP_IS_SA || SLP_IS_UA
 void da_ip_list(char *str)
 {
-  int       x;
-  ip4addr_t ip;
-  int       first = SLP_TRUE;
+  int         first = SLP_TRUE;
+  SLPDa_list *da = da_list;
 
-  ip = netx_getmyip(0);
   str[0] = 0;
-  for (x=0;x<MAX_DA;x++) {
-    ip = da_list[x].ip;
-    if (ip) {
+  while (da < da_list + MAX_DA) {
+    if (da->ip) {
       if (first) {
-        sprintf(str, "%s", ntoa(ip));
+        sprintf(str, "%s", ntoa(da->ip));
       } else {
-        sprintf(str, "%s, %s", str, ntoa(ip));
+        sprintf(str, "%s, %s", str, ntoa(da->ip));
       }
       first = SLP_FALSE;
     }
+    da++;
   }
 }
+#endif /* SLP_IS_SA || SLP_IS_UA */
 
-/* TODO: These need to be flushed if they expire! */
-/******************************************************************************/
-int __xid_save(uint16_t xid)
-{
-  int x;
-  /* printf("save_xid: %d\n", xid); */
-  for (x=0;x<MAX_RQST;x++) {
-    if (xids[x] == 0) {
-      xids[x] = xid;
-      return true;
-    }
-  }
-  return false;
-}
-
-/******************************************************************************/
-int __xid_test(uint16_t xid)
-{
-  int x;
-  /* printf("test_xid: %d\n", xid); */
-  for (x=0;x<MAX_RQST;x++) {
-    if (xids[x] == xid) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/******************************************************************************/
-int __xid_clear(uint16_t xid)
-{
-  int x;
-  /* printf("clear_xid: %d\n", xid); */
-  for (x=0;x<MAX_RQST;x++) {
-    if (xids[x] == xid) {
-      xids[x] = 0;
-      return true;
-    }
-  }
-  return false;
-}
 
 #if SLP_IS_SA || SLP_IS_UA
 /******************************************************************************/
@@ -374,16 +507,14 @@ int __xid_clear(uint16_t xid)
  * returns: void
  * note   : does not do deregister them
  */
-void da_clear(void)
+void da_delete_all(void)
 {
-  int           x;
-  acn_protect_t protect;
+  SLPDa_list *da = da_list;
 
-  protect = ACN_PORT_PROTECT();
-  for (x=0;x<MAX_DA;x++) {
-    da_delete(da_list[x].ip);
+  while (da < da_list + MAX_DA) {
+    da_delete(da);
+    da++;
   }
-  ACN_PORT_UNPROTECT(protect);
 }
 #endif /*SLP_IS_SA || SLP_IS_UA */
 
@@ -393,52 +524,41 @@ void da_clear(void)
  * params : none
  * returns: void
  */
+/* Note: this is the only internal routine where ACN_PROTECT() is called  */
 void da_close(void)
 {
+  SLPDa_list   *d = da_list;
+  int           ticks = 0;
+  acn_protect_t protect;
+
   #if SLP_IS_SA
-  /* deregister all */
-  da_dereg();
-  #endif
+
+  slp_dereg_all();
+
+  /* wait for DAs to go to close state*/
+  while (1) {
+    /* look at open messages here */
+    protect = ACN_PORT_PROTECT();
+    if (!msg_count()) {
+      ACN_PORT_UNPROTECT(protect);
+      break;
+    }
+    ACN_PORT_UNPROTECT(protect);
+    msleep(100);
+    ticks++;
+    if (ticks > 20) {
+      /* Just give up */
+     acnlog(LOG_DEBUG | LOG_SLP , "slp da_close: giving up on closing DA's");
+     break;
+    }
+  }
 
   /* now nuke them */
-  da_clear();
-
+  da_delete_all();
+  #endif
   return;
 }
 #endif /* SLP_IS_SA || SLP_IS_UA */
-
-#if SLP_IS_SA
-/******************************************************************************/
-/* desc   : process registration/deregistrion ack for a directory agent
- * params : ip - 32 bit ip address to ack to
- * returns: SLP_OK if OK, or SLP_DA_NOT_FOUND if address was not in our list
- */
-SLPError da_service_ack(ip4addr_t ip)
-{
-  int x;
-
-  for (x=0;x<MAX_DA;x++) {
-    /* see if we have it */
-    if (da_list[x].ip == ip) {
-      switch (da_list[x].state) {
-        case DA_WAIT_REG:
-          /* we found it so now put start the expire timer */
-          da_list[x].state = DA_EXPIRE;
-          da_list[x].counter = SLP_REGIGISTION_REFRESH;
-          da_list[x].retries = 0;
-          da_list[x].timeout = CONFIG_DA_BEAT;
-          break;
-        case DA_WAIT_DEREG:
-          /* we found it mark it closed */
-          da_list[x].state = DA_CLOSED;
-          break;
-      }
-      return SLP_OK;
-    }
-  }
-  return SLP_DA_NOT_FOUND;
-}
-#endif /* SLP_IS_SA */
 
 #if SLP_IS_SA || SLP_IS_UA
 /******************************************************************************/
@@ -448,10 +568,9 @@ SLPError da_service_ack(ip4addr_t ip)
  */
 SLPError da_add(SLPDAAdvert *daadvert)
 {
-  int       x;
-  char     *ip_str;
-  ip4addr_t ip;
-  int       open = -1;
+  char         *ip_str;
+  ip4addr_t     ip;
+  SLPDa_list   *da;
 
   /* Get ip */
   ip_str = getSLP_STR(&daadvert->url);
@@ -459,76 +578,77 @@ SLPError da_add(SLPDAAdvert *daadvert)
     /* convert string to ip (string MUST be: service:directory-agent://<ip>) */
     ip = aton((char *)&ip_str[da_req_len + 3]);
     SLP_FREE(ip_str);
-  } else
-    ip = -1;
-
-  /* see if we have ip address already in the DA table */
-  for (x=0;x< MAX_DA; x++) {
-    if (da_list[x].ip == ip) {
-      if (daadvert->boot_time == 0) {
-        /* da is going down, just nuke it */
-        da_delete(da_list[x].ip);
-        return SLP_OK;
-      }
-      /* see if has rebooted */
-      if (daadvert->boot_time == da_list[x].boot_time) {
-        /* already have this one, do nothing...well...ok, mark it as still active. */
-        da_list[x].timeout = CONFIG_DA_BEAT;
-        return SLP_OK;
-      } else {
-        /* must of rebooted, nukeit to force a registration */
-        da_delete(da_list[x].ip);
-        open = x;
-        break;
-      }
-    }
-    /* else find first free slot */
-    if ((open == -1) && (da_list[x].ip == 0)) {
-      open = x;
-    }
+  } else {
+    return SLP_FAIL;
   }
 
-  /* we should only get here if id did not find one */
-  if (open != -1) {
-    da_list[open].ip = ip;
-    acnlog(LOG_DEBUG | LOG_SLP , "slp da_add: added DA: %s", ntoa(ip));
-    da_list[open].state = DA_CLOSED;
-    da_list[open].timeout = CONFIG_DA_BEAT;
-    /* if we have an attribute list, then set it to register */
-    #if SLP_IS_SA
-    if (attr_list) {
-      da_reg_idx(open); /* tell a DA about our registration */
+  da = da_find_by_ip(ip) ;
+  if (da) {
+    if (daadvert->boot_time == 0) {
+      /* da is going down, just nuke it */
+      da_delete(da);
+      return SLP_OK;
     }
-    #endif
-    da_list[open].boot_time = daadvert->boot_time;
-    return SLP_OK;
+    /* see if has rebooted */
+    if (daadvert->boot_time == da->boot_time) {
+      /* already have this one, do nothing...well...ok, mark it as still active. */
+      da->timeout = CONFIG_DA_BEAT;
+      return SLP_OK;
+    } else {
+      /* must of rebooted, nukeit to force a registration */
+      da_delete(da);
+      return SLP_OK;
+    }
+  } else {
+    /* trick to find first empty */
+    da = da_find_by_ip(0);
+    if (da) {
+      da->ip = ip;              /* flags it as used */
+      da->timeout = CONFIG_DA_BEAT;
+      da->boot_time = daadvert->boot_time;
+      acnlog(LOG_DEBUG | LOG_SLP , "slp da_add: added DA: %s", ntoa(ip));
+      /* if we have an attribute list, then set it to register */
+      #if SLP_IS_SA
+      /* put message in our stack */
+      da_reg(da);
+      #endif
+    } else {
+      return SLP_DA_LIST_FULL;
+    }
   }
-
-  /* we should only get here if we can't add a new one */
-  return SLP_DA_LIST_FULL;
+  return SLP_OK;
 }
 #endif /* SLP_IS_SA || SLP_IS_UA */
 
 #if SLP_IS_SA || SLP_IS_UA
 /******************************************************************************/
-/* desc   : remove a DA from our list
+/* desc   : remove a DA from our list by it's IP
  * params : ip - 32 bit IP address
  * returns: SLP_OK if OK, or SLP_DA_NOT_FOUND if not found
  */
-SLPError da_delete(ip4addr_t ip)
+SLPError da_delete_by_ip(ip4addr_t ip)
 {
-  int  x;
+ SLPDa_list *da = da_list;
 
-  for (x=0;x<MAX_DA;x++) {
-    if(da_list[x].ip == ip) {
-
-      da_list[x].state = DA_CLOSED;
-      da_list[x].ip = 0;
-
+  while (da < da_list + MAX_DA) {
+    if(da->ip == ip) {
+      da_delete(da);
       return SLP_OK;
     }
+    da++;
   }
   return SLP_DA_NOT_FOUND;
+}
+
+/******************************************************************************/
+/* desc   : remove a DA from our list
+ * params : da - DA to remove
+ * returns: 
+ */
+__inline void da_delete(SLPDa_list *da)
+{
+  assert(da);
+  da->ip = 0;
 }
 #endif /* SLP_IS_SA || SLP_IS_UA */
 
@@ -540,17 +660,73 @@ SLPError da_delete(ip4addr_t ip)
  */
 int da_count(void)
 {
-  int  x;
   int result = 0;
+  SLPDa_list *d = da_list;
 
-  for (x=0;x<MAX_DA;x++) {
-    if(da_list[x].ip) {
-      result++;
+  while (d < da_list + MAX_DA) {
+    if (d->ip) {
+      result ++;
     }
+    d++;
   }
   return result;
 }
 #endif /* SLP_IS_SA || SLP_IS_UA */
+
+#if SLP_IS_SA || SLP_IS_UA
+/******************************************************************************/
+/* desc   : find first da in our list
+ * params : none
+ * returns: Pointer to our DA
+ */
+SLPDa_list *da_first(void)
+{
+  SLPDa_list *d = da_list;
+  while (d < da_list + MAX_DA) {
+    if (d->ip) {
+      return d;
+    }
+    d++;
+  }
+  return NULL;
+}
+#endif /* #if SLP_IS_SA || SLP_IS_UA */
+
+#if SLP_IS_SA || SLP_IS_UA
+/******************************************************************************/
+/* desc   : find da in our list by it's IP
+ * params : IP - IP of DA to find
+ * returns: pointer to our DA
+ */
+SLPDa_list *da_find_by_ip(ip4addr_t ip)
+{
+  SLPDa_list *da = da_list;
+  while (da < da_list + MAX_DA) {
+    if (da->ip == ip) {
+      return da;
+    }
+    da++;
+  }
+  return NULL;
+}
+#endif /* #if SLP_IS_SA || SLP_IS_UA */
+
+
+#if SLP_IS_SA
+/******************************************************************************/
+/* desc   : process registration/deregistrion ack from a directory agent
+ * params : ip - 32 bit ip address to ack to
+ * returns: SLP_OK if OK, or SLP_DA_NOT_FOUND if address was not in our list
+ */
+SLPError da_service_ack(SLPDa_list *da)
+{
+  assert(da);
+
+  /* update timer */
+  da->timeout = CONFIG_DA_BEAT;
+  return SLP_OK;
+}
+#endif /* SLP_IS_SA */
 
 
 #if SLP_IS_SA
@@ -560,9 +736,61 @@ int da_count(void)
  * returns: void
  * note   : does not verify idx nor if there is an ip in list
  */
-void da_reg_idx(int idx)
+SLPError da_reg_prop(SLPDa_list *da, SLPRegProp *reg_prop, int delay)
 {
-  uint16_t  tps_delay;
+  SLPMsg       *Msg;
+
+  Msg = msg_new(xid++);
+  if (Msg) {
+    Msg->da = da;
+    Msg->type = mtREG;
+    Msg->counter = delay;
+    Msg->retries = SLP_RETRIES;
+
+    /* Yuck! copy strings */
+    MSG_SRV_TYPE(Msg) = SLP_MALLOC(strlen(reg_prop->reg_srv_type+1));
+    if (!MSG_SRV_TYPE(Msg)) {
+      msg_free(Msg);
+      return SLP_MEMORY_ALLOC_FAILED;
+    }
+    strcpy(MSG_SRV_TYPE(Msg),reg_prop->reg_srv_type);
+
+
+    MSG_ATTR_LIST(Msg) = SLP_MALLOC(strlen(reg_prop->reg_attr_list)+1);
+    if (!MSG_ATTR_LIST(Msg)) {
+      SLP_FREE(MSG_SRV_TYPE(Msg));
+      msg_free(Msg);
+      return SLP_MEMORY_ALLOC_FAILED;
+    }
+    strcpy(MSG_ATTR_LIST(Msg),reg_prop->reg_attr_list);
+
+    MSG_SRV_URL(Msg) = SLP_MALLOC(strlen(reg_prop->reg_srv_url)+1);
+    if (!MSG_SRV_URL(Msg)) {
+      SLP_FREE(MSG_SRV_TYPE(Msg));
+      SLP_FREE(MSG_ATTR_LIST(Msg));
+      msg_free(Msg);
+      return SLP_MEMORY_ALLOC_FAILED;
+    }
+    strcpy(MSG_SRV_URL(Msg),reg_prop->reg_srv_url);
+
+    /* TODO: add call back to this */
+    Msg->callback = NULL;
+  } else {
+    return SLP_MEMORY_ALLOC_FAILED;
+  }
+  return SLP_OK;
+}
+#endif /* SLP_IS_SA */
+
+
+#if SLP_IS_SA
+/******************************************************************************/
+SLPError da_reg(SLPDa_list *da)
+{
+  uint16_t      tps_delay;
+  SLPRegProp   *reg_prop;
+
+  assert(da);
 
   /* get a random delay */
   tps_delay = rand(); /* returns int in range 0 to RAND_MAX (at least 32k) */
@@ -572,103 +800,99 @@ void da_reg_idx(int idx)
   }
 
   /* command the registration to the slp_tick() routine */
-  da_list[idx].state = DA_SEND_REG;
-  da_list[idx].counter = tps_delay;
-  da_list[idx].retries = 2;
-}
-#endif /* SLP_IS_SA */
-
-#if SLP_IS_SA
-/******************************************************************************/
-/* desc   : tell DAs about our registration
- * params : none
- * returns: void
- */
-void da_reg(void)
-{
-  int  x;
-  /* tell up to 10 DA's */
-  for (x=0;x<MAX_DA;x++) {
-    /* if this DA has an IP */
-    if(da_list[x].ip) {
-      /* register with this DA */
-      da_reg_idx(x);  /* tell a DA about our registration */
-    }
-  }
-}
-#endif /* SLP_IS_SA */
-
-#if SLP_IS_SA
-/******************************************************************************/
-/* desc   : tell da about our deregistration
- * params : none
- * returns: void
- */
-void da_dereg(void)
-{
-  int x;
-  int still_open = SLP_FALSE;
-  int  count = 0;
-
-  for (x=0;x<MAX_DA;x++) {
-    if (da_list[x].ip) {
-      da_list[x].state = DA_SEND_DEREG;
-      da_list[x].counter = CONFIG_RETRY;
-      da_list[x].retries = 2;
-    }
-  }
-#if (SLP_TMR_INTERVAL != 100)
-#error The following code depends on SLP_TMR_INTERVAL being 100ms
-#endif
-
-  /* now wait for 3 retries */
-  while (count < CONFIG_RETRY * 3) { /* CONFIG_RETRY in going to be 2 seconds or 200 100ms ticks */
-    still_open = SLP_FALSE;
-    for (x=0;x<MAX_DA;x++) {
-      if (da_list[x].state != DA_CLOSED) {
-        still_open = SLP_TRUE;
-        break; /* from for() loop */
+  reg_prop = reg_props;
+  while (reg_prop < reg_props + MAX_REG_PROPS) {
+    if (reg_prop->reg_srv_url) {
+      if (da_reg_prop(da, reg_prop, tps_delay) == SLP_FAIL) {
+        return SLP_FAIL;
       }
     }
-    if (still_open) {
-      msleep(SLP_TMR_INTERVAL); /* delay 100 ms */
-    } else {
-      break; /* from while() */
-    }
-    count++;
+    reg_prop++;
   }
-  /* If there any still open, just close them anyway. */
-  /* In theory, our tick will romove the non-responging DA */
-  if (still_open) {
-    acnlog(LOG_DEBUG | LOG_SLP , "da_dereg: forcing DA closed!");
-    for (x=0;x<MAX_DA;x++) {
-      da_list[x].state = DA_CLOSED;
-    }
-  } else {
-    acnlog(LOG_DEBUG | LOG_SLP , "da_dereg: DA closed!");
-  }
+  /* tag it as updated */
+  da->counter = SLP_REGIGISTION_REFRESH;
+  return SLP_OK;
 }
-#endif /* SLP_SA */
+#endif /* SLP_IS_SA */
 
-#if SLP_IS_SA || SLP_IS_UA
+#if SLP_IS_SA
 /******************************************************************************/
-/* desc   : find first da in our list
+/* desc   : tell all DAs about our registrations
  * params : none
- * returns: ip of first DA in list
+ * returns: void
  */
-ip4addr_t da_first(void)
+void da_reg_all(void)
 {
-  int x;
+  SLPDa_list *da = da_list;
 
-  for (x=0;x<MAX_DA;x++) {
-    if (da_list[x].ip) {
-      return da_list[x].ip;
+  while (da < da_list + MAX_DA) {
+    /* if this DA has an IP */
+    if(da->ip) {
+      /* register with this DA */
+      da_reg(da);  /* tell a DA about our registration */
     }
+    da++;
   }
-  return 0;
 }
-#endif /* #if SLP_IS_SA || SLP_IS_UA */
+#endif /* SLP_IS_SA */
 
+#if SLP_IS_SA
+/******************************************************************************/
+/* desc   : tell DA's about our deregistrations
+ * params : none
+ * returns: void
+ */
+SLPError da_dereg_prop(SLPDa_list *da, SLPRegProp   *reg_prop)
+{
+  SLPMsg       *Msg;
+
+  Msg = msg_new(xid++);
+  if (Msg) {
+    Msg->da = da;
+    Msg->type = mtDEREG;
+    Msg->counter = 0;
+    Msg->retries = SLP_RETRIES;
+
+    /* Yuck! copy strings */
+    MSG_SRV_URL(Msg) = SLP_MALLOC(strlen(reg_prop->reg_srv_url)+1);
+    if (!MSG_SRV_URL(Msg)) {
+      msg_free(Msg);
+      return SLP_MEMORY_ALLOC_FAILED;
+    }
+    strcpy(MSG_SRV_URL(Msg), reg_prop->reg_srv_url);
+
+    /* TODO: add call back to this */
+    Msg->callback = NULL;
+  } else {
+    return SLP_MEMORY_ALLOC_FAILED;
+  }
+  return SLP_OK;
+}
+#endif /* SLP_IS_SA */
+
+
+#if SLP_IS_SA
+/******************************************************************************/
+void da_dereg_all(void)
+{
+  SLPDa_list *da = da_list;
+  SLPRegProp *reg_prop = reg_props;
+
+  while (reg_prop < reg_props + MAX_REG_PROPS) {
+    if (reg_prop->reg_srv_url) {
+      while (da < da_list + MAX_DA) {
+        if (da->ip) {
+          da_dereg_prop(da, reg_prop);
+        }
+        da++;
+      }
+      reg_prop_del(reg_prop);
+    }
+    reg_prop++;
+  }
+}
+
+#endif /* SLP_SA */
 
 
 
@@ -874,14 +1098,18 @@ char *unpackURL_ENTRY(char* data, SLPUrlEntry *urlentry)
 /* called once per SLP_TMR_INTERVAL */
 void slp_tick(void *arg)
 {
-  int            x;
   acn_protect_t  protect;
+  SLPMsg         *Msg;
+  SLPDa_list     *da = da_list;
 
   SLP_UNUSED_ARG(arg);
 
   /* count milliseconds */
   msticks += SLP_TMR_INTERVAL;
 
+  protect = ACN_PORT_PROTECT();
+
+#if SLP_IS_SA || SLP_IS_UA
   /* see if we need to send DA discovers */
   if (dda_timer.discover) {
     if (dda_timer.counter == 0) {
@@ -900,6 +1128,7 @@ void slp_tick(void *arg)
         slp_discover_da(); /* send a service request for da discovery */
         #endif
         /* only send once per loop */
+        ACN_PORT_UNPROTECT(protect);
         return;
       }
     } else {
@@ -907,99 +1136,168 @@ void slp_tick(void *arg)
     }
   }
   /* loop for all DA's */
-  for (x=0;x<MAX_DA;x++) {
+  while (da < da_list + MAX_DA) {
     /* if this DA has a valid IP address */
-    if (da_list[x].ip) {
-      /* deal with DA timeout first */
-      da_list[x].timeout--;
+    if (da->ip) {
+      /* test to see if DA has gone dead */
+      da->timeout--;
       /* if DA timed out */
-      if (!da_list[x].timeout) {
-        protect = ACN_PORT_PROTECT();
+      if (!da->timeout) {
         /* delete this DA */
-        da_delete(da_list[x].ip);
-        ACN_PORT_UNPROTECT(protect);
+        acnlog(LOG_DEBUG | LOG_SLP , "slp_tick: Removing non-responsive DA ");
+        da_delete(da);
         continue;
       }
-      /* if there is no longer a wait for this DA */
-      if (da_list[x].counter == 0) {
-        /* do the next command */
-        switch (da_list[x].state) {
-          case DA_SEND_REG:
-            /* time to send registration */
-            da_list[x].state = DA_WAIT_REG;
-            da_list[x].counter = CONFIG_RETRY;
-            da_list[x].retries = 2;
-            #if SLP_IS_SA
-            slp_send_reg(da_list[x].ip, SLP_TRUE);
-            #endif
-            /* only send once per loop */
-            return;
-            /* break; */
-          case DA_WAIT_REG:
-            if (da_list[x].retries) {
-              /* try again */
-              da_list[x].counter = CONFIG_RETRY;
-              da_list[x].retries--;
-              #if SLP_IS_SA
-              slp_send_reg(da_list[x].ip, SLP_TRUE);
-              #endif
-              /* only send once per loop */
-              return;
-            } else {
-              /* time out on registration/deregistration so remove it */
-              da_list[x].ip = DA_CLOSED;
-              da_list[x].ip = 0;
-            }
-            break;
-          case DA_EXPIRE:
-            /* time out expired so we need to refresh registration */
-            da_list[x].counter = SLP_REGIGISTION_REFRESH;
-            da_list[x].retries = 0;
-            #if SLP_IS_SA
-            slp_send_reg(da_list[x].ip, SLP_FALSE);
-            #endif
-            /* only send once per loop */
-            return;
-            /* break; */
-          case DA_SEND_DEREG:
-            /* send a deregistration */
-            da_list[x].state = DA_WAIT_DEREG;
-            da_list[x].counter = CONFIG_RETRY;
-            da_list[x].retries = 2;
-            #if SLP_IS_SA
-            slp_send_dereg(da_list[x].ip);
-            #endif
-            /* only send once per loop */
-            return;
-            /* break; */
-          case DA_WAIT_DEREG:
-            if (da_list[x].retries) {
-              /* try again */
-              da_list[x].counter = CONFIG_RETRY;
-              da_list[x].retries--;
-              #if SLP_IS_SA
-              slp_send_dereg(da_list[x].ip);
-              #endif
-              /* only send once per loop */
-              return;
-            #if 0 /* TODO: wrf - no need delete these so why did I code it this way originally? */
-            } else {
-              /* time out on de-registration so remove it */
-              protect = ACN_PORT_PROTECT();
-              da_delete(da_list[x].ip);
-              ACN_PORT_UNPROTECT(protect);
-            #endif
-            }
-            break;
-        }
-      } else {
-        da_list[x].counter--;
-      } /* of counter == 0 */
-    } /* of has ip */
-  } /* of for */
+      /* test to see fi we need to resend our registration to this DA */
+      da->counter--;
+      if (!da->counter) {
+        da_reg(da);
+      }
+    }
+    da++;
+  }
+
+  Msg = msg_first();
+  while (Msg) {
+    if (Msg->xid && Msg->counter == 0) {
+      switch (Msg->type) {
+        case mtREG:
+          if (Msg->retries) {
+            slp_send_reg(Msg, SLP_TRUE);
+            Msg->counter = CONFIG_RETRY;
+            Msg->retries--;
+          } else {
+            /* give up trying to send and nuke DA*/
+            acnlog(LOG_DEBUG | LOG_SLP , "slp_tick: registration failed");
+            SLP_FREE(MSG_SRV_TYPE(Msg));
+            SLP_FREE(MSG_SRV_URL(Msg));
+            SLP_FREE(MSG_ATTR_LIST(Msg));
+            da_delete(Msg->da);
+            Msg = msg_free(Msg);
+          }
+          break;
+        case mtDEREG:
+          if (Msg->retries) {
+            slp_send_dereg(Msg);
+            Msg->counter = CONFIG_RETRY;
+            Msg->retries--;
+          } else {
+            /* give up trying to send and nuke DA*/
+            acnlog(LOG_DEBUG | LOG_SLP , "slp_tick: deregistration failed");
+            SLP_FREE(MSG_SRV_URL(Msg));
+            da_delete(Msg->da);
+            Msg = msg_free(Msg);
+          }
+          break;
+        case mtSRVRQST:
+          if (Msg->retries) {
+            slp_send_srvrqst(Msg);
+            Msg->counter = CONFIG_RETRY;
+            Msg->retries--;
+          } else {
+            /* give up trying to send and nuke DA*/
+            acnlog(LOG_DEBUG | LOG_SLP , "slp_tick: service request failed");
+            SLP_FREE(MSG_SRV_TYPE(Msg));
+            SLP_FREE(MSG_PREDICATE(Msg));
+            da_delete(Msg->da);
+            Msg = msg_free(Msg);
+          }
+          break;
+        case mtATTRRQST:
+          if (Msg->retries) {
+            slp_send_attrrqst(Msg);
+            Msg->counter = CONFIG_RETRY;
+            Msg->retries--;
+          } else {
+            /* give up trying to send and nuke DA*/
+            acnlog(LOG_DEBUG | LOG_SLP , "slp_tick: attribute request failed");
+            SLP_FREE(MSG_REQ_URL(Msg));
+            SLP_FREE(MSG_TAGS(Msg));
+
+            da_delete(Msg->da);
+            Msg = msg_free(Msg);
+          }
+          break;
+        default:
+          /* no clue, just nuke it */
+         Msg = msg_free(Msg);
+      }
+    } else {
+      Msg->counter--;
+      Msg = Msg->next;
+    }
+  }
+#endif /* SLP_IS_SA || SLP_IS_US */
+
+  ACN_PORT_UNPROTECT(protect);
 }
 
 #if SLP_IS_UA
+SLPError slp_srvrqst(ip4addr_t ip, char *req_srv_type, char *req_predicate,
+                     void (*callback) (int error, char *url, int count)){
+
+  SLPMsg       *Msg;
+  acn_protect_t protect;
+  SLPDa_list   *da;
+
+  if (!slp_socket) {
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_srvrqst: SLP_NOT_OPEN:");
+    return SLP_NOT_OPEN;
+  }
+
+  protect = ACN_PORT_PROTECT();
+  /* if ip = 0, then use first from list */
+  if (!ip) {
+    da = da_first();
+    if (!da) {
+      ACN_PORT_UNPROTECT(protect);
+      acnlog(LOG_DEBUG | LOG_SLP , "slp_srvrqst: No DA available");
+      return(SLP_PARAMETER_BAD);
+    }
+  } else {
+    da = da_find_by_ip(ip); 
+    if (!da) {
+      ACN_PORT_UNPROTECT(protect);
+      acnlog(LOG_DEBUG | LOG_SLP , "slp_srvrqst: DA not found");
+      return(SLP_PARAMETER_BAD);
+    }
+  }
+
+  /* put message in our stack */
+  Msg = msg_new(xid++);
+  if (Msg) {
+    Msg->da = da;
+    Msg->type = mtSRVRQST;
+    Msg->counter = 0;
+    Msg->retries = SLP_RETRIES;
+
+    /* Yuck! copy strings */
+    MSG_SRV_TYPE(Msg) = SLP_MALLOC(strlen(req_srv_type) + 1);
+    if (!MSG_SRV_TYPE(Msg)) {
+      msg_free(Msg);
+      ACN_PORT_UNPROTECT(protect);
+      return SLP_MEMORY_ALLOC_FAILED;
+    }
+    strcpy(MSG_SRV_TYPE(Msg), req_srv_type);
+
+    MSG_PREDICATE(Msg) = SLP_MALLOC(strlen(req_predicate) + 1);
+    if (!MSG_PREDICATE(Msg)) {
+      msg_free(Msg);
+      SLP_FREE(MSG_SRV_TYPE(Msg));
+      ACN_PORT_UNPROTECT(protect);
+      return SLP_MEMORY_ALLOC_FAILED;
+    }
+    strcpy(MSG_PREDICATE(Msg), req_predicate);
+
+    Msg->callback = callback;
+  } else {
+    ACN_PORT_UNPROTECT(protect);
+    return SLP_MEMORY_ALLOC_FAILED;
+  }
+  ACN_PORT_UNPROTECT(protect);
+  return SLP_OK;
+}
+
 /*******************************************************************************
   8.1. Service Request
    0                   1                   2                   3
@@ -1025,9 +1323,7 @@ void slp_tick(void *arg)
  *        : error message if fail
  */
 /******************************************************************************/
-/* FUNCTION TESTED */
-SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
-  void (*callback) (int error, char *url))
+SLPError slp_send_srvrqst(SLPMsg *Msg)
 {
   uint32_t     length;
   char        *data;
@@ -1042,24 +1338,14 @@ SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
 
   LOG_FSTART();
 
-  if (!slp_socket) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrqst: SLP_NOT_OPEN:");
-    return SLP_NOT_OPEN;
-  }
-
-  /* if ip = 0, then use first from list */
-  if (!ip) {
-    ip = da_first();
-    if (!ip) {
-      acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrqst: No DA available");
-      return(SLP_PARAMETER_BAD);
-    }
-  }
 
   /* create a new udp packet */
   pkt = netx_new_txbuf(0);
   /* get address where data will go */
   data = netx_txbuf_data(pkt);
+  if (!data) {
+    return SLP_MEMORY_ALLOC_FAILED;
+  }
 
   /* copy pointer */
   offset = data;
@@ -1069,7 +1355,7 @@ SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
   slp_header.function_id = SLP_FUNCT_SRVRQST; /* request */
   slp_header.flags = 0;
   slp_header.ext_offset = 0;                  /* Next Ext Offset */
-  slp_header.xid = xid++;                     /* XID */
+  slp_header.xid = Msg->xid;                   /* XID */
   slp_header.lang_tag.str = (char*)local_lang_str;
   slp_header.lang_tag.len = local_lang_len;
   offset = packSLP_HEADER(offset, &slp_header);
@@ -1082,12 +1368,12 @@ SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
   offset = packSLP_STR(offset, &slp_string);
 
   /* service-type */
-  if (req_srv_type) {
-    slp_string.len = strlen(req_srv_type);
+  if (MSG_SRV_TYPE(Msg)) {
+    slp_string.len = strlen(MSG_SRV_TYPE(Msg));
   } else {
     slp_string.len = 0;
   }
-  slp_string.str = req_srv_type;
+  slp_string.str = MSG_SRV_TYPE(Msg);
   offset = packSLP_STR(offset, &slp_string);
 
   /* scope-list */
@@ -1096,12 +1382,12 @@ SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
   offset = packSLP_STR(offset, &slp_string);
 
   /* predicate string */
-  if (reg_predicate) {
-    slp_string.len = strlen(reg_predicate);
+  if (MSG_PREDICATE(Msg)) {
+    slp_string.len = strlen(MSG_PREDICATE(Msg));
   } else {
     slp_string.len = 0;
   }
-  slp_string.str = reg_predicate;
+  slp_string.str = MSG_PREDICATE(Msg);
   offset = packSLP_STR(offset, &slp_string);
 
   /* slp_spi (null) */
@@ -1113,13 +1399,8 @@ SLPError slp_send_srvrqst(ip4addr_t ip, char *req_srv_type, char *reg_predicate,
   offset = data + 2;
   offset = packUINT24(offset, length);  /* length */
 
-  srvrqst_callback = callback;
-
-  /* save xid */
-  __xid_save(slp_header.xid);
-
   /* create address */
-  netx_INADDR(&dest_addr) = ip;/* htonl(SLP_MCAST_ADDRESS); */
+  netx_INADDR(&dest_addr) = Msg->da->ip;/* htonl(SLP_MCAST_ADDRESS); */
   netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
@@ -1170,6 +1451,7 @@ SLPError slp_receive_srvrqst(ip4addr_t ip, SLPHeader *header, char *data)
   char *pr_list;
   char *scope_list;
   char *service_type;
+  SLPMsg *Msg;
 
   LOG_FSTART();
 
@@ -1215,13 +1497,18 @@ SLPError slp_receive_srvrqst(ip4addr_t ip, SLPHeader *header, char *data)
             } else {
               /* if service type string = "service:acn.esta" */
               /* if (!__strcasecmp("service:acn.esta", service_type)) { */
-              if (!__strcasecmp(srv_type, service_type)) {
-                /* yep, that's us... */
-                SLP_FREE(service_type); /* return the string buffer */
-                if (!(header->flags & SLP_FLAG_MCAST)) {
-                  slp_send_srvrply(ip, header->xid, SLP_OK);
+              Msg = msg_find_by_xid(header->xid);
+              if (Msg) {
+                if (!__strcasecmp(MSG_SRV_TYPE(Msg), service_type)) {
+                  /* yep, that's us... */
+                  SLP_FREE(service_type); /* return the string buffer */
+                  if (!(header->flags & SLP_FLAG_MCAST)) {
+                    slp_send_srvrply(ip, header->xid, SLP_OK);
+                  }
+                  /* SEND SAAdvert here */
+                } else {
+                  SLP_FREE(service_type);
                 }
-                /* SEND SAAdvert here */
               } else {
                 /* not our service so just exit out */
                 SLP_FREE(service_type);
@@ -1237,14 +1524,14 @@ SLPError slp_receive_srvrqst(ip4addr_t ip, SLPHeader *header, char *data)
            slp_send_srvrply(ip, header->xid, SLP_SCOPE_NOT_SUPPORTED);
           }
         }
-      } else {
+      } else { /* !(scope_list) */
         return SLP_MEMORY_ALLOC_FAILED;
       }
-    } else  {
+    } else  { /* strstr(pr_list, our_ip) */
       /* we are in prlist so just exit out */
       SLP_FREE(pr_list);
     }
-  } else {
+  } else { /* ! if (pr_list) */
     return SLP_MEMORY_ALLOC_FAILED;
   }
   return SLP_OK;
@@ -1275,7 +1562,6 @@ SLPError slp_receive_srvrqst(ip4addr_t ip, SLPHeader *header, char *data)
         : error message from udp_send()
  note   : this is similar to but sends multicast
 ******************************************************************************/
-/* FUNCTION TESTED */
 SLPError slp_discover_da(void)
 {
   uint32_t     length;
@@ -1291,12 +1577,16 @@ SLPError slp_discover_da(void)
   LOG_FSTART();
 
   if (!slp_socket) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrqst: SLP_NOT_OPEN:");
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_discover_da: SLP_NOT_OPEN:");
     return SLP_NOT_OPEN;
   }
 
   /* create a new udp packet */
   pkt = netx_new_txbuf(0);
+  if (!pkt) {
+    return SLP_MEMORY_ALLOC_FAILED;
+  }
+
   /* get address where data will go */
   data = netx_txbuf_data(pkt);
 
@@ -1394,7 +1684,7 @@ SLPError slp_send_srvrply(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code)
   LOG_FSTART();
 
   if (!slp_socket) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrqst: SLP_NOT_OPEN:");
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrply: SLP_NOT_OPEN:");
     return SLP_NOT_OPEN;
   }
 
@@ -1427,8 +1717,9 @@ SLPError slp_send_srvrply(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code)
     offset = packUINT16(offset,1);
     /* pack URL */
     slp_urlentry.lifetime = SLP_REGIGRATION_LIFETIME;
-    slp_urlentry.url.len = srv_url_len;
-    slp_urlentry.url.str = srv_url;
+    /* TODO: this needs to get the URL from somewhere. Perhaps we can keep them in our attribute list */
+    /*slp_urlentry.url.len = srv_url_len; */
+    /*slp_urlentry.url.str = srv_url; */
     slp_urlentry.num_auth_blocks = 0;
     offset = packSLP_URL_ENTRY(offset, &slp_urlentry);
   } else {
@@ -1481,22 +1772,25 @@ SLPError slp_receive_srvrply(ip4addr_t ip, SLPHeader *header, char *data)
   uint16_t    error_code;
   uint16_t    url_count;
   SLPUrlEntry urlentry;
+  SLPMsg     *Msg;
   char  *url;
+
 
   SLP_UNUSED_ARG(ip);
 
   LOG_FSTART();
 
   /* error, xid does not match, this may not be an error so return OK */
-  if (!__xid_test(header->xid)) {
-    return (SLP_OK);
+  Msg = msg_find_by_xid(header->xid);
+  if (!Msg) {
+    return SLP_OK;
   }
 
   data = unpackUINT16(data, &error_code);
   if (error_code) {
     /* callback with error code */
-    if (srvrqst_callback) {
-      srvrqst_callback(error_code, NULL);
+    if (Msg->callback) {
+      Msg->callback(error_code, NULL, 0);
     }
   } else {
     /* get URL count */
@@ -1512,16 +1806,20 @@ SLPError slp_receive_srvrply(ip4addr_t ip, SLPHeader *header, char *data)
       /* so we convert it. We MUST free this ourselves! */
       url = getSLP_STR(&urlentry.url);
       /* callback with URL here... */
-      if (srvrqst_callback) {
-        srvrqst_callback(SLP_OK, url);
+      if (Msg->callback) {
+        Msg->callback(SLP_OK, url, url_count);
       }
       SLP_FREE(url);
       url_count--;
     }
   }
 
+  SLP_FREE(MSG_SRV_TYPE(Msg));
+  SLP_FREE(MSG_PREDICATE(Msg));
+
   /* remove xid from our list */
-  __xid_clear(header->xid);
+  msg_free(Msg);
+
   return SLP_OK;
 }
 #endif /* SLP_IS_UA */
@@ -1550,8 +1848,71 @@ SLPError slp_receive_srvrply(ip4addr_t ip, SLPHeader *header, char *data)
  returns: SLP_OK if valid
         : non-zero if not valid
 ******************************************************************************/
-/* FUNCTION TESTED */
-SLPError slp_send_reg(ip4addr_t ip, bool fresh)
+#if SLP_IS_SA
+/*******************************************************************************/
+/* Registers a service URL and service attributes with SLP.
+ * TODO: current implementation only allows us to register one component
+ *******************************************************************************/
+SLPError slp_reg(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list)
+{
+  acn_protect_t protect;
+  SLPDa_list   *da;
+  SLPRegProp   *reg_prop;
+
+  LOG_FSTART();
+
+  /* you must open first */
+  if (!slp_socket)  {
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_reg: socket not open");
+    return SLP_NOT_OPEN;
+  }
+
+  /* make sure we have a real attribute list */
+  if (!reg_attr_list) {
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_reg: !reg_prop");
+    return SLP_PARAMETER_BAD;
+  }
+
+  /* make sure we have a real url */
+  if (!reg_srv_url) {
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_reg: !reg_srv_url");
+    return SLP_PARAMETER_BAD;
+  }
+
+  /* make sure we have a real type */
+  if (!reg_srv_type) {
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_reg: !reg_srv_type");
+    return SLP_PARAMETER_BAD;
+  }
+
+  protect = ACN_PORT_PROTECT();
+  /* see if we already have this (could be a resend ) */
+  reg_prop = reg_prop_find(reg_srv_url);
+  if (!reg_prop) {
+    reg_prop = reg_prop_add(reg_srv_url, reg_srv_type, reg_attr_list);
+    if (!reg_prop) {
+      ACN_PORT_UNPROTECT(protect);
+      acnlog(LOG_DEBUG | LOG_SLP , "slp_reg: out of registrion properties");
+      return SLP_MEMORY_ALLOC_FAILED;
+    }
+  }
+
+  /* send registration to all the DAs */
+  da = da_list;
+  while (da < da_list + MAX_DA) {
+    /* if this DA has an IP */
+    if(da->ip) {
+      da_reg_prop(da,reg_prop,0);
+    }
+    da++;
+  }
+  ACN_PORT_UNPROTECT(protect);
+  return SLP_OK;
+}
+#endif /* SLP_IS_SA */
+
+/*******************************************************************************/
+SLPError slp_send_reg(SLPMsg *Msg, bool fresh)
 {
   uint32_t     length;
   char        *data;
@@ -1564,12 +1925,10 @@ SLPError slp_send_reg(ip4addr_t ip, bool fresh)
   SLPHeader   slp_header;
   SLPUrlEntry slp_urlentry;
 
-  SLP_UNUSED_ARG(ip);
-
   LOG_FSTART();
 
   if (!slp_socket) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrqst: SLP_NOT_OPEN:");
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_reg: SLP_NOT_OPEN:");
     return SLP_NOT_OPEN;
   }
 
@@ -1590,21 +1949,21 @@ SLPError slp_send_reg(ip4addr_t ip, bool fresh)
     slp_header.flags = 0;
   }
   slp_header.ext_offset = 0;                        /* Next Ext Offset */
-  slp_header.xid = xid++;                           /* XID */
+  slp_header.xid = Msg->xid;                        /* XID */
   slp_header.lang_tag.len = local_lang_len;         /* Language Tag Length */
   slp_header.lang_tag.str = (char*)local_lang_str;  /* Language Tag String */
   offset = packSLP_HEADER(offset, &slp_header);     /* copy data into the packet */
 
   /* url  */
   slp_urlentry.lifetime = SLP_REGIGRATION_LIFETIME;
-  slp_urlentry.url.len = srv_url_len;
-  slp_urlentry.url.str = srv_url;
+  slp_urlentry.url.len = strlen(MSG_SRV_URL(Msg));
+  slp_urlentry.url.str = MSG_SRV_URL(Msg);
   slp_urlentry.num_auth_blocks = 0;
   offset = packSLP_URL_ENTRY(offset, &slp_urlentry); /* copy data into the packet */
 
   /* service */
-  slp_string.len = srv_type_len;
-  slp_string.str = srv_type;
+  slp_string.len = strlen(MSG_SRV_TYPE(Msg));
+  slp_string.str = MSG_SRV_TYPE(Msg);
   offset = packSLP_STR(offset, &slp_string);         /* copy data into the packet */
 
   /* scope-list */
@@ -1613,8 +1972,8 @@ SLPError slp_send_reg(ip4addr_t ip, bool fresh)
   offset = packSLP_STR(offset, &slp_string);         /* copy data into the packet */
 
   /* attr_list */
-  slp_string.len = attr_list_len;
-  slp_string.str = attr_list;
+  slp_string.len = strlen(MSG_ATTR_LIST(Msg));
+  slp_string.str = MSG_ATTR_LIST(Msg);
   offset = packSLP_STR(offset, &slp_string);         /* copy data into the packet */
 
   /* auth blocks    */
@@ -1625,11 +1984,9 @@ SLPError slp_send_reg(ip4addr_t ip, bool fresh)
   offset = data + 2; /* point to where length will go, 2 bytes from start of msg */
   offset = packUINT24(offset, length);  /* put length in msg */
 
-  /* save xid */
-  __xid_save(slp_header.xid);
 
   /* create address */
-  netx_INADDR(&dest_addr) = ip;
+  netx_INADDR(&dest_addr) = Msg->da->ip;
   netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
@@ -1660,8 +2017,46 @@ SLPError slp_send_reg(ip4addr_t ip, bool fresh)
  returns: SLP_OK if valid
         : non-zero if not valid
 ******************************************************************************/
-/* FUNCTION TESTED */
-SLPError slp_send_dereg(ip4addr_t ip)
+SLPError slp_dereg(char *reg_srv_url)
+{
+  acn_protect_t protect;
+  SLPDa_list   *da;
+  SLPRegProp   *reg_prop;
+
+  LOG_FSTART();
+
+  /* are we open? */
+  if (!slp_socket) {
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_dereg: SLP_NOT_OPEN:");
+    return SLP_NOT_OPEN;
+  }
+
+  protect = ACN_PORT_PROTECT();
+
+  /* did we have a valid registration? */
+  reg_prop = reg_prop_find(reg_srv_url);
+  if (!reg_prop) {
+    ACN_PORT_UNPROTECT(protect);
+    acnlog(LOG_WARNING | LOG_SLP , "slp_dereg: matching registrion not found");
+    return SLP_PARAMETER_BAD;
+  }
+
+  /* send registration to all the DAs */
+  da = da_list;
+  while (da < da_list + MAX_DA) {
+    /* if this DA has an IP */
+    if(da->ip) {
+      da_dereg_prop(da, reg_prop);
+      reg_prop_del(reg_prop);
+    }
+    da++;
+  }
+  ACN_PORT_UNPROTECT(protect);
+  return SLP_OK;
+}
+
+/******************************************************************************/
+SLPError slp_send_dereg(SLPMsg  *Msg)
 {
   uint32_t     length;
   char        *data;
@@ -1678,7 +2073,7 @@ SLPError slp_send_dereg(ip4addr_t ip)
   LOG_FSTART();
 
   if (!slp_socket) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrqst: SLP_NOT_OPEN:");
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_dereg: SLP_NOT_OPEN:");
     return SLP_NOT_OPEN;
   }
 
@@ -1695,7 +2090,7 @@ SLPError slp_send_dereg(ip4addr_t ip)
   slp_header.function_id = SLP_FUNCT_SRVDEREG;      /* deregister */
   slp_header.flags = 0;
   slp_header.ext_offset = 0;                        /* Next Ext Offset */
-  slp_header.xid = xid++;                           /* XID */
+  slp_header.xid = Msg->xid;                        /* XID */
   slp_header.lang_tag.len = local_lang_len;         /* Language Tag Length */
   slp_header.lang_tag.str = (char*)local_lang_str;  /* Language Tag String */
   offset = packSLP_HEADER(offset, &slp_header);
@@ -1707,8 +2102,8 @@ SLPError slp_send_dereg(ip4addr_t ip)
 
   /* URL Entry */
   slp_urlentry.lifetime = SLP_REGIGRATION_LIFETIME;
-  slp_urlentry.url.len = srv_url_len;
-  slp_urlentry.url.str = srv_url;
+  slp_urlentry.url.len = strlen(MSG_SRV_URL(Msg));
+  slp_urlentry.url.str = MSG_SRV_URL(Msg);
   slp_urlentry.num_auth_blocks = 0;
   offset = packSLP_URL_ENTRY(offset, &slp_urlentry);
 
@@ -1720,11 +2115,8 @@ SLPError slp_send_dereg(ip4addr_t ip)
   offset = data + 2;
   offset = packUINT24(offset, length);  /* length */
 
-  /* save xid */
-  __xid_save(slp_header.xid);
-
   /* create address */
-  netx_INADDR(&dest_addr) = ip;/* htonl(SLP_MCAST_ADDRESS); */
+  netx_INADDR(&dest_addr) = Msg->da->ip;/* htonl(SLP_MCAST_ADDRESS); */
   netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
@@ -1768,7 +2160,7 @@ SLPError slp_send_svrack(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code)
   LOG_FSTART();
 
   if (!slp_socket) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrqst: SLP_NOT_OPEN:");
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_svrack: SLP_NOT_OPEN:");
     return SLP_NOT_OPEN;
   }
 
@@ -1812,6 +2204,7 @@ SLPError slp_send_svrack(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code)
 
 
 #if SLP_IS_UA
+
 /*******************************************************************************
 10.3. Attribute Request
    0                   1                   2                   3
@@ -1834,8 +2227,73 @@ SLPError slp_send_svrack(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code)
  returns: SLP_OK if success
         : non-zero if not success
 ******************************************************************************/
-SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags,
-  void (*callback) (int error, char *attributes))
+SLPError slp_attrrqst(ip4addr_t ip, char *req_url, char *req_tags, void (*callback) (int error, char *attributes, int count))
+{
+  SLPDa_list   *da;
+  acn_protect_t protect;
+  SLPMsg       *Msg;
+
+  if (!slp_socket) {
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_attrrqst: SLP_NOT_OPEN:");
+    return SLP_NOT_OPEN;
+  }
+
+  protect = ACN_PORT_PROTECT();
+
+  /* if ip = 0, then use first from list */
+  if (!ip) {
+    da = da_first();
+    if (!da) {
+      ACN_PORT_UNPROTECT(protect);
+      acnlog(LOG_DEBUG | LOG_SLP , "slp_attrrqst: No DA available");
+      return(SLP_PARAMETER_BAD);
+    }
+  } else {
+    da = da_find_by_ip(ip); 
+    if (!da) {
+      ACN_PORT_UNPROTECT(protect);
+      acnlog(LOG_DEBUG | LOG_SLP , "slp_attrrqst: No DA available");
+      return(SLP_PARAMETER_BAD);
+    }
+  }
+
+  Msg = msg_new(xid++);
+  if (Msg) {
+    Msg->da = da;
+    Msg->type = mtATTRRQST;
+    Msg->counter = 0;
+    Msg->retries = SLP_RETRIES;
+
+    /* Yuck! copy strings */
+    MSG_REQ_URL(Msg) = SLP_MALLOC(strlen(req_url) + 1);
+    if (!MSG_REQ_URL(Msg)) {
+      msg_free(Msg);
+      ACN_PORT_UNPROTECT(protect);
+      return SLP_MEMORY_ALLOC_FAILED;
+    }
+    strcpy(MSG_REQ_URL(Msg), req_url);
+
+    MSG_TAGS(Msg) = SLP_MALLOC(strlen(req_tags) + 1);
+    if (!MSG_TAGS(Msg)) {
+      SLP_FREE(MSG_REQ_URL(Msg));
+      msg_free(Msg);
+      ACN_PORT_UNPROTECT(protect);
+      return SLP_MEMORY_ALLOC_FAILED;
+    }
+    strcpy(MSG_TAGS(Msg), req_tags);
+
+    Msg->callback = callback;
+  } else {
+    ACN_PORT_UNPROTECT(protect);
+    return SLP_MEMORY_ALLOC_FAILED;
+  }
+
+  ACN_PORT_UNPROTECT(protect);
+  return SLP_OK;
+}
+
+/******************************************************************************/
+SLPError slp_send_attrrqst(SLPMsg *Msg)
 {
   uint32_t     length;
   char        *data;
@@ -1850,20 +2308,6 @@ SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags,
 
   LOG_FSTART();
 
-  if (!slp_socket) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrqst: SLP_NOT_OPEN:");
-    return SLP_NOT_OPEN;
-  }
-
-  /* if ip = 0, then use first from list */
-  if (!ip) {
-    ip = da_first();
-    if (!ip) {
-      acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrqst: No DA available");
-      return(SLP_PARAMETER_BAD);
-    }
-  }
-
   /* create a new udp packet */
   pkt = netx_new_txbuf(0);
   /* get address where data will go */
@@ -1877,7 +2321,7 @@ SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags,
   slp_header.function_id = SLP_FUNCT_ATTRRQST;      /* register */
   slp_header.flags = 0;
   slp_header.ext_offset = 0;                        /* Next Ext Offset */
-  slp_header.xid = xid++;                           /* XID */
+  slp_header.xid = Msg->xid;                           /* XID */
   slp_header.lang_tag.len = local_lang_len;         /* Language Tag Length */
   slp_header.lang_tag.str = (char*)local_lang_str;  /* Language Tag String */
   offset = packSLP_HEADER(offset, &slp_header);
@@ -1887,12 +2331,12 @@ SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags,
   offset = packSLP_STR(offset, &slp_string);
 
   /* URL */
-  if (req_url) {
-    slp_string.len = strlen(req_url);
+  if (MSG_REQ_URL(Msg)) {
+    slp_string.len = strlen(MSG_REQ_URL(Msg));
   } else {
     slp_string.len = 0;
   }
-  slp_string.str = req_url;
+  slp_string.str = MSG_REQ_URL(Msg);
   offset = packSLP_STR(offset, &slp_string);
 
   /* scope-list */
@@ -1901,12 +2345,12 @@ SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags,
   offset = packSLP_STR(offset, &slp_string);
 
   /* tag list */
-  if (tags) {
-    slp_string.len = strlen(tags);
+  if (MSG_TAGS(Msg)) {
+    slp_string.len = strlen(MSG_TAGS(Msg));
   } else {
     slp_string.len = 0;
   }
-  slp_string.str = tags;
+  slp_string.str = MSG_TAGS(Msg);
   offset = packSLP_STR(offset, &slp_string);
 
   /* slp_spi (null) */
@@ -1918,13 +2362,8 @@ SLPError slp_send_attrrqst(ip4addr_t ip, char *req_url, char *tags,
   offset = data + 2;
   offset = packUINT24(offset, length);  /* length */
 
-  attrrqst_callback = callback;
-  
-  /* save xid */
-  __xid_save(slp_header.xid);
-
   /* create address */
-  netx_INADDR(&dest_addr) = ip;/* htonl(SLP_MCAST_ADDRESS); */
+  netx_INADDR(&dest_addr) = Msg->da->ip;/* htonl(SLP_MCAST_ADDRESS); */
   netx_PORT(&dest_addr) = htons(SLP_RESERVED_PORT);
 
   /* send it */
@@ -1966,23 +2405,25 @@ SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data)
 
   uint16_t error_code;
   /* uint16_t attr_length; */
-  char  *attr_list;
-  SLPString slp_str;
+  char       *attr_list;
+  SLPString   slp_str;
+  SLPMsg     *Msg;
 
   SLP_UNUSED_ARG(ip);
 
   LOG_FSTART();
 
   /* error, xid does not match, this may not be an error so return OK */
-  if (!__xid_test(header->xid)) {
-    return (SLP_OK);
+  Msg = msg_find_by_xid(header->xid);
+  if (!Msg) {
+    return SLP_OK;
   }
 
   data = unpackUINT16(data, &error_code);
   if (error_code) {
     /* callback with error code */
-    if (attrrqst_callback) {
-      attrrqst_callback(error_code, NULL);
+    if (Msg->callback) {
+      Msg->callback(error_code, NULL, 0);
     }
   } else {
     /* get attributes count */
@@ -1992,13 +2433,19 @@ SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data)
     /* get string */
     attr_list = getSLP_STR(&slp_str);
     /* callback */
-    attrrqst_callback(error_code, attr_list);
+    if (Msg->callback) {
+      Msg->callback(error_code, attr_list, 0);
+    }
     /* free memory */
     SLP_FREE(attr_list);
   }
 
+  SLP_FREE(MSG_REQ_URL(Msg));
+  SLP_FREE(MSG_TAGS(Msg));
+
   /* remove xid from our list */
-  __xid_clear(header->xid);
+  msg_free(Msg);
+
   return SLP_OK;
 }
 #endif /* SLP_IS_UA */
@@ -2018,31 +2465,32 @@ SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data)
         : data, pointer to start of service acl data block
  returns: SLP_OK
 ******************************************************************************/
-/* FUNCTION TESTED */
 SLPError slp_receive_svrack(ip4addr_t ip, SLPHeader *header, char *data)
 {
-  uint16_t error_code;
+  uint16_t  error_code;
+  SLPMsg    *Msg;
 
   SLP_UNUSED_ARG(header);
 
   LOG_FSTART();
 
-  if (!__xid_test(header->xid )) {
-    /* not mine, process nothing */
+  /* error, xid does not match, this may not be an error so return OK */
+  Msg = msg_find_by_xid(header->xid);
+  if (!Msg) {
     return SLP_OK;
   }
 
   data = unpackUINT16(data, &error_code);
   if (error_code == SLP_OK) {
     /* process ack */
-    da_service_ack(ip);
+    da_service_ack(Msg->da);
   } else {
     /* DA reported an error, so we'll just nuke it */
-    da_delete(ip);
+    da_delete(Msg->da);
   }
 
   /* remove xid from our list */
-  __xid_clear(header->xid);
+  msg_free(Msg);
 
   return SLP_OK;
 }
@@ -2077,10 +2525,9 @@ SLPError slp_receive_svrack(ip4addr_t ip, SLPHeader *header, char *data)
  returns: SLP_OK if valid
         : non-zero if not valid
 ******************************************************************************/
-/* FUNCTION TESTED */
 SLPError slp_receive_daadvert(ip4addr_t ip, SLPHeader *header, char *data)
 {
-SLPDAAdvert daadvert;
+SLPDAAdvert daadvert; 
 char       *scope_list;
 
 /*    3. UA uses multicast/convergence srvrqsts to discover DAs, then uses
@@ -2177,8 +2624,6 @@ char       *scope_list;
    * anyway. (one can also tell by a unicast destination address but stack
    * does not provide this value)
    */
-
-
   if (dda_timer.discover && dda_timer.xid && (header->xid == dda_timer.xid)) {
     /* Yep, so send a new one right away */
     acnlog(LOG_DEBUG | LOG_SLP , "slp_receive_daadvert: advertisement from our search: xid=%d", header->xid);
@@ -2196,7 +2641,7 @@ char       *scope_list;
 }
 #endif /* SLP_IS_UA || SLP_IS_SA */
 
-#if SLP_IS_SA
+#if SLP_IS_SA 
 /*******************************************************************************
   8.6. Service Agent Advertisement
    0                   1                   2                   3
@@ -2218,9 +2663,11 @@ char       *scope_list;
  returns: SLP_OK if valid
         : non-zero if not valid
 ******************************************************************************/
-/* FUNCTION NOT TESTED (should not be needed for ACN) */
+/* FUNCTION NOT TESTED */
 SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
 {
+/*disabled for now only needed when running without DA available */
+#if 0
   uint32_t     length;
   char        *data;
   char        *offset;
@@ -2238,12 +2685,12 @@ SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
   LOG_FSTART();
 
   if (!slp_socket) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_srvrqst: SLP_NOT_OPEN:");
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_send_saadvert: SLP_NOT_OPEN:");
     return SLP_NOT_OPEN;
   }
 
   /* we can't send advertizment if we don't have attribute list */
-  if (!attr_list) {
+  if (!__attr_list_count()) {
     return SLP_INTERNAL_SYSTEM_ERROR;
   }
 
@@ -2298,7 +2745,9 @@ SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
   netx_send_to(slp_socket, &dest_addr, pkt, length);
   netx_release_txbuf(pkt);
 
+#endif
   return (SLP_OK);
+
 }
 #endif /* SLP_IS_SA */
 
@@ -2309,7 +2758,6 @@ SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
  * returns: none
  */
 /******************************************************************************/
-/* FUNCTION TESTED */
 /* static void slp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr, uint16_t port) */
 /* void slp_recv(char *slp_data, int length, uint32_t ip_addr, int port) */
 void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref)
@@ -2317,9 +2765,10 @@ void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t
   /* slp_data* points to the data in the received UDP message */
   /* length is length of UDP data */
   /* ip_addr is that of the msg source */
-  SLPHeader   slp_header;
-  ip4addr_t   ip_addr;
-  char        *slp_data;
+  SLPHeader    slp_header;
+  ip4addr_t    ip_addr;
+  char         *slp_data;
+  acn_protect_t protect;
 
   LOG_FSTART();
 
@@ -2339,6 +2788,7 @@ void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t
       /* pass ptr to start of rx SLP msg and load 7 fields of header data into SLPHeader struct */
       slp_data = unpackSLP_HEADER(slp_data, &slp_header);
 
+      protect = ACN_PORT_PROTECT();
       switch (slp_header.function_id) {
         case SLP_FUNCT_SRVRQST:           /* Service Request */
           acnlog(LOG_DEBUG | LOG_SLP , "slp_recv: Service Request xid=%d", slp_header.xid);
@@ -2398,11 +2848,11 @@ void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t
         default:
           acnlog(LOG_DEBUG | LOG_SLP , "slp_recv: Unknown function");
       } /* switch */
+      ACN_PORT_UNPROTECT(protect);
     } else { /* version 2 only */
       acnlog(LOG_DEBUG | LOG_SLP , "slp_recv: unsupported version");
     }
   } /* enough data */
-
 }
 
 
@@ -2410,10 +2860,11 @@ void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t
 /*******************************************************************************
 
 *******************************************************************************/
-/* FUNCTION TESTED */
 void  slp_active_discovery_start(void)
 {
-  uint16_t  tps_delay;
+  uint16_t      tps_delay;
+  acn_protect_t protect;
+
 
   /* "After a UA or SA restarts, its initial DA discovery request SHOULD be
    *  delayed for some random time uniformly distributed from 0 to
@@ -2431,20 +2882,21 @@ void  slp_active_discovery_start(void)
   }
 
   acnlog(LOG_DEBUG | LOG_SLP , "slp_active_discovery_start: delay %d",tps_delay);
+
+  protect = ACN_PORT_PROTECT();
   dda_timer.counter = tps_delay;
   dda_timer.xmits = 0;
   dda_timer.xid = 0;
   dda_timer.discover = 1;
+  ACN_PORT_UNPROTECT(protect);
 }
 #endif /* SLP_IS_UA || SLP_IS_SA */
 
 /*******************************************************************************
 srand() should be called before slp_init
 *******************************************************************************/
-/* FUNCTION TESTED */
 void slp_init(void)
 {
-  int x;
   static bool initialized_state = 0;
 
   if (initialized_state) {
@@ -2460,31 +2912,27 @@ void slp_init(void)
 
   /* sequential transaction id */
   xid = rand();
+
   /* clear da_list */
-  for (x=0;x<MAX_DA;x++) {
-    memset(&da_list[x], 0, sizeof(SLPDa_list));
-  }
+  memset(da_list, 0, sizeof(da_list));
+
   /* clear timer counts */
   memset(&dda_timer, 0, sizeof(SLPdda_timer));
 
-  attr_list = NULL;        /* attribute list */
-  attr_list_len = 0;
+  /* clear message buffers */
+  printf("size: %d, %d\n", sizeof(SLPMsg), sizeof(Msgs));
+  memset(Msgs, 0, sizeof(Msgs));
 
-  srv_url = NULL;
-  srv_url_len = 0;
-
-  srv_type = NULL;
-  srv_type_len = 0;
+  /* clear registration property buffers */
+  memset(reg_props, 0, sizeof(reg_props));
 
   msticks = 0;
-  
-  memset(&xids, 0, sizeof(xids));
+ 
 }
 
 /*******************************************************************************
   start up SLP
 *******************************************************************************/
-/* FUNCTION TESTED */
 SLPError slp_open(void)
 {
   localaddr_t  localaddr;
@@ -2539,7 +2987,6 @@ SLPError slp_open(void)
 /*******************************************************************************
   Shut down SLP
 *******************************************************************************/
-/* FUNCTION TESTED */
 void slp_close(void)
 {
   netxsocket_t *hold_socket;
@@ -2572,75 +3019,19 @@ void slp_close(void)
   /* now get rid of it */
   nsk_free_netsock(hold_socket);
 
-  /* TODO: Shutdown timer and receive threads? */
-
   return;
 }
 
-#if SLP_IS_SA
-/*******************************************************************************/
-/* Registers a service URL and service attributes with SLP.
- * TODO: current implementation only allows us to register one component
- *******************************************************************************/
-/* FUNCTION TESTED */
-SLPError slp_reg(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list)
-{
-  LOG_FSTART();
-
-  /* you must open first */
-  if (!slp_socket)  {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_reg: socket not open");
-    return SLP_NOT_OPEN;
-  }
-
-  /* can only have one! */
-  if (attr_list) {
-   acnlog(LOG_DEBUG | LOG_SLP , "slp_reg: !attr_list");
-   return SLP_PARAMETER_BAD;
-  }
-
-  /* make sure we have a real attribute list */
-  if (!reg_attr_list) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_reg: !reg_attr_list");
-    return SLP_PARAMETER_BAD;
-  }
-
-  /* make sure we have a real url */
-  if (!reg_srv_url) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_reg: !reg_srv_url");
-    return SLP_PARAMETER_BAD;
-  }
-
-  /* make sure we have a real type */
-  if (!reg_srv_type) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_reg: !reg_srv_type");
-    return SLP_PARAMETER_BAD;
-  }
-
-  /* save pointer to our attribute list */
-  attr_list = reg_attr_list;
-  attr_list_len = strlen(attr_list);
-
-  srv_url = reg_srv_url;
-  srv_url_len = strlen(srv_url);
-
-  srv_type = reg_srv_type;
-  srv_type_len = strlen(srv_type);
-
-  /* send registration to all the DAs */
-  da_reg();
-
-  return SLP_OK;
-}
-#endif /* SLP_IS_SA */
 
 #if SLP_IS_SA
 /*******************************************************************************/
 /* TODO: Add support for more than one registration */
 /*******************************************************************************/
-/* FUNCTION TESTED */
-SLPError slp_dereg(void)
+SLPError slp_dereg_all(void)
 {
+  acn_protect_t protect;
+
+
   LOG_FSTART();
 
   /* are we open? */
@@ -2650,17 +3041,15 @@ SLPError slp_dereg(void)
   }
 
   /* did we have a valid registration? */
-  if (!attr_list) {
-    acnlog(LOG_DEBUG | LOG_SLP , "slp_dereg: !attr_list");
+  if (!reg_prop_count()) {
+    acnlog(LOG_DEBUG | LOG_SLP , "slp_dereg: !nothing registered");
     return SLP_PARAMETER_BAD;
   }
-
-  /* deregister all */
-  da_dereg();
-
-  /* nuke our attribute list */
-  attr_list = NULL;
-
+  
+  protect = ACN_PORT_PROTECT();
+  /* say goodbye to all DA all */
+  da_dereg_all();
+  ACN_PORT_UNPROTECT(protect);
   return SLP_OK;
 }
 #endif /* SLP_IS_SA */
@@ -2670,11 +3059,12 @@ SLPError slp_dereg(void)
  * debug routine to print DA list
  */
 /*******************************************************************************/
-void slp_print_stat(void)
+void slp_stats(void)
 {
   char *str;
 
-  /* get some memeory */
+  acnlog(LOG_INFO | LOG_STAT, "------------------------");
+/* get some memeory */
   str = (char*)SLP_MALLOC(MAX_DA*17);      /* 16 bytes and a comma per item + null */
   /* get our list */
   da_ip_list(str);
@@ -2682,34 +3072,7 @@ void slp_print_stat(void)
   acnlog(LOG_INFO | LOG_STAT , "DA: %s", str);
   /* release memory */
   SLP_FREE(str);
+  acnlog(LOG_INFO | LOG_STAT , "REG_PROP: %d", reg_prop_count());
+  acnlog(LOG_INFO | LOG_STAT , "MSG: %d", msg_count());
 }
-
-
-/* TODO: This thread is now done by the application thread. */
-/*******************************************************************************
-  Thread for SLP
- *******************************************************************************/
-#if 0
-//void slp_thread( void *pvParameters )
-//{
-//  portTickType xLastWakeTime;
-//
-//  /* Parameters are not used - suppress compiler error. */
-//  SLP_UNUSED_ARG(pvParameters);
-//
-//  // start a discovery
-//  #if SLP_IS_UA || SLP_IS_SA
-//  slp_active_discovery_start();
-//  #endif
-//
-//  /* Initialise xLastWakeTime */
-//  xLastWakeTime = xTaskGetTickCount();
-//  while (1)   {
-//    // call our timer routine
-//    slp_tick(0);
-//    // now wait
-//    vTaskDelayUntil( &xLastWakeTime, 1/portTICK_RATE_MS );
-//  }
-//}
-#endif
 

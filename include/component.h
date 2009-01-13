@@ -91,6 +91,16 @@ typedef void component_callback_t (
 );
 #endif
 
+typedef enum
+{
+  cbNONE,
+  cbAPP,      /* created by application  */
+  cbJOIN,     /* created by join request */
+  cbDISC      /* created by discover     */
+} created_by_t;
+
+
+
 typedef struct component_s
 {
   cid_t cid;  /* component ID */
@@ -103,12 +113,13 @@ typedef struct component_s
 	  uint16_t dyn_mcast;
   #endif
   #if CONFIG_SDT
-    netx_addr_t   adhoc_addr;
-	  int           adhoc_expires_at;
-    bool          auto_created;
+    netx_addr_t    adhoc_addr;
+	  int            adhoc_expires_at;
+    created_by_t   created_by;
 	  struct component_s   *next;  /* pointer to next component in linked list */
     struct sdt_channel_s *tx_channel;
     component_callback_t *callback; 
+    bool           dirty;       /* used for discovery to tell if a component is no longer valid */
   #endif
   #if CONFIG_DMP
     struct dmp_subscription_s   *subscriptions;

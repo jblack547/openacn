@@ -110,6 +110,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define SLP_REGIGISTION_REFRESH	(5*60 * SLP_TMR_TPS) /* must be less than SLP_REGIGRATION_LIFETIME (value is TPS ) */
 
+#define SLP_RETRIES               2
+
 /* SLP Function ID constants                                               */
 #define SLP_FUNCT_SRVRQST         1  /* Service Request */
 #define SLP_FUNCT_SRVRPLY         2  /* Service Reply */
@@ -143,19 +145,20 @@ typedef enum {
 
 typedef enum {
   /* internal errors */
-  SLP_UNEXPECTED_MSG               = -13,
-	SLP_NOT_OPEN                     = -12,
-	SLP_DA_NOT_FOUND								 = -11,
-	SLP_DA_LIST_FULL								 = -10,
-  SLP_BUFFER_OVERFLOW              = -9,
-  SLP_NETWORK_TIMED_OUT            = -8,
-  SLP_NETWORK_INIT_FAILED          = -7,
-  SLP_MEMORY_ALLOC_FAILED          = -6,
-  SLP_PARAMETER_BAD                = -5,
-  SLP_INTERNAL_SYSTEM_ERROR        = -4,
-  SLP_NETWORK_ERROR                = -3,
-  SLP_NOT_IMPLEMENTED              = -2,
-  SLP_HANDLE_IN_USE                = -1,
+  SLP_UNEXPECTED_MSG               = -14,
+	SLP_NOT_OPEN                     = -13,
+	SLP_DA_NOT_FOUND								 = -12,
+	SLP_DA_LIST_FULL								 = -11,
+  SLP_BUFFER_OVERFLOW              = -10,
+  SLP_NETWORK_TIMED_OUT            = -9,
+  SLP_NETWORK_INIT_FAILED          = -8,
+  SLP_MEMORY_ALLOC_FAILED          = -7,
+  SLP_PARAMETER_BAD                = -6,
+  SLP_INTERNAL_SYSTEM_ERROR        = -5,
+  SLP_NETWORK_ERROR                = -4,
+  SLP_NOT_IMPLEMENTED              = -3,
+  SLP_HANDLE_IN_USE                = -2,
+  SLP_FAIL                         = -1,
 
   /* external errors */
   SLP_OK                           = 0,
@@ -166,7 +169,7 @@ typedef enum {
   SLP_AUTHENTICATION_UNKNOWN       = 5,
   SLP_AUTHENTICATION_ABSENT        = 6,
   SLP_AUTHENTICATION_FAILED        = 7,
-  SLP_VERSION_NOT_SUPPORTED		   = 9,
+  SLP_VERSION_NOT_SUPPORTED		     = 9,
   SLP_INTERNAL_ERROR               = 10,
   SLP_DA_BUSY                      = 11,
   SLP_OPTION_NOT_UNDERSTOOD        = 12,
@@ -192,7 +195,7 @@ typedef enum {
 
 typedef struct _SLPDa_list
 {
-  uint32_t    ip;
+  ip4addr_t   ip;
   uint32_t    state;      /* for ack from da after registration */
   uint32_t    counter;    /* counter for message handling */
   uint32_t    retries;    /* number of times to retry to sending message; */
@@ -280,6 +283,38 @@ typedef struct _SLPSrvAck
 	uint16_t	error_code;
 }SLPSrvAck;
 
+typedef enum _SLPMsgType
+{
+  mtREG,
+  mtDEREG,
+  mtSRVRQST,
+  mtATTRRQST
+} SLPMsgType;
+
+/*=========================================================================*/
+typedef struct _SLPMsg
+{
+  SLPMsgType  type;       /* type of messages (registration, deregistration, attribute... */
+  uint16_t    xid;        /* xid of message */
+  int         retries;    /* numer of time the message can be sent before giving up. */
+  int         counter;    /* counter to expire message */
+  SLPDa_list *da;         /* DA it was sent to */
+  char       *param1;     /* char* for message */
+  char       *param2;     /* char* for message */
+  char       *param3;     /* char* for message */
+  void (*callback) (int error, char *url, int count);
+  struct _SLPMsg  *next;
+}SLPMsg;
+
+/*=========================================================================*/
+typedef struct _SLPRegProp
+{
+  char *reg_srv_url;
+  char *reg_srv_type;
+  char *reg_attr_list;
+}SLPRegProp;
+
+
 /*=========================================================================*/
 /* GlobalDeclarations                                                            */
 /*=========================================================================*/
@@ -308,22 +343,21 @@ void slp_tick(void *arg);
 /* slp registration */
 SLPError slp_reg(char *reg_srv_url, char *reg_srv_type, char *reg_attr_list);
 /* slp de-registration */
-SLPError slp_dereg(void);
+SLPError slp_dereg(char *reg_srv_url);
+SLPError slp_dereg_all(void);
 #endif  /* SLP_IS_SA */
 
 
 #if SLP_IS_UA
-SLPError slp_send_srvrqst(unsigned long ip, char *req_srv_type, char *reg_predicate,
-  void (*callback) (int error, char *url));
-SLPError slp_send_attrrqst(unsigned long ip, char *req_url, char *tags,
-  void (*callback) (int error, char *attributes));
+SLPError slp_srvrqst(ip4addr_t ip, char *req_srv_type, char *req_predicate, void (*callback) (int error, char *url, int count));
+SLPError slp_attrrqst(unsigned long ip, char *req_url, char *req_tags,      void (*callback) (int error, char *attributes, int count));
 #endif
 
 
 /* UA and SA functions */
 #if SLP_IS_UA || SLP_IS_SA
 void    slp_active_discovery_start(void);
-void		slp_print_stat(void);
+void		slp_stats(void);
 
 #endif
 

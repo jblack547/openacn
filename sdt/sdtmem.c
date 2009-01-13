@@ -198,7 +198,7 @@ sdtm_new_resend(void)
 {
 	sdt_resend_t *resend;
 
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_resend");
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_resend...");
 
   /* find and empty one */
   for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; resend++) {
@@ -219,9 +219,25 @@ sdtm_new_resend(void)
 void
 sdtm_free_resend(sdt_resend_t *resend)
 {
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_resend");
+  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_resend...");
   
   resend->tx_buffer = NULL;                           /* mark it empty */
+}
+
+/*****************************************************************************/
+/*
+  Free all resends
+*/
+void 
+sdtm_free_resends(void)
+{
+	sdt_resend_t *resend;
+
+  acnlog(LOG_DEBUG | LOG_SDTM,"void_free_resends...");
+
+  for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; resend++) {
+		resend->tx_buffer = NULL;
+  }
 }
 
 #endif /* of CONFIG_SDTMEM_STATIC */

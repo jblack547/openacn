@@ -830,7 +830,7 @@ dmp_establish_subscription(component_t *local_component, component_t *foreign_co
   subscription = dmp_find_subscription(foreign_component, property);
   if (subscription) {
     /* already subscribed */
-    return 0; /* ok */
+    return OK; /* ok */
   }
 
   /* add new one */
@@ -850,9 +850,9 @@ dmp_establish_subscription(component_t *local_component, component_t *foreign_co
     /* out of resources */
     /* logged by dmp_add_subscription... */
     /* acnlog(LOG_WARNING | LOG_DMP,"dmp_establish_subscription: out of subscriptoins"); */
-    return -1;
+    return FAIL;
   }
-  return 0; /* OK */
+  return OK; /* OK */
 }
 
 #endif /* CONFIG_DMP */

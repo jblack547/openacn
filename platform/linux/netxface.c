@@ -49,7 +49,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "netsock.h"
 #include "ntoa.h"
 
-
 /************************************************************************/
 #define INPACKETSIZE DEFAULT_MTU
 #define LOG_FSTART() acnlog(LOG_DEBUG | LOG_NETX, "%s :...", __func__)
@@ -364,18 +363,16 @@ int netx_send_to(
   return datalen;
 }
 
+
 /************************************************************************/
 /*
   Poll for input
 */
-/* TODO: need to place this better */
-/* TODO: This should not be hard code...and we should check size */
 static UDPPacket recv_buffer;
 int
 netx_poll(void)
 {
-  int                 length;
-  socklen_t           addr_len = sizeof(netx_addr_t);
+  ssize_t             length;
   fd_set              socks;
   netxsocket_t       *nsk; 
   netx_nativeSocket_t high_sock = 0;
@@ -385,11 +382,28 @@ netx_poll(void)
   netx_addr_t         source;
   netx_addr_t         dest;
 
-  struct cmsghdr     *cmp;
-  struct msghdr       hdr;
+  uint8_t pktinfo[CMSG_SPACE(sizeof(struct in_pktinfo))];
+  struct iovec bufvec[1];
+  struct msghdr hdr;
+  struct cmsghdr *cmp;
+  bool   got_ancillary;
 
-  
   /* LOG_FSTART(); */
+
+  /* init struture to our static buffer */
+  bufvec->iov_base = recv_buffer;
+  bufvec->iov_len = sizeof(UDPPacket);
+  /* this will  return our source address*/
+  hdr.msg_name = &source;
+  hdr.msg_namelen = sizeof(source);
+  /* point to our receive buffer*/
+  hdr.msg_iov = bufvec;
+  hdr.msg_iovlen = 1;
+  /* this is where we keep the ancillary data*/
+  hdr.msg_control = &pktinfo;
+  hdr.msg_controllen = sizeof(pktinfo);
+  hdr.msg_flags = 0;
+ 
 
   FD_ZERO(&socks);
 
@@ -422,36 +436,42 @@ netx_poll(void)
     acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: select fail: %d", errno);
     return FAIL; /* fail */
   }
+
   if (readsocks > 0) {
     nsk = nsk_first_netsock();
     while (nsk && nsk->nativesock) {
       if (FD_ISSET(nsk->nativesock,&socks)) {
-        /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: recvfrom..."); */
-        length = recvfrom(nsk->nativesock, recv_buffer, sizeof(recv_buffer), 0, (SOCKADDR *)&source, &addr_len);
+        /* Get some data */
+        length = recvmsg(nsk->nativesock, &hdr, 0);
 
-        if (length < 0) {
+        /* Test for error */
+        if (length == -1) {
           acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: recvfrom fail: %d", errno);
           return FAIL; /* fail */
         }
-        if (length > 0) {
 
+        /* make sure we actually have some data to process */
+        if (length > 0) {
+          got_ancillary = false;
+          /* Look for ancillary data of our type*/
           for (cmp = CMSG_FIRSTHDR(&hdr); cmp != NULL; cmp = CMSG_NXTHDR(&hdr, cmp)) {
             if (cmp->cmsg_level == IPPROTO_IP && cmp->cmsg_type == IP_PKTINFO) {
+              /* get the address and move it to our destination address*/
               ip4addr_t pktaddr;
               pktaddr = ((struct in_pktinfo *)(CMSG_DATA(cmp)))->ipi_addr.s_addr;
               netx_INIT_ADDR(&dest, is_multicast(pktaddr)? pktaddr: netx_GROUP_UNICAST, NSK_PORT(nsk));
-              acnlog(LOG_DEBUG | LOG_NETX , "Socket %d: packet for %8x:%u\n", nsk->nativesock, ntohl(pktaddr), ntohs(NSK_PORT(nsk)));
+              got_ancillary = true;
+              break; /* from for */
             }
           }
-#if 0
-          /* TODO: This need to be network in localaddress form! */
-          netx_PORT(&dest) = LCLAD_PORT(nsk->localaddr);
-          netx_INADDR(&dest) = LCLAD_INADDR(nsk->localaddr);
-#endif  
+          /* Bail if we did not get any*/
+          if (!got_ancillary) {
+            acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: unable to get ancillary data");
+            return FAIL;
+          }
 
-          /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handoff"); */
+          /* call our data handler */
           netx_handler(recv_buffer, length, &source, &dest);
-          /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handled"); */
 /*          return OK; */
         } else {
           acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: length = 0");
@@ -506,9 +526,8 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
 ip4addr_t netx_getmyip(netx_addr_t *destaddr)
 {
 /*
-FIXME
-Should find the local IP address which would be used to send to
-the given remote address. For now we just get the first address
+TODO: Should find the local IP address which would be used to send to
+      the given remote address. For now we just get the first address
 */
   int fd;
   struct ifreq ifr;

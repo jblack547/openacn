@@ -32,13 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	$Id$
 */
 
-
-/* 5.1.1.	Consoles */
-/* Under the well known DCID (D1F6F109-8A48-4435-8157-A226604DEA89): */
-
-/* 5.1.2.	RFRs */
-/* Under the well known DCID (CAB91A8C-CC44-49b1-9398-1EF5C07C31C9): */
-
 /* Lib includes */
 #include <stdlib.h>
 
@@ -49,9 +42,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acnlog.h"
 
 #include "netxface.h"
-/*
-#include "inet.h"
-*/
 #include "ntoa.h"
 #include "aton.h"
 #include "cid.h"
@@ -62,7 +52,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* this module */
 #include "discover.h"
-
 
 
 /* these (at least my_cid) should be user configurable... */
@@ -93,8 +82,10 @@ static const char predicate_fmt[]  = "(csl-esta.dmp=*%s)";
 static const char default_uacn[] = "uacn";
 static const char default_fctn[] = "fctn";
 
-/* Local variables */
+/* TODO: NOTE! We only allow one active callback for this! */
+static void (*discover_callback) (component_t *comp) = NULL;
 
+/* Local variables */
 /* Create an attribute list based on current parameters */
 static void create_attr_list(char *new_attr_list, component_t *component) 
 {
@@ -191,14 +182,14 @@ bool get_attribute_str(char** next_attr, char**attr_str)
       *next_attr = e + 1;
       *e = 0;
       *attr_str = s;
-      return 1;
+      return FAIL;
     }
   }
   *attr_str = NULL;
-  return 0;
+  return OK;
 }
 
-static void attrrqst_callback(int error, char *attr_list)
+static void attrrqst_callback(int error, char *attr_list, int count)
 {
   cid_t cid = {0};
   cid_t dcid = {0};
@@ -282,7 +273,7 @@ static void attrrqst_callback(int error, char *attr_list)
               break; /* from while(p) */
             } else {
               strncpy(port_str, s, e-s);
-              port = atoi(port_str);
+              port = htons(atoi(port_str));
             }
             myip = netx_getmyip(0);
             mymask = netx_getmyipmask(0);
@@ -329,35 +320,42 @@ static void attrrqst_callback(int error, char *attr_list)
     comp = sdt_find_component(cid);
     /* if it was found */
     if (comp) {
-      cidCopy(comp->dcid, dcid);
-      netx_PORT(&comp->adhoc_addr) = htons(port);
-      netx_INADDR(&comp->adhoc_addr) = htonl(ip);
+      acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: component already exists");
+      /*TODO: what should we do if we already have it? For now, just update ad-hoc*/
+      netx_PORT(&comp->adhoc_addr) = port;
+      netx_INADDR(&comp->adhoc_addr) = ip;
+      comp->dirty = false;
     } else {
       /* create a new component struct at the end of the list */
       comp = sdt_add_component(cid, dcid, false, accUNKNOWN); 
       if (!comp) {
         return;
       }
+      comp->created_by = cbDISC;
+      netx_PORT(&comp->adhoc_addr) = (port);
+      netx_INADDR(&comp->adhoc_addr) = (ip);
+      strcpy(comp->fctn, fctn_str);
+      strcpy(comp->uacn, uacn_str);
+      /* let calling app know */
+      if (discover_callback) {
+        discover_callback(comp);
+      }
     }
-    netx_PORT(&comp->adhoc_addr) = htons(port);
-    netx_INADDR(&comp->adhoc_addr) = htonl(ip);
-    strcpy(comp->fctn, fctn_str);
-    strcpy(comp->uacn, uacn_str);
   }
 #endif /* CONFIG_SDT */
 }
 
 #if SLP_IS_UA
 /* for directory agent builds */
-static void srvrqst_callback(int error, char *url)
+static void srvrqst_callback(int error, char *url, int count)
 {
   if (!error) {
     acnlog(LOG_DEBUG | LOG_DISC , "srvrqst_callback: %s", url);
 
     /* TODO: do we want to get all attributes or just the ones we know about */
-/*    slp_send_attrrqst(0, url,"cid,csl-esta.dmp,acn-fctn,acn-uacn", attrrqst_callback); */
+    /* slp_send_attrrqst(0, url,"cid,csl-esta.dmp,acn-fctn,acn-uacn", attrrqst_callback); */
     /* this will get all */
-    slp_send_attrrqst(0, url, NULL, attrrqst_callback);
+    slp_attrrqst(0, url, "", attrrqst_callback);
   } else {
     acnlog(LOG_DEBUG | LOG_DISC , "srvrqst_callback: error %d", error);
   }
@@ -366,23 +364,35 @@ static void srvrqst_callback(int error, char *url)
 
 #if SLP_IS_UA
 /* starting point if we are a directory agent build */
-void discover_acn(char *dcid_str)
+void discover_acn(char *dcid_str, void (*callback) (component_t *component))
 {
-  char predicate_str[100];
+  char  predicate_str[100];
+  cid_t dcid;
+  component_t *comp;
+
+  /* mark all our components as dirty so we know if we refound time */
+  comp = sdt_first_component();
+  while (comp) {
+    if (cidIsEqual(comp->dcid, dcid)) {
+      comp->dirty = true;
+    }
+    comp = comp->next;
+  }
+
+
+  /* TODO: we need an open() and close() to clear callback on shutdown? */
+  /* perhaps we can auto-clear it with a timeout */
+  discover_callback = callback;
 
   sprintf(predicate_str, predicate_fmt, dcid_str);
     
-    /* TODO: used dcid, not hard coded... */
-  slp_send_srvrqst(0, "service:acn.esta", predicate_str, srvrqst_callback);
+  slp_srvrqst(0, "service:acn.esta", predicate_str, srvrqst_callback);
 }
 #endif
 
 /* (cid=01000000-0000-0000-0000-000000000001),(acn-fctn=),(acn-uacn=),(acn-services=esta.dmp),(csl-esta.dmp=esta.sdt/192.168.1.201:5568;esta.dmp/cd:02000000-0000-0000-0000-000000000002),(device-description=$:tftp://192.168.1.2) */
 char  acn_attr_list[500] = {'\0'};
 char  acn_srv_url[100] = {'\0'};
-/* TODO: support for multiple componets */
-/*      prevent duplicate calls */
-/* starting point if we are a device build (not a directory agent) */
 void discover_register(component_t *component)
 {
   /* passed in component must have defined: 
@@ -401,13 +411,12 @@ void discover_register(component_t *component)
   
   /* register our list with a directory agent */
   slp_reg(acn_srv_url, (char*)acn_service_str, acn_attr_list);
-
 }
 
-/*
 void discover_deregister(component_t *component)
 {
-  slp_dereg();
+  /* Create the URL string */
+  create_url(acn_srv_url, component);
+  slp_dereg(acn_srv_url);
 }
-*/
 

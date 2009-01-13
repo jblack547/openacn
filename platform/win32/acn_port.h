@@ -43,6 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if CONFIG_STACK_WIN32
 /* using winsock 2 */
 #include <winsock2.h>
+#include <ws2tcpip.h>
 
 /* WIN32 has it's own version of these */
 #define HAVE_htons
@@ -62,18 +63,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* platform specific means to lock resources */
 typedef int acn_protect_t;
-#define ACN_PORT_PROTECT()        acn_port_protect()
-#define ACN_PORT_UNPROTECT(x)     acn_port_unprotect(x)
+#define ACN_PORT_PROTECT()        0; EnterCriticalSection(&CriticalSection);
+#define ACN_PORT_UNPROTECT(x)     LeaveCriticalSection(&CriticalSection);
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+extern CRITICAL_SECTION CriticalSection;
+
 /* prevent other threads */
-acn_protect_t  acn_port_protect(void);
 
 /* allow other threads */
-void           acn_port_unprotect(acn_protect_t param);
+void acn_port_protect_startup(void);
+void acn_port_protect_shutdown(void);
 
 #ifdef __cplusplus
 }

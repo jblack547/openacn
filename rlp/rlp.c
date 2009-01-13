@@ -54,6 +54,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "netsock.h"
 #include "netxface.h"
+#include "ntoa.h"
 
 #define NUM_PACKET_BUFFERS	16
 #define BUFFER_ROLLOVER_MASK  (NUM_PACKET_BUFFERS - 1)
@@ -200,7 +201,7 @@ rlp_init(void)
   netx_init();
 	rlpm_init();
 
-	return 0;
+	return OK;
 }
 
 /************************************************************************/
@@ -437,6 +438,8 @@ rlp_send_block(
 {
   LOG_FSTART();
 
+  assert(netsock);
+
   return netx_send_to(netsock, destaddr, buf->netbuf, buf->blockend - buf->blockstart);
 
 }
@@ -452,6 +455,8 @@ rlp_open_netsocket(localaddr_t *localaddr)
 	netxsocket_t *netsock;
 
   LOG_FSTART();
+
+  assert(localaddr);
 
   /* see if a netsocket already exists for the given port */
 	if (LCLAD_PORT(*localaddr) != netx_PORT_EPHEM && (netsock = nsk_find_netsock(localaddr))) {
@@ -488,6 +493,8 @@ rlp_close_netsocket(netxsocket_t *netsock)
 
   LOG_FSTART();
 
+  assert(netsock);
+
   port = ntohs(NSK_PORT(netsock));
 
 	if (rlpm_netsock_has_rxgroups(netsock)) {
@@ -512,7 +519,9 @@ rlp_open_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr)
 
   LOG_FSTART();
 
-	if (!is_multicast(groupaddr) && groupaddr != netx_GROUP_UNICAST)
+  assert(netsock);
+
+	if (groupaddr != netx_GROUP_UNICAST && !is_multicast(groupaddr))
 	{
 		/* a specific non-multicast address has been provided - dangerous */
 		/* FIXME should we check for broadcast here? Otherwise it is dropped */
@@ -556,6 +565,8 @@ rlp_close_rxgroup(netxsocket_t *netsock, struct rlp_rxgroup_s *rxgroup)
 {
   LOG_FSTART();
 
+  assert(netsock);
+
 	if (rlpm_rxgroup_has_listeners(rxgroup)) {
     acnlog(LOG_WARNING|LOG_RLP, "LOG_DEBUG|rlp_close_rxgroup: can't close, has listeners");
     return;
@@ -578,6 +589,8 @@ rlp_add_listener(netxsocket_t *netsock, groupaddr_t groupaddr, protocolID_t prot
 	struct rlp_rxgroup_s *rxgroup;
 
   LOG_FSTART();
+
+  assert(netsock);
 
    /* get a new element in the listeners[] table */
 	if ((rxgroup = rlp_open_rxgroup(netsock, groupaddr)) == NULL) {
@@ -606,6 +619,8 @@ rlp_del_listener(netxsocket_t *netsock, struct rlp_listener_s *listener)
 	struct rlp_rxgroup_s *rxgroup;
 
   LOG_FSTART();
+
+  assert(netsock);
 
   /* save the group */
   rxgroup = listener->rxgroup;
@@ -651,7 +666,7 @@ rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_a
 	/* Find if we have a handler */
 	rxgroup = rlpm_find_rxgroup(socket, netx_INADDR(dest));
 	if (rxgroup == NULL) {
-    acnlog(LOG_DEBUG|LOG_RLP,"rlp_process_packet: No handler for this dest address");
+    acnlog(LOG_DEBUG|LOG_RLP,"rlp_process_packet: No handler for this dest address: %s", ntoa(netx_INADDR(dest)));
 	  return;	/* No handler for this dest address */
 	}
 

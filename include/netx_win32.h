@@ -38,6 +38,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 
+#include "epi20.h"
+
 #if CONFIG_STACK_WIN32 && !defined(__netx_win32_h__)
 #define __netx_win32_h__ 1
 
@@ -45,10 +47,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern "C" {
 #endif
 
-/* UDPPACKETSIZE is max size of Ethernet packet - see epi20 for discussion */
-#define UDPPACKETSIZE 1514
-
-typedef char UDPPacket[UDPPACKETSIZE];
+/* MTU_MAX is max size of Ethernet packet - see epi20 for discussion */
+typedef char UDPPacket[MAX_MTU];
 
 #if CONFIG_NET_IPV4
 #ifndef HAVE_port_t
@@ -209,8 +209,8 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 
 
 /* operation argument for netx_change_group */
-#define netx_JOINGROUP 1
-#define netx_LEAVEGROUP 0
+#define netx_JOINGROUP  IP_ADD_MEMBERSHIP
+#define netx_LEAVEGROUP IP_DROP_MEMBERSHIP
 
 /************************************************************************/
 #ifndef netx_PORT_NONE
@@ -239,6 +239,10 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 
 #ifndef netx_INIT_ADDR 
 #define netx_INIT_ADDR(addrp, addr, port) (netx_INADDR(addrp) = (addr), netx_PORT(addrp) = (port))
+#endif
+
+#ifndef netx_SOCK_NONE
+#define netx_SOCK_NONE 0
 #endif
 
 #ifdef __cplusplus

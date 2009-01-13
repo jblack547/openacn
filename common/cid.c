@@ -53,7 +53,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /******************************************************************************/
 /* Convert text based CID to uuit_t
  * Input format example: D1F6F109-8A48-4435-8157-A226604DEA89
- * Returns 0 OK or non-zere if error in format found
+ * Returns OK or non-zere if error in format found
  */
 int textToCid(const char *cidText, cid_t cidp)
 {
@@ -71,7 +71,7 @@ int textToCid(const char *cidText, cid_t cidp)
 			  byt = (byt << 4) | (toupper(*cidText) - 'A' + 10);
 		  } else {
 			  while (bytp < cidp + CIDSIZE) *bytp++ = 0;
-			  return -1;	/* error terminates */
+			  return FAIL;	/* error terminates */
 			}
 		if (byt >= 0x100) {
 			*bytp++ = (uint8_t)byt;
@@ -79,7 +79,7 @@ int textToCid(const char *cidText, cid_t cidp)
 		}
 	}
 	/* TODO: - check for terminated input string here (what termination is allowed?) */
-	return 0;
+	return OK;
 }
 
 const char hexdig[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
@@ -125,7 +125,7 @@ int cidIsEqual(const cid_t cid1, const cid_t cid2)
 	int count = 16;
 
 	while (*cid1++ == *cid2++) if (--count == 0) return 1;
-	return 0;
+	return OK;
 }
 #endif
 

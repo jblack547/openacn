@@ -262,18 +262,23 @@ sdt_join(component_t *local_component, component_t *foreign_component)
 {
   sdt_member_t  *local_member;
   sdt_member_t  *foreign_member;
+  acn_protect_t  protect;
 
   if (local_component && foreign_component) {
+    protect = ACN_PORT_PROTECT();
     if (sdt_tx_join(local_component, foreign_component, false) == FAIL) {
+      ACN_PORT_UNPROTECT(protect);
       return FAIL;
     }
     local_member = sdt_find_member_by_component(foreign_component->tx_channel, local_component);
     foreign_member = sdt_find_member_by_component(local_component->tx_channel, foreign_component);
     if ((!local_member) || (!foreign_member)) {
+      ACN_PORT_UNPROTECT(protect);
       return FAIL;
     }
     foreign_member->state = msWAIT_FOR_ACCEPT;
     local_member->state = msEMPTY;
+    ACN_PORT_UNPROTECT(protect);
     return OK;
   }
   return FAIL;
@@ -343,6 +348,7 @@ sdt_shutdown(void)
   component_t    *component;
   sdt_member_t   *member;
   acn_protect_t   protect;
+  sdt_resend_t   *resend;
 
   LOG_FSTART();
 
@@ -352,6 +358,7 @@ sdt_shutdown(void)
     return OK;
   }
   /* do this write away to prevent timer from hacking at these*/
+  protect = ACN_PORT_PROTECT();
   sdt_state = ssCLOSING;
 
   /* if we have a local component with members in the channel, tell them  to get out of town */
@@ -389,14 +396,13 @@ sdt_shutdown(void)
     }
     component = component->next;
   }
-  protect = ACN_PORT_PROTECT();
+
   /*  get first component and rip thru all of them (cleaning up resources along the way) */
   component = components;
   while(component) {
     /* returns the next component after delete */
     component = sdt_del_component(component);
   }
-  ACN_PORT_UNPROTECT(protect);
 
   /* adhoc clean up */
   if (sdt_adhoc_listener && sdt_adhoc_socket) {
@@ -415,7 +421,17 @@ sdt_shutdown(void)
   }
   sdt_multicast_socket = NULL;
 
+  /* free any memory used by resends and the resends */
+  resend = resends;
+  while (resend) {
+    if (resend->tx_buffer) {
+      rlpm_release_txbuf(resend->tx_buffer);
+    }
+  }
+  sdtm_free_resends();
+
   sdt_state = ssCLOSED;
+  ACN_PORT_UNPROTECT(protect);
   return OK;
 }
 
@@ -437,16 +453,16 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t acc
 
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_component: %s", cid_text);
 
+  protect = ACN_PORT_PROTECT();
   /* See if we have this already */
   component = sdt_find_component(cid);
   if (component) {
+    ACN_PORT_UNPROTECT(protect);
     acnlog(LOG_WARNING | LOG_SDT,"sdt_add_component: component already exists");
     return component;
   }
 
-  /* we need to protect this because incomming data is a higher priority and can add it's own component */
   /* find and empty one */
-  protect = ACN_PORT_PROTECT();
   component = sdtm_new_component();
   if (component) {
     component->next = components;
@@ -460,8 +476,9 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t acc
     /* component->uacn[0] = 0; */ /* default 0 */
       component->access = access;
       component->is_local = is_local;
-    /* component->adhoc_expires_at = */ /* default 0 */
-    /* auto_created = 0; */ /* default false */
+    /* component->adhoc_expires_at = */   /* default 0 */
+    /* component->created_by = cbNONE; */ /* default cbNONE */
+    /* component->dirty = false; */       /* default false */
 
     /* tx_channel = 0 */ /* default */
     if (is_local) {
@@ -500,6 +517,8 @@ sdt_del_component(component_t *component)
 
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_component: %s", cid_text);
 
+  protect = ACN_PORT_PROTECT();
+
   /* remove this component from other components member list */
   cur = components;
   while (cur) {
@@ -520,7 +539,6 @@ sdt_del_component(component_t *component)
 
   /* if it is at top, then we just move leader */
   if (component == components) {
-    protect = ACN_PORT_PROTECT();
     components = component->next;
     sdtm_free_component(component);
     ACN_PORT_UNPROTECT(protect);
@@ -532,7 +550,6 @@ sdt_del_component(component_t *component)
   while (cur) {
     if (cur->next == component) {
       /* jump around it */
-      protect = ACN_PORT_PROTECT();
       cur->next = component->next;
       sdtm_free_component(component);
       ACN_PORT_UNPROTECT(protect);
@@ -540,6 +557,7 @@ sdt_del_component(component_t *component)
     }
     cur = cur->next;
   }
+  ACN_PORT_UNPROTECT(protect);
   return NULL;
 }
 
@@ -562,7 +580,7 @@ sdt_channel_t *
 sdt_add_channel(component_t *leader, uint16_t channel_number)
 {
 	sdt_channel_t *channel;
-  acn_protect_t  protect;
+  //acn_protect_t  protect;
 
   assert(leader);             /* must have a leader */
 
@@ -575,7 +593,7 @@ sdt_add_channel(component_t *leader, uint16_t channel_number)
 
   /* We need to PROTECT this because incomming data is a higher priority and can add it's own channels */
   /* find and empty one */
-  protect = ACN_PORT_PROTECT();
+  //protect = ACN_PORT_PROTECT();
   channel = sdtm_new_channel();
   if (channel) {
     /* assign this to our leader */
@@ -590,10 +608,10 @@ sdt_add_channel(component_t *leader, uint16_t channel_number)
     /* channel->listener;       = */ /* multicast listener, default null */
     channel->mak_ms = FOREIGN_MEMBER_MAK_TIME_ms;
     leader->tx_channel = channel; /* put address of this chan structure into the component struct */
-    ACN_PORT_UNPROTECT(protect);
+    //ACN_PORT_UNPROTECT(protect);
     return channel;
   }
-  ACN_PORT_UNPROTECT(protect);
+  //ACN_PORT_UNPROTECT(protect);
   acnlog(LOG_ERR | LOG_SDT,"sdt_add_channel: failed to get new channel");
   return NULL; /* none left */
 }
@@ -608,7 +626,7 @@ sdt_del_channel(component_t *leader)
 {
   sdt_member_t  *member;
   sdt_channel_t *channel;
-  acn_protect_t  protect;
+  //acn_protect_t  protect;
 
   assert(leader);
 
@@ -619,9 +637,11 @@ sdt_del_channel(component_t *leader)
 
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_channel: %d", leader->tx_channel->number);
 
+  //protect = ACN_PORT_PROTECT();
   channel = leader->tx_channel;
   /* remove it from the leader */
   leader->tx_channel = NULL;
+  //ACN_PORT_UNPROTECT(protect);
 
   /* now we can clean it up */
   /* remove members */
@@ -636,9 +656,9 @@ sdt_del_channel(component_t *leader)
     }
   }
   /* and nuke it */
-  protect = ACN_PORT_PROTECT();
+  //protect = ACN_PORT_PROTECT();
   sdtm_free_channel(channel);
-  ACN_PORT_UNPROTECT(protect);
+  //ACN_PORT_UNPROTECT(protect);
 
   return NULL;
 }
@@ -652,25 +672,26 @@ sdt_member_t *
 sdt_add_member(sdt_channel_t *channel, component_t *component)
 {
   sdt_member_t *member;
-  acn_protect_t  protect;
+  //acn_protect_t  protect;
 
   assert(channel);
   assert(component);
 
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_member: to channel %d", channel->number);
 
-  /* verify the component does not alread exist */
+  /* verify the component does not already exist */
   member = channel->member_list;
   while (member) {
-    member = member->next;
     if (member->component == component) {
       acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_member: component already member of channel");
+      break;
     }
+    member = member->next;
   }
 
   /* we need to protect this because incomming data is a higher priority and can add it's own members */
   /* find and empty one */
-  protect = ACN_PORT_PROTECT();
+  //protect = ACN_PORT_PROTECT();
   member = sdtm_new_member();
   if (member) {
     /* put this one at the head of the list */
@@ -690,10 +711,10 @@ sdt_add_member(sdt_channel_t *channel, component_t *component)
     /* member->last_acked   = */ /* default 0 */
     /* member->nak_modulus  = */ /* default 0 */
     /* member->nak_max_wait  = */ /* default 0 */
-    ACN_PORT_UNPROTECT(protect);
+    //ACN_PORT_UNPROTECT(protect);
     return member;
   }
-  ACN_PORT_UNPROTECT(protect);
+  //ACN_PORT_UNPROTECT(protect);
   acnlog(LOG_ERR | LOG_SDT,"sdt_new_member: none left");
 
   return NULL; /* none left */
@@ -709,7 +730,7 @@ sdt_member_t *
 sdt_del_member(sdt_channel_t *channel, sdt_member_t *member)
 {
   sdt_member_t *cur;
-  acn_protect_t  protect;
+  //acn_protect_t  protect;
 
   assert(channel);
   assert(member);
@@ -718,10 +739,10 @@ sdt_del_member(sdt_channel_t *channel, sdt_member_t *member)
 
   /* if it is at top, then we just move leader */
   if (member == channel->member_list) {
-    protect = ACN_PORT_PROTECT();
+    //protect = ACN_PORT_PROTECT();
     channel->member_list = member->next;
     sdtm_free_member(member);
-    ACN_PORT_UNPROTECT(protect);
+    //ACN_PORT_UNPROTECT(protect);
     return channel->member_list;
   }
 
@@ -730,10 +751,10 @@ sdt_del_member(sdt_channel_t *channel, sdt_member_t *member)
   while (cur) {
     if (cur->next == member) {
       /* jump around it */
-      protect = ACN_PORT_PROTECT();
+      //protect = ACN_PORT_PROTECT();
       cur->next = member->next;
       sdtm_free_member(member);
-      ACN_PORT_UNPROTECT(protect);
+      //ACN_PORT_UNPROTECT(protect);
       return cur->next;
     }
     cur = cur->next;
@@ -847,9 +868,10 @@ void
 sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const netx_addr_t *remhost, const cid_t foreign_cid)
 {
   const uint8_t    *data_end;
-  uint8_t     vector   = 0;
-	uint32_t    data_size = 0;
+  uint8_t           vector   = 0;
+	uint32_t          data_size = 0;
 	const uint8_t    *pdup, *datap = NULL;
+  acn_protect_t     protect;
 
   LOG_FSTART();
 
@@ -911,6 +933,7 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const netx_addr_t *
 
 
 
+    protect = ACN_PORT_PROTECT();
     /* Dispatch to vector */
     /* At the sdt root layer vectors are commands or wrappers */
     switch(vector) {
@@ -952,6 +975,7 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const netx_addr_t *
       default:
         acnlog(LOG_WARNING | LOG_SDT,"sdtRxHandler: Unknown Vector (protocol) - skipping");
     } /* switch */
+    ACN_PORT_UNPROTECT(protect);
   } /* while() */
 
   LOG_FEND();
@@ -1088,7 +1112,7 @@ sdt_tick(void *arg)
     } /* of if(channel) */
 
     /* delete self-created components that have no channel (and no members) */
-    if (!channel && component->auto_created) {
+    if (!channel && component->created_by == cbJOIN) {
       component = sdt_del_component(component);
     } else {
       component = component->next;
@@ -1127,8 +1151,6 @@ sdt_tick(void *arg)
   }
 
   ACN_PORT_UNPROTECT(protect);
-
-  /* Reset timers */
 }
 
 /*****************************************************************************/
@@ -2061,7 +2083,7 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
       remove_allocations();
       return;
     }
-    foreign_component->auto_created = true;
+    foreign_component->created_by = cbJOIN;
     allocations |= ALLOCATED_FOREIGN_COMP;
   }
 
@@ -2091,7 +2113,8 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
   foreign_channel->reliable_seq = foreign_reliable_seq;
   foreign_channel->source_addr = *source_addr;
 
-  /* TBD, we need to init foreign_channel->sock to the address of a sockets_tbl[] element with 5568 */
+  /* TODO: we need to init foreign_channel->sock to the address of a sockets_tbl[] element with 5568 */
+  foreign_channel->sock = sdt_multicast_socket;
 
   joinp = unmarshal_transport_address(joinp, source_addr, &foreign_channel->destination_addr, &address_type); /* get dest port and IP out of rx join msg */
 
@@ -2862,6 +2885,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
             acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper: association channel not correct");
             return;
           }
+
 /*          else { */
             /* got data so reset timer */
 /*            local_member->expires_ms = local_member->expiry_time_s * 1000; */
@@ -4182,7 +4206,7 @@ sdt_save_buffer(rlp_txbuf_t *tx_buffer, uint8_t *pdup, uint32_t size, component_
 {
   sdt_resend_t  *resend = NULL;
   sdt_resend_t  *last = NULL;
-  acn_protect_t  protect;
+  //acn_protect_t  protect;
 
   LOG_FSTART();
 
@@ -4198,7 +4222,7 @@ sdt_save_buffer(rlp_txbuf_t *tx_buffer, uint8_t *pdup, uint32_t size, component_
       if (!resend->next) {
         acnlog(LOG_DEBUG | LOG_SDT,"sdt_save_buffer: buffer full truncating");
 
-        protect = ACN_PORT_PROTECT();
+        //protect = ACN_PORT_PROTECT();
         /* expire it */
         resend->expires_ms = 0;
         /* free buffer */
@@ -4207,7 +4231,7 @@ sdt_save_buffer(rlp_txbuf_t *tx_buffer, uint8_t *pdup, uint32_t size, component_
         if (last) {
           last->next = NULL;
         }
-        ACN_PORT_UNPROTECT(protect);
+        //ACN_PORT_UNPROTECT(protect);
         break;
       }
       last = resend;
@@ -4235,8 +4259,6 @@ sdt_save_buffer(rlp_txbuf_t *tx_buffer, uint8_t *pdup, uint32_t size, component_
 
   return OK;
 }
-
-
 
 
 /*****************************************************************************/
@@ -4271,7 +4293,7 @@ void sdt_stats(void)
     case accDEVICE: acnlog(LOG_INFO | LOG_STAT, "access: DEVICE"); break;
     case accBOTH: acnlog(LOG_INFO | LOG_STAT, "access: BOTH"); break;
     }
-    acnlog(LOG_INFO | LOG_STAT, "local: %d", component->is_local);
+    acnlog(LOG_INFO | LOG_STAT, "local: %s", component->is_local?"true":"false");
     #if CONFIG_EPI10
       acnlog(LOG_INFO | LOG_STAT, "dyn_mcast: %d", component->dyn_mcast);
     #endif
@@ -4279,7 +4301,8 @@ void sdt_stats(void)
     addr = ntohl(netx_INADDR(&component->adhoc_addr));
     acnlog(LOG_INFO | LOG_STAT, "ad_hoc: %s: %d", ntoa(addr), port);
     acnlog(LOG_INFO | LOG_STAT, "ad_hoc_exp: %d", component->adhoc_expires_at);
-    acnlog(LOG_INFO | LOG_STAT, "auto_created: %d", component->auto_created);
+    acnlog(LOG_INFO | LOG_STAT, "created_by: %d", component->created_by);
+    acnlog(LOG_INFO | LOG_STAT, "dirty: %s", component->dirty?"true":"false");
     channel = component->tx_channel;
     if (channel) {
       acnlog(LOG_INFO | LOG_STAT, "chan-number: %d", channel->number);

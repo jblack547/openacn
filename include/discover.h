@@ -41,9 +41,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern "C" {
 #endif
 
-void discover_acn(char *dcid);
+void discover_acn(char *dcid_str, void (*callback) (component_t *component));
 void discover_register(component_t *component);
-/* void discover_deregister(void); */
+void discover_deregister(component_t *component);
 
 #ifdef __cplusplus
 }

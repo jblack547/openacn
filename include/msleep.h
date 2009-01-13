@@ -39,7 +39,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Substitute a system function if we can
 */
 #if CONFIG_STACK_WIN32
-
+__inline void msleepex(int msecs)
+{
+  unsigned int t;
+  t = GetTickCount();
+  while (1) {
+    if (GetTickCount() > t + msecs) {
+      break;
+    };
+  }
+}
 #define msleep(msecs) Sleep(msecs)
 #define HAVE_msleep 1
 

@@ -100,7 +100,7 @@ int mcast_alloc_init(
 	if ((scopeaddr & scopemask) != scopeaddr)
 	{
 		acnlog(LOG_ERR|LOG_MISC,"mcast_alloc_init: Scope-address out of range.");
-		return -1;
+		return FAIL;
 	}
 
 /*
@@ -126,7 +126,7 @@ From epi10 r4:
 	uuidPart = (CID_NODE(comp->cid)[4] << 8) | CID_NODE(comp->cid)[5];
 	uuidPart ^= (uint16_t)CID_TIME_LOW(comp->cid);
 	comp->dyn_mcast = uuidPart & dyn_mask;
-	return 0;
+	return OK;
 }
 
 /************************************************************************/

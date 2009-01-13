@@ -113,14 +113,19 @@ nsk_new_netsock(void)
 void
 nsk_free_netsock(netxsocket_t *socket)
 {
+  acn_protect_t protect;
+
   /* put these backt back to cleared state just in case*/
-  socket->nativesock = 0;
+  protect = ACN_PORT_PROTECT();
+  socket->nativesock = netx_SOCK_NONE;
   socket->data_callback = NULL;
   /* We mark a free socket with a netx_PORT_NONE */
   NSK_PORT(socket) = netx_PORT_NONE;
+
 #if !CONFIG_LOCALIP_ANY
   NSK_INADDR(socket) = netx_INADDR_ANY;
 #endif
+  ACN_PORT_UNPROTECT(protect);
 }
 
 /***********************************************************************************************/
@@ -145,7 +150,7 @@ nsk_netsocks_init(void)
     #if !CONFIG_LOCALIP_ANY
       NSK_INADDR(socket) = netx_INADDR_ANY;
     #endif
-    socket->nativesock = 0;
+    socket->nativesock = netx_SOCK_NONE;
     socket->data_callback = NULL;
   }
 }

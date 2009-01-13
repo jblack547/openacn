@@ -58,6 +58,7 @@ extern void           sdtm_free_component(component_t *component);
 
 extern sdt_resend_t  *sdtm_new_resend(void);
 extern void           sdtm_free_resend(sdt_resend_t *resend);
+extern void           sdtm_free_resends(void);
 
 
 #ifdef __cplusplus

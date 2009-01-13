@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if CONFIG_STACK_WIN32
 #include <malloc.h>
-#include <ws2tcpip.h>
+#include <Mswsock.h>
 
 #include <Iphlpapi.h>
 #pragma comment(lib, "Iphlpapi.lib") /* for getting ip mask */
@@ -52,14 +52,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "netsock.h"
 #include "ntoa.h"
 
+/* Define EXTENDED as 1 if enabling Microsoft socket extensions */
+#define EXTENDED 1 
 
 /************************************************************************/
-#define INPACKETSIZE DEFAULT_MTU
 #define LOG_FSTART() acnlog(LOG_DEBUG | LOG_NETX, "%s :...", __func__)
 
 /************************************************************************/
 /* local memory */
-WSADATA wsdata;
+	LPFN_WSARECVMSG WSARecvMsg; /* pointer to WSARecvMsg() */
 
 
 /************************************************************************/
@@ -87,16 +88,25 @@ void netx_init(void)
 /************************************************************************/
 int netx_startup(void)
 {
-  int  res;
+  int      res;
+  WSADATA  wsaData;
 
   /* init windows socket */
-  res = WSAStartup(0x0202,&wsdata);
+  res = WSAStartup(0x0202,&wsaData);
   if (res != 0) {
-    acnlog(LOG_ERR | LOG_NETX, "netx_init : WSAStartup failed");
+    acnlog(LOG_ERR | LOG_NETX, "netx_init : WSAStartup failed-%d", WSAGetLastError());
     return FAIL;
   }
+/* only need to verify this if we are using extended */
+#if EXTENDED
+  if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
+    acnlog(LOG_ERR | LOG_NETX, "netx_init : WSAStartup unable to find a suitable version of Winsock.dll");
+    WSACleanup();
+    return FAIL;
+  }
+#endif
+
   return OK;
-  /* TODO: the above should verify the verions is correct */
 }
 
 /************************************************************************/
@@ -127,8 +137,7 @@ void netx_free_txbuf(void * pkt)
  */
 void netx_release_txbuf(void * pkt)
 {
-  UNUSED_ARG(pkt);
-/*  delete (UDPPacket*)pkt; */
+  free(pkt);
 }
 
 
@@ -155,6 +164,9 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 {
   netx_addr_t addr;
   int         ret;
+	GUID        WSARecvMsg_GUID = WSAID_WSARECVMSG;
+	DWORD       NumberOfBytes;
+  int         m_socket;
 
   /* open a unicast socket */ 
   LOG_FSTART();
@@ -167,11 +179,22 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   }
   
   /* flag that the socket is open */
-  netsock->nativesock = socket(PF_INET, SOCK_DGRAM, 0);
-
-  if (!netsock->nativesock) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : socket fail");
+  m_socket = socket(PF_INET, SOCK_DGRAM, 0);
+  
+  if (!m_socket) {
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : socket() fail-%d", WSAGetLastError());
     return FAIL; /* FAIL */
+  }
+
+  ret = WSAIoctl(m_socket, SIO_GET_EXTENSION_FUNCTION_POINTER,
+		      &WSARecvMsg_GUID, sizeof WSARecvMsg_GUID,
+		      &WSARecvMsg, sizeof WSARecvMsg,
+		      &NumberOfBytes, NULL, NULL);
+
+  if (ret == SOCKET_ERROR) {
+    acnlog(LOG_ERR | LOG_NETX, "netx_init : Unable to locate pointer to WSARecvMsg()-%d", WSAGetLastError());
+	  WSARecvMsg = NULL;
+	  return FAIL;
   }
 
   #if 0
@@ -180,7 +203,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   if (ret < 0) {
     acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : setsockopt:SO_REUSEADDR fail");
     close(netsock->nativesock);
-    netsock->nativesock = 0;
+    netsock->nativesock = netx_SOCK_NONE;
     return FAIL; /* FAIL */
   }
   #endif
@@ -202,30 +225,27 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   man netdevice for more info.
   */
 
-  ret =  bind(netsock->nativesock, (SOCKADDR *)&addr, sizeof(addr));
+  ret =  bind(m_socket, (SOCKADDR *)&addr, sizeof(addr));
 
   if (ret == SOCKET_ERROR) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : bind fail, port:%d", ntohs(LCLAD_PORT(*localaddr)));
-    closesocket(netsock->nativesock);
-    netsock->nativesock = NULL;
+    closesocket(m_socket);
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : bind fail-%d, port:%d", WSAGetLastError(), ntohs(LCLAD_PORT(*localaddr)));
     return FAIL; /* FAIL */
   }
 
   /* save the passed in address/port number into the passed in netxsocket_s struct */
   NSK_PORT(netsock) = LCLAD_PORT(*localaddr);
 
-  /* this does not work in WIN32 */
-  # if 0
   /* we will need information on destination address used */
-	ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
+	ret = setsockopt(m_socket, IPPROTO_IP, IP_PKTINFO, (char *)&optionOn, sizeof(optionOn));
 	if (ret == SOCKET_ERROR) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : setsockopt:IP_PKTINFO fail");
-    close(netsock->nativesock);
-    netsock->nativesock = 0;
+    closesocket(m_socket);
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : setsockopt:IP_PKTINFO fail-%d", WSAGetLastError());
     return FAIL; /* FAIL */
   }
-  #endif
-  
+
+  netsock->nativesock = m_socket;
+
   acnlog(LOG_DEBUG | LOG_NETX, "netx_udp_open : port:%d", ntohs(NSK_PORT(netsock)));
   
   /* Note: A separate thread will call netx_poll() to look for received messages */
@@ -252,7 +272,7 @@ void netx_udp_close(netxsocket_t *netsock)
   /* a little safer to mark it not used before we actually nuke it */
   hold = netsock->nativesock;
   /* clear flag that it's in use */ 
-  netsock->nativesock = NULL;
+  netsock->nativesock = netx_SOCK_NONE;
   /* close socket */
   closesocket(hold);
 }
@@ -270,6 +290,9 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
   ip_mreq     mreq;
   int         ret;
   int         ip_ttl;
+  const char* add_str = "add";
+  const char* del_str = "drop";
+
 
   LOG_FSTART();
   
@@ -278,6 +301,8 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
 	 return FAIL;
   }
 
+  assert(netsock);
+
   acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group, port: %d, group: %s", ntohs(NSK_PORT(netsock)), ntoa(local_group));
 
   /* socket should have some options if enabled for multicast */
@@ -285,7 +310,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
   /* allow reuse of the local port number */
   ret = setsockopt(netsock->nativesock,  SOL_SOCKET, SO_REUSEADDR, (char *)&optionOn,  sizeof(optionOn));
   if (ret == SOCKET_ERROR) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:SO_REUSEADDR fail");
+    acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:SO_REUSEADDR fail-%d", WSAGetLastError());
     return FAIL; /* fail */
   }
 
@@ -293,14 +318,14 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
   ip_ttl = 2;
   ret = setsockopt(netsock->nativesock,  IPPROTO_IP, IP_MULTICAST_TTL, (char *)&ip_ttl,  sizeof(ip_ttl));
   if (ret == SOCKET_ERROR) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_TTL fail");
+    acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_TTL fail-%d", WSAGetLastError());
     return FAIL; /* fail */
   }
 
   /* turn off loop back on multicast */
   ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)&optionOff, sizeof(optionOff));
   if (ret == SOCKET_ERROR) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_LOOP fail");
+    acnlog(LOG_WARNING | LOG_NETX, "netx_change_group : setsockopt:IP_MULTICAST_LOOP fail-%d", WSAGetLastError());
     return FAIL; /* fail */
   }
 
@@ -313,13 +338,11 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
 
   
   /* result = ERR_OK which is defined as zero so return value is consistent */ 
-  if (operation == netx_JOINGROUP) {
-    setsockopt(netsock->nativesock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq));
-    acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group: added");
-  } else {
-    setsockopt(netsock->nativesock, IPPROTO_IP, IP_DROP_MEMBERSHIP, (char*)&mreq, sizeof(mreq));
-    acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group: dropped");
+  ret = setsockopt(netsock->nativesock, IPPROTO_IP, operation, (char*)&mreq, sizeof(mreq));
+  if (ret == SOCKET_ERROR) {
+    acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group: %s group failed-%d", (operation==netx_JOINGROUP ? add_str:del_str), WSAGetLastError());
   }
+  acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group: %s OK", (operation==netx_JOINGROUP ? add_str:del_str));
   return OK; /* OK */
 }
 
@@ -356,7 +379,6 @@ int netx_send_to(
   }
   
   /* get dest IP and port from the calling routine */
-  /* TODO: For now I'm going to copy to insure sin_family is set */
   netx_INIT_ADDR(&dest_addr, netx_INADDR(destaddr), netx_PORT(destaddr));
 
   /* create a new UDP packet */
@@ -368,7 +390,6 @@ int netx_send_to(
    *   copy data into packet
    * memcpy(UdpBuffer, data, datalen);
    */
-  
   sendto(netsock->nativesock, (char *)pkt, datalen, 0, (SOCKADDR *)&dest_addr, sizeof(dest_addr));
 
   /* we will assume it all went! */
@@ -380,13 +401,10 @@ int netx_send_to(
 /*
   Poll for input
 */
-/* TODO: need to place this better */
-/* TODO: This should not be hard code...and we should check size */
 static UDPPacket recv_buffer;
 int
 netx_poll(void)
 {
-  int                 length;
   int                 addr_len = sizeof(netx_addr_t);
   fd_set              socks;
   netxsocket_t       *nsk; 
@@ -396,17 +414,28 @@ netx_poll(void)
  
   netx_addr_t         source;
   netx_addr_t         dest;
-  
-  /* LOG_FSTART(); */
+  unsigned long       NumberOfBytes;
 
-  FD_ZERO(&socks);
+#if EXTENDED
+  WSABUF DataBuf;
+	WSABUF WSABuf;
+	WSAMSG Msg;
+  WSACMSGHDR *pCMsgHdr;
+  char ControlBuffer[1024];
+  int nResult;
+  DWORD nFlags = 0;
+#endif
 
-  /* abort if we have no sockets yet */
+/* LOG_FSTART(); */
+
   nsk = nsk_first_netsock();
   if (!nsk) {
     /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: no sockets"); */
     return FAIL;
   }
+
+  FD_ZERO(&socks);
+
   while (nsk) {
     /* make sure we assignged the socket */
     if (nsk->nativesock) {
@@ -432,31 +461,67 @@ netx_poll(void)
   }
   if (readsocks > 0) {
     nsk = nsk_first_netsock();
-    while (nsk && nsk->nativesock) {
+    while (nsk) {
+      /* skip empty ones */
+      if (!nsk->nativesock) {
+        nsk = nsk_next_netsock(nsk);
+        continue;
+      }
+        
       if (FD_ISSET(nsk->nativesock,&socks)) {
         /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: recvfrom..."); */
-        length = recvfrom(nsk->nativesock, recv_buffer, sizeof(recv_buffer), 0, (SOCKADDR *)&source, &addr_len);
-        if (length < 0) {
+#if EXTENDED
+        DataBuf.buf = recv_buffer;
+        DataBuf.len = sizeof(UDPPacket);
+        Msg.name = (SOCKADDR*)&source;
+        Msg.namelen = sizeof sockaddr_in;
+        WSABuf.buf = recv_buffer;
+        WSABuf.len = sizeof(UDPPacket);
+        Msg.lpBuffers = &WSABuf;
+        Msg.dwBufferCount = 1;
+        Msg.Control.buf = ControlBuffer;
+        Msg.Control.len = sizeof ControlBuffer;
+        Msg.dwFlags = nFlags;
+        nResult = WSARecvMsg(nsk->nativesock, &Msg, &NumberOfBytes, NULL, NULL);
+#else
+        NumberOfBytes = recvfrom(nsk->nativesock, recv_buffer, sizeof(recv_buffer), 0, (SOCKADDR *)&source, &addr_len);
+        if (NumberOfBytes < 0) {
           acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: recvfrom fail: %d", WSAGetLastError());
           return FAIL; /* fail */
-        }
-        if (length > 0) {
-          /* TODO: This need to be network in localaddress form! */
+         }
+#endif
+
+        if (NumberOfBytes > 0) {
+          #if EXTENDED
+            pCMsgHdr = WSA_CMSG_FIRSTHDR(&Msg);
+            if (!pCMsgHdr) {
+              acnlog(LOG_ERR | LOG_NETX , "netx_poll: unable to get extened data");
+              return FAIL;
+            }
+            if (pCMsgHdr->cmsg_type = IP_PKTINFO) {
+    				  IN_PKTINFO *pPktInfo;
+				      pPktInfo = (IN_PKTINFO *)WSA_CMSG_DATA(pCMsgHdr);
+              netx_INADDR(&dest) = pPktInfo->ipi_addr.S_un.S_addr;
+            } else {
+              acnlog(LOG_ERR | LOG_NETX , "netx_poll: extended data does not contain IP_PKTINFO");
+              return FAIL;
+            } 
+          #else
+            netx_INADDR(&dest) = LCLAD_INADDR(nsk->localaddr);
+          #endif
           netx_PORT(&dest) = LCLAD_PORT(nsk->localaddr);
-          netx_INADDR(&dest) = LCLAD_INADDR(nsk->localaddr);
 
           /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handoff"); */
-          netx_handler(recv_buffer, length, &source, &dest);
+          netx_handler(recv_buffer, NumberOfBytes, &source, &dest);
           /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: handled"); */
-/*          return OK; */
         } else {
           acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: length = 0");
           return OK; /* ok but no data */
         }
-      }
+      } /* if (FD_ISSET */
       nsk = nsk_next_netsock(nsk);
-    }
-  } 
+    } /* of while() */
+  } /* of (readsocks) */
   /* acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: no data"); */
   return OK;
 }      
