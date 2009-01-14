@@ -197,6 +197,7 @@ int      sdt_shutdown(void);
 void     sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const netx_addr_t *remhost, const cid_t foreign_cid);
 void     sdt_tick(void *arg);  /* timer call back */
 int      sdt_join(component_t *local_component, component_t *foreign_component);
+int      sdt_leave(component_t *local_component, component_t *foreign_component);
 void     sdt_tx_reliable_data(component_t *local_component, component_t *foreign_component, uint32_t protocol, bool response, void *data, uint32_t data_len);
 
 uint8_t *sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_channel, uint16_t first_mid, uint16_t last_mid, uint16_t mak_threshold);

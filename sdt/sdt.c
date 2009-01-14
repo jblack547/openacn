@@ -266,6 +266,13 @@ sdt_join(component_t *local_component, component_t *foreign_component)
 
   if (local_component && foreign_component) {
     protect = ACN_PORT_PROTECT();
+    if (local_component->tx_channel) {
+      foreign_member = sdt_find_member_by_component(local_component->tx_channel,foreign_component);
+      if (foreign_member) {
+        acnlog(LOG_INFO | LOG_SDT,"sdt_join: already member");
+        return FAIL;
+      }
+    }
     if (sdt_tx_join(local_component, foreign_component, false) == FAIL) {
       ACN_PORT_UNPROTECT(protect);
       return FAIL;
@@ -283,6 +290,57 @@ sdt_join(component_t *local_component, component_t *foreign_component)
   }
   return FAIL;
 }
+
+/*****************************************************************************/
+/*
+  Short wrapper around leave command with some testing...
+ */
+int
+sdt_leave(component_t *local_component, component_t *foreign_component)
+{
+  sdt_member_t  *local_member;
+  sdt_member_t  *foreign_member;
+  acn_protect_t  protect;
+
+  if (local_component && foreign_component) {
+    protect = ACN_PORT_PROTECT();
+    if (local_component->tx_channel) {
+      foreign_member = sdt_find_member_by_component(local_component->tx_channel,foreign_component);
+      if (!foreign_member) {
+        ACN_PORT_UNPROTECT(protect);
+        acnlog(LOG_INFO | LOG_SDT,"sdt_leave: already member");
+        return FAIL;
+      }
+    } else {
+      ACN_PORT_UNPROTECT(protect);
+      acnlog(LOG_INFO | LOG_SDT,"sdt_leave: channel has no members");
+      return FAIL;
+    }
+
+    if (sdt_tx_leave(local_component, foreign_component, foreign_member) == FAIL) {
+      ACN_PORT_UNPROTECT(protect);
+      acnlog(LOG_INFO | LOG_SDT,"sdt_leave: sdt_tx_leave failed");
+      return FAIL;
+    }
+
+    local_member = sdt_find_member_by_component(foreign_component->tx_channel, local_component);
+    if (!local_member) {
+      acnlog(LOG_INFO | LOG_SDT,"sdt_leave: missing local member?");
+    }
+    local_member->state = msDELETE;
+
+    foreign_member = sdt_find_member_by_component(local_component->tx_channel, foreign_component);
+    if (!foreign_member) {
+      acnlog(LOG_INFO | LOG_SDT,"sdt_leave: missing foreign member?");
+    }
+    foreign_member->state = msDELETE;
+
+    ACN_PORT_UNPROTECT(protect);
+    return OK;
+  }
+  return FAIL;
+}
+
 
 /*****************************************************************************/
 /*
@@ -1608,6 +1666,29 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component, bool i
     local_channel->sock = sdt_adhoc_socket;
   }
 
+  /* create foreign member */
+  foreign_member = sdt_find_member_by_component(local_channel, foreign_component);
+  if (!foreign_member) {
+    foreign_member = sdt_add_member(local_channel, foreign_component);
+    if (!foreign_member) {
+      acnlog(LOG_ERR | LOG_SDT, "sdt_tx_join : failed to allocate foreign member");
+      remove_allocations();
+      return FAIL;
+    }
+    allocations |= ALLOCATED_FOREIGN_MEMBER;
+  } else {
+    if (foreign_member->state != msEMPTY) {
+      acnlog(LOG_ERR | LOG_SDT, "sdt_tx_join : already member");
+      return FAIL;
+    }
+  }
+
+  /* set mid */
+  foreign_member->mid = sdt_next_member(local_channel);
+  /* Timeout if JOIN ACCEPT and followup ACK is not received */
+  foreign_member->expires_ms = RECIPROCAL_TIMEOUT_ms;
+  foreign_member->mak_retries = MAK_MAX_RETRIES;
+
   /* create foreign channel */
   if (!foreign_channel) {
     /* create a channel for the recipocal join*/
@@ -1621,25 +1702,6 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component, bool i
     }
     allocations |= ALLOCATED_FOREIGN_CHANNEL;
   }
-
-  /* create foreign member */
-  foreign_member = sdt_find_member_by_component(local_channel, foreign_component);
-  if (!foreign_member) {
-    foreign_member = sdt_add_member(local_channel, foreign_component);
-    if (!foreign_member) {
-      acnlog(LOG_ERR | LOG_SDT, "sdt_tx_join : failed to allocate foreign member");
-      remove_allocations();
-      return FAIL;
-    }
-    allocations |= ALLOCATED_FOREIGN_MEMBER;
-  }
-
-  /* set mid */
-  foreign_member->mid = sdt_next_member(local_channel);
-  /* Timeout if JOIN ACCEPT and followup ACK is not received */
-  foreign_member->expires_ms = RECIPROCAL_TIMEOUT_ms;
-  foreign_member->mak_retries = MAK_MAX_RETRIES;
-
 
   /* create local member */
   local_member = sdt_find_member_by_component(foreign_channel, local_component);
@@ -3854,6 +3916,7 @@ static void
 sdt_rx_leave(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len)
 {
   sdt_member_t *local_member;
+  sdt_member_t *foreign_member;
 
   UNUSED_ARG(data);
 
@@ -3892,6 +3955,14 @@ sdt_rx_leave(component_t *local_component, component_t *foreign_component, const
   } else {
     acnlog(LOG_WARNING | LOG_WARNING, "sdt_rx_leave: no local member");
   }
+
+  foreign_member = sdt_find_member_by_component(local_component->tx_channel, foreign_component);
+  if (foreign_member) {
+    local_member->state = msDELETE;
+  } else {
+    acnlog(LOG_WARNING | LOG_WARNING, "sdt_rx_leave: no foreign member");
+  }
+
 }
 
 /*****************************************************************************/
@@ -4288,10 +4359,10 @@ void sdt_stats(void)
     acnlog(LOG_INFO | LOG_STAT, "fctn: %s", component->fctn);
     acnlog(LOG_INFO | LOG_STAT, "uacn: %s", component->uacn);
     switch (component->access) {
-    case accUNKNOWN: acnlog(LOG_INFO | LOG_STAT, "access: UNKNOWN"); break;
-    case accCONTROL: acnlog(LOG_INFO | LOG_STAT, "access: CONTROL"); break;
-    case accDEVICE: acnlog(LOG_INFO | LOG_STAT, "access: DEVICE"); break;
-    case accBOTH: acnlog(LOG_INFO | LOG_STAT, "access: BOTH"); break;
+      case accUNKNOWN: acnlog(LOG_INFO | LOG_STAT, "access: UNKNOWN"); break;
+      case accCONTROL: acnlog(LOG_INFO | LOG_STAT, "access: CONTROL"); break;
+      case accDEVICE: acnlog(LOG_INFO | LOG_STAT, "access: DEVICE"); break;
+      case accBOTH: acnlog(LOG_INFO | LOG_STAT, "access: BOTH"); break;
     }
     acnlog(LOG_INFO | LOG_STAT, "local: %s", component->is_local?"true":"false");
     #if CONFIG_EPI10
