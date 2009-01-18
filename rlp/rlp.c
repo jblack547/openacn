@@ -635,8 +635,9 @@ rlp_del_listener(netxsocket_t *netsock, struct rlp_listener_s *listener)
 /************************************************************************/
 /*
 Process a packet - called by network interface layer on receipt of a packet
-NOTE: The dest parameter is the IP address of the interface that received the packect. In the case of multicast,
-      this would not be the same destination address as the ethernet packet.
+NOTE: Depending on your stack, it is not always easy to find the group
+address of an incoming packet. In this case, you will have to put up
+with a little inefficiency in SDT
 */
 void
 rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref)
