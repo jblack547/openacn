@@ -102,25 +102,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* void  syslog (int priority, const char *format, ...) */
 /* void  closelog (void) */
 
-#elif CONFIG_ACNLOG == ACNLOG_STDOUT
-
-#include <stdio.h>
-#include <time.h>
-
-#define acnopenlog(ident, option, facility)
-#define acncloselog()
-#define acnlog(priority, format, ...) if (((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) printf(format"\n", ##__VA_ARGS__)
-/* #define acnlog(priority, format, ...) if (((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) iprintf("%d:"format"\n", time(0), ##__VA_ARGS__) */
-
-/* #define acnlog(priority, format, ...) ((((priority) >= 0) && (((priority) & 7) <= CONFIG_LOGLEVEL)) ? iprintf(format"\n", ##__VA_ARGS__) : (void)0) */
-
-#elif CONFIG_ACNLOG == ACNLOG_STDERR
+#elif CONFIG_ACNLOG == ACNLOG_STDOUT || CONFIG_ACNLOG == ACNLOG_STDERR
 
 #include <stdio.h>
 
 #define acnopenlog(ident, option, facility)
 #define acncloselog()
-#define acnlog(priority, ...) if (((priority) & 7) <= CONFIG_LOGLEVEL) fprintf(stderr, __VA_ARGS__)
+
+#define acnlog(priority, ...) \
+	((void)(((priority) >= 0 && ((priority) & 7) <= CONFIG_LOGLEVEL) ? \
+	(fprintf(((CONFIG_ACNLOG == ACNLOG_STDERR) ? stderr : stdout), __VA_ARGS__), putc('\n', ((CONFIG_ACNLOG == ACNLOG_STDERR) ? stderr : stdout))) \
+	: 0))
 
 #else /* CONFIG_ACNLOG == ACNLOG_NONE */
 
