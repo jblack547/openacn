@@ -29,7 +29,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 */
 
 /* Lib includes */
@@ -114,7 +114,7 @@ static void create_attr_list(char *new_attr_list, component_t *component)
       case accUNKNOWN:
         break;
     }
-		
+    
     /* convert the IP string */
     ip_str = ntoa(netx_getmyip(NULL));
 
@@ -199,7 +199,6 @@ static void attrrqst_callback(int error, char *attr_list, int count)
   char ip_str[16]              = {'\0'};
   char port_str[6]             = {'\0'};
   char dd[64]                  = {'\0'};
-  UNUSED_ARG(count);
 
 #if CONFIG_SDT
   component_t *comp = NULL;
@@ -215,6 +214,9 @@ static void attrrqst_callback(int error, char *attr_list, int count)
   char *p;
   char *s;
   char *e;
+
+  /* count is not used at this time */
+  UNUSED_ARG(count);
 
   if (!error) {
     acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: %s",attr_list);
@@ -317,7 +319,7 @@ static void attrrqst_callback(int error, char *attr_list, int count)
       acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: Look! I see can myself!");
       return;
     }
-  	/* see if we already have this one */
+    /* see if we already have this one */
     comp = sdt_find_component(cid);
     /* if it was found */
     if (comp) {
@@ -350,7 +352,9 @@ static void attrrqst_callback(int error, char *attr_list, int count)
 /* for directory agent builds */
 static void srvrqst_callback(int error, char *url, int count)
 {
+  /* count is number of urls, if zero, it is the last one */
   UNUSED_ARG(count);
+
   if (!error) {
     acnlog(LOG_DEBUG | LOG_DISC , "srvrqst_callback: %s", url);
 

@@ -310,7 +310,7 @@ SLPError SLPFindSrvTypes( SLPHandle hslp,
  ******************************************************************************/
 
 /* static pointer to first in linked list */
-static SLPMsg *FirstMsg = NULL;
+SLPMsg *FirstMsg = NULL;
 
 /******************************************************************************/
 /* Find fisrt message in our pool */
@@ -527,9 +527,6 @@ void da_delete_all(void)
 /* Note: this is the only internal routine where ACN_PROTECT() is called  */
 void da_close(void)
 {
-/*
-  SLPDa_list   *d = da_list;
-*/
   int           ticks = 0;
   acn_protect_t protect;
 
@@ -1104,7 +1101,7 @@ void slp_tick(void *arg)
   SLPMsg         *Msg;
   SLPDa_list     *da = da_list;
 
-  SLP_UNUSED_ARG(arg);
+  UNUSED_ARG(arg);
 
   /* count milliseconds */
   msticks += SLP_TMR_INTERVAL;
@@ -1778,7 +1775,7 @@ SLPError slp_receive_srvrply(ip4addr_t ip, SLPHeader *header, char *data)
   char  *url;
 
 
-  SLP_UNUSED_ARG(ip);
+  UNUSED_ARG(ip);
 
   LOG_FSTART();
 
@@ -2411,7 +2408,7 @@ SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data)
   SLPString   slp_str;
   SLPMsg     *Msg;
 
-  SLP_UNUSED_ARG(ip);
+  UNUSED_ARG(ip);
 
   LOG_FSTART();
 
@@ -2472,8 +2469,8 @@ SLPError slp_receive_svrack(ip4addr_t ip, SLPHeader *header, char *data)
   uint16_t  error_code;
   SLPMsg    *Msg;
 
-  SLP_UNUSED_ARG(header);
-  SLP_UNUSED_ARG(ip);
+  UNUSED_ARG(header);
+  UNUSED_ARG(ip);
 
   LOG_FSTART();
 
@@ -2572,7 +2569,7 @@ char       *scope_list;
 
 */
 
-  SLP_UNUSED_ARG(ip);
+  UNUSED_ARG(ip);
 
   LOG_FSTART();
 
@@ -2683,7 +2680,7 @@ SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
   SLPString   slp_string;
   SLPHeader   slp_header;
 
-  SLP_UNUSED_ARG(ip);
+  UNUSED_ARG(ip);
 
   LOG_FSTART();
 
@@ -2749,8 +2746,8 @@ SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
   netx_release_txbuf(pkt);
 
 #else
-  SLP_UNUSED_ARG(ip);
-  SLP_UNUSED_ARG(reply_xid);
+  UNUSED_ARG(ip);
+  UNUSED_ARG(reply_xid);
 #endif
   return (SLP_OK);
 
@@ -2778,9 +2775,9 @@ void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t
 
   LOG_FSTART();
 
-  SLP_UNUSED_ARG(socket);
-  SLP_UNUSED_ARG(dest);
-  SLP_UNUSED_ARG(ref);
+  UNUSED_ARG(socket);
+  UNUSED_ARG(dest);
+  UNUSED_ARG(ref);
 
   ip_addr = netx_INADDR(source);
 
