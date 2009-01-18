@@ -150,7 +150,7 @@ all_OBJS+=$${${DIR}_OBJS}
 endef
 
 ${foreach DIR, ${SUBDIRS}, ${eval ${OBJSFORDIR}}}
-
+DEPS=${patsubst ${OBJDIR}/%.o, ${DEPDIR}/%.d, ${all_OBJS}}
 ##########################################################################
 # Build rules
 #
@@ -188,23 +188,23 @@ ${LIBRARY}: ${all_OBJS}
 .PHONY : clean
 
 clean :
-	rm -f *.defs .arch.mk ${OBJDIR}/*.o ${LIBRARY}
+	rm -f *.defs .arch.mk ${OBJDIR}/*.o ${LIBRARY} ${DEPDIR}/*.d
 
 ##########################################################################
 # Track dependencies
 #
 ${DEPDIR}/%.d: %.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
-	| sed 's/^\([^ :]\+\)\.o:/\1.o \1.d:/' > $@
+	| sed 's/^\([^ :]\+\)\.o:/${OBJDIR}\/\1.o ${DEPDIR}\/\1.d:/' > $@
 
-include ${patsubst ${OBJDIR}/%.o, ${DEPDIR}/%.d, ${all_OBJS}}
+include ${DEPS}
 
 ##########################################################################
 # ts is a target for miscellaneous debug and doesn't do much
 #
 .PHONY : ts
 ts:
-	@echo ${SUBDIRS} ${all_OBJS}
+	@echo ${ACNPARTS} ${SUBDIRS}  ${DEPS}
 
 ##########################################################################
 # .opts.mk contains Make relevant options extracted from the
