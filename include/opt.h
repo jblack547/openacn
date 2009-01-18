@@ -153,6 +153,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+#ifndef ARCH_m68k
+#if defined(__m68k__)
+#define ARCH_m68k 1
+#else
+#define ARCH_m68k 0
+#endif
+#endif
+
 /************************************************************************/
 /*
   Networking
@@ -334,6 +342,9 @@ as required.
 #ifndef LOG_DMP
   #define LOG_DMP LOG_NONE
 #endif
+#ifndef LOG_DMPM
+  #define LOG_DMPM LOG_NONE
+#endif
 #ifndef LOG_MISC
   #define LOG_MISC LOG_NONE
 #endif
@@ -352,21 +363,22 @@ as required.
 */
 /*
 Protocols to build
+Default all except E1.31
 */
 #ifndef CONFIG_RLP
-#define CONFIG_RLP	   0
+#define CONFIG_RLP	   1
 #endif
 #ifndef CONFIG_SDT
-#define CONFIG_SDT	   0
+#define CONFIG_SDT	   1
 #endif
 #ifndef CONFIG_DMP
-#define CONFIG_DMP     0
+#define CONFIG_DMP     1
 #endif
 #ifndef CONFIG_E131
 #define CONFIG_E131    0
 #endif
 #ifndef CONFIG_SLP
-#define CONFIG_SLP     0
+#define CONFIG_SLP     1
 #endif
 
 
