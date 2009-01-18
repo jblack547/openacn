@@ -46,12 +46,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <ctype.h>    /* toupper...*/
 
-/* BSD hase it's own version of these*/
-#define HAVE_htons
-#define HAVE_htonl
-#define HAVE_ntohs
-#define HAVE_ntohl
+/*
+BSD has it's own version of these
+
 #include "byteorder.h"
+*/
 
 /* TODO: need to define this! */
 /* extern OS_CRIT DASemaphore; */ /* semaphore to protect directory agent list */
