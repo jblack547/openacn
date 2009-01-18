@@ -218,7 +218,7 @@ SLPError slp_receive_attrrply(ip4addr_t ip, SLPHeader *header, char *data);
 #if SLP_IS_SA
 SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid);
 SLPError slp_send_reg(SLPMsg *Msg, bool fresh);
-SLPError slp_send_dereg(SLPMsg *Msg);;
+SLPError slp_send_dereg(SLPMsg *Msg);
 SLPError slp_receive_srvrqst(ip4addr_t ip, SLPHeader *header, char *data);
 SLPError slp_send_srvrply(ip4addr_t ip, uint16_t reply_xid, uint16_t error_code);
 SLPError slp_receive_svrack(ip4addr_t ip, SLPHeader *header, char *data);
@@ -527,7 +527,9 @@ void da_delete_all(void)
 /* Note: this is the only internal routine where ACN_PROTECT() is called  */
 void da_close(void)
 {
+/*
   SLPDa_list   *d = da_list;
+*/
   int           ticks = 0;
   acn_protect_t protect;
 
@@ -2471,6 +2473,7 @@ SLPError slp_receive_svrack(ip4addr_t ip, SLPHeader *header, char *data)
   SLPMsg    *Msg;
 
   SLP_UNUSED_ARG(header);
+  SLP_UNUSED_ARG(ip);
 
   LOG_FSTART();
 
@@ -2745,6 +2748,9 @@ SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
   netx_send_to(slp_socket, &dest_addr, pkt, length);
   netx_release_txbuf(pkt);
 
+#else
+  SLP_UNUSED_ARG(ip);
+  SLP_UNUSED_ARG(reply_xid);
 #endif
   return (SLP_OK);
 
