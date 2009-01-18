@@ -350,7 +350,7 @@ SLPError slp_dereg_all(void);
 
 #if SLP_IS_UA
 SLPError slp_srvrqst(ip4addr_t ip, char *req_srv_type, char *req_predicate, void (*callback) (int error, char *url, int count));
-SLPError slp_attrrqst(unsigned long ip, char *req_url, char *req_tags,      void (*callback) (int error, char *attributes, int count));
+SLPError slp_attrrqst(ip4addr_t ip, char *req_url, char *req_tags,      void (*callback) (int error, char *attributes, int count));
 #endif
 
 
