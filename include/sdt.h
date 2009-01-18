@@ -125,7 +125,7 @@ typedef struct sdt_member_s
   struct sdt_member_s *next;
   component_t    *component;
   uint16_t        mid;
-  uint8_t         nak:1;
+  unsigned         nak:1;
   member_state_t  state;
   uint8_t         expiry_time_s;
   int             expires_ms;
