@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -58,10 +58,10 @@ typedef  struct rlp_txbuf_s    rlp_txbuf_t;
 
 struct rlp_listener_s {
   struct rlp_rxgroup_s  *rxgroup;    /* group this listener references */
-	protocolID_t           protocol;	 /* PROTO_NONE if this listener within the group is not used */
-	rlpHandler_t          *callback;   /* callback when data is available*/
+  protocolID_t           protocol;   /* PROTO_NONE if this listener within the group is not used */
+  rlpHandler_t          *callback;   /* callback when data is available*/
   struct rlp_listener_s *next;       /* next listener in group list*/
-	void                  *ref;        /* reference */
+  void                  *ref;        /* reference */
 };
 
 struct rlp_rxgroup_s {
@@ -72,12 +72,12 @@ struct rlp_rxgroup_s {
 };
 
 struct rlp_txbuf_s {
-	usage_t             usage;         /* usage counter */
-	unsigned int        datasize;      /* size of data block */
-	uint8_t            *blockstart;
-	uint8_t            *blockend;
-	protocolID_t        protocol;      /* protocol of data */
-	component_t        *owner;         /* component that registered the callback */
+  usage_t             usage;         /* usage counter */
+  unsigned int        datasize;      /* size of data block */
+  uint8_t            *blockstart;
+  uint8_t            *blockend;
+  protocolID_t        protocol;      /* protocol of data */
+  component_t        *owner;         /* component that registered the callback */
   void               *netbuf;        /* pointer to network buffer */
   uint8_t            *datap;         /* pointer to data inside of network buffer*/
 };
@@ -98,6 +98,7 @@ extern rlp_listener_t *rlpm_first_listener(rlp_rxgroup_t *rxgroup, protocolID_t 
 extern rlp_listener_t *rlpm_next_listener(rlp_listener_t *listener, protocolID_t pduProtocol);
 
 extern rlp_rxgroup_t *rlpm_new_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr);
+extern rlp_rxgroup_t *rlpm_first_rxgroup(void);
 extern rlp_rxgroup_t *rlpm_find_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr);
 extern void           rlpm_free_rxgroup(netxsocket_t *netsock, rlp_rxgroup_t *rxgroup);
 

@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -63,7 +63,7 @@ static sdt_resend_t     resends_m[SDT_MAX_RESENDS];  /* list of buffers */
 void
 sdtm_init(void)
 {
-	sdt_channel_t   *channel;
+  sdt_channel_t   *channel;
   sdt_member_t    *member;
   component_t     *component;
   sdt_resend_t    *resend;
@@ -75,10 +75,10 @@ sdtm_init(void)
   }
   initialized_state = 1;
 
-	for (channel = channels_m; channel < channels_m + SDT_MAX_CHANNELS; ++channel) channel->number = 0;
-	for (member = members_m; member < members_m + SDT_MAX_MEMBERS; ++member) member->component = NULL;
-	for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; ++component) cidNull(component->cid);
-	for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; ++resend) resend->expires_ms = 0;
+  for (channel = channels_m; channel < channels_m + SDT_MAX_CHANNELS; ++channel) channel->number = 0;
+  for (member = members_m; member < members_m + SDT_MAX_MEMBERS; ++member) member->component = NULL;
+  for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; ++component) cidNull(component->cid);
+  for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; ++resend) resend->expires_ms = 0;
 
 }    
 
@@ -89,13 +89,13 @@ sdtm_init(void)
 sdt_channel_t *
 sdtm_new_channel(void)
 {
-	sdt_channel_t *channel;
+  sdt_channel_t *channel;
 
   acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_channel");
 
   /* find and empty one */
   for (channel = channels_m; channel < channels_m + SDT_MAX_CHANNELS; channel++) {
-		if (channel->number == 0) {
+    if (channel->number == 0) {
       /* clear values */
       memset(channel, 0, sizeof(sdt_channel_t));
       return channel;
@@ -133,7 +133,7 @@ sdtm_new_member(void)
 
   /* find and empty one */
   for (member = members_m; member < members_m + SDT_MAX_MEMBERS; member++) {
-		if (member->component == NULL) {
+    if (member->component == NULL) {
       /* clear values */
       memset(member, 0, sizeof(sdt_member_t));
       return member;
@@ -167,7 +167,7 @@ sdtm_new_component(void)
 
   /* find and empty one */
   for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; component++) {
-		if (cidIsNull(component->cid)) {
+    if (cidIsNull(component->cid)) {
       /* clear values */
       memset(component, 0, sizeof(component_t));
       return component;
@@ -196,13 +196,13 @@ sdtm_free_component(component_t *component)
 sdt_resend_t *
 sdtm_new_resend(void)
 {
-	sdt_resend_t *resend;
+  sdt_resend_t *resend;
 
   acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_resend...");
 
   /* find and empty one */
   for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; resend++) {
-		if (resend->tx_buffer == NULL) {
+    if (resend->tx_buffer == NULL) {
       /* clear values */
       memset(resend, 0, sizeof(sdt_resend_t));
       return resend;
@@ -231,12 +231,12 @@ sdtm_free_resend(sdt_resend_t *resend)
 void 
 sdtm_free_resends(void)
 {
-	sdt_resend_t *resend;
+  sdt_resend_t *resend;
 
   acnlog(LOG_DEBUG | LOG_SDTM,"void_free_resends...");
 
   for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; resend++) {
-		resend->tx_buffer = NULL;
+    resend->tx_buffer = NULL;
   }
 }
 

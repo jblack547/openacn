@@ -52,7 +52,7 @@ __inline void msleepex(int msecs)
 #define msleep(msecs) Sleep(msecs)
 #define HAVE_msleep 1
 
-#elif CONFIG_STACK_BSD
+#elif (CONFIG_STACK_BSD || CONFIG_STACK_CYGWIN)
 
 #include <unistd.h>
 #define msleep(msecs) (void)usleep((msecs) * 1000)

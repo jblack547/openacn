@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -170,12 +170,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /* Internet Protocol v4 */
 #ifndef CONFIG_NET_IPV4
-#define	CONFIG_NET_IPV4	1
+#define  CONFIG_NET_IPV4  1
 #endif
 
 /* Internet Protocol v6 */
 #ifndef CONFIG_NET_IPV6
-#define	CONFIG_NET_IPV6	0
+#define  CONFIG_NET_IPV6  0
 #endif
 
 /*
@@ -183,25 +183,40 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /* BSD sockets */
 #ifndef CONFIG_STACK_BSD
-#define	CONFIG_STACK_BSD       0
+#define  CONFIG_STACK_BSD       0
 #endif
 /* Winsock sockets */
 #ifndef CONFIG_STACK_WIN32
-#define	CONFIG_STACK_WIN32   0
+#define  CONFIG_STACK_WIN32   0
 #endif
 /* LightweightIP (LWIP) stack */
 #ifndef CONFIG_STACK_LWIP
-#define	CONFIG_STACK_LWIP     0
+#define  CONFIG_STACK_LWIP     0
 #endif
 /* Pathway Connectivity stack - derived from Waterloo stack */
 #ifndef CONFIG_STACK_PATHWAY
-#define	CONFIG_STACK_PATHWAY  0
+#define  CONFIG_STACK_PATHWAY  0
 #endif
 /* Netburner sockets */
 #ifndef CONFIG_STACK_NETBURNER
 #define CONFIG_STACK_NETBURNER 0
 #endif
+/* Cygwin sockets */
+#ifndef CONFIG_STACK_CYGWIN
+#define  CONFIG_STACK_CYGWIN    0
+#endif
 
+/* 
+  If the stack has the option of return the (multicast) destination address then RLP
+  will make sure that callback to STD are filtered by the desired multicast address.
+  Otherwise, the filtering in only done by socket callbacks to the same socket will get
+  all socket messages reguardless of the mulitcast address registered.
+  */
+#if (CONFIG_STACK_WIN32 || CONFIG_STACK_BSD || CONFIG_STACK_NETBURNER)
+#define STACK_RETURNS_DEST_ADDR 1
+#else
+#define STACK_RETURNS_DEST_ADDR 0
+#endif
 
 /*
 In hosts with multiple interfaces (including the loopback interface) it
@@ -221,7 +236,7 @@ memory. This setting still allows the value NETI_INADDR_ANY to be used
 as required.
 */
 #ifndef CONFIG_LOCALIP_ANY
-#define	CONFIG_LOCALIP_ANY       1
+#define  CONFIG_LOCALIP_ANY       1
 #endif
 
 /************************************************************************/
@@ -234,7 +249,7 @@ as required.
 #define CONFIG_RLPMEM_MALLOC  0
 #endif
 #ifndef CONFIG_RLPMEM_STATIC
-#define	CONFIG_RLPMEM_STATIC   1
+#define  CONFIG_RLPMEM_STATIC   1
 #endif
 
 #if CONFIG_RLPMEM_STATIC
@@ -265,10 +280,10 @@ as required.
 
   CONFIG_ACNLOG options are:
 
-  ACNLOG_NONE		- Logging is compiled out
-  ACNLOG_SYSLOG		- Log using POSIX Syslog
-  ACNLOG_STDOUT		- Log to standard output (default)
-  ACNLOG_STDERR		- Log to standard error
+  ACNLOG_NONE    - Logging is compiled out
+  ACNLOG_SYSLOG    - Log using POSIX Syslog
+  ACNLOG_STDOUT    - Log to standard output (default)
+  ACNLOG_STDERR    - Log to standard error
 
   Syslog handles logging levels itself and CONFIG_LOGLEVEL is ignored.
   For other options Messages up to CONFIG_LOGLEVEL are logged & levels
@@ -366,10 +381,10 @@ Protocols to build
 Default all except E1.31
 */
 #ifndef CONFIG_RLP
-#define CONFIG_RLP	   1
+#define CONFIG_RLP     1
 #endif
 #ifndef CONFIG_SDT
-#define CONFIG_SDT	   1
+#define CONFIG_SDT     1
 #endif
 #ifndef CONFIG_DMP
 #define CONFIG_DMP     1
@@ -386,34 +401,34 @@ Default all except E1.31
   EPI conformance
 */
 #ifndef CONFIG_EPI10
-#define	CONFIG_EPI10   1
+#define  CONFIG_EPI10   1
 #endif
 #ifndef CONFIG_EPI11
-#define	CONFIG_EPI11   1
+#define  CONFIG_EPI11   1
 #endif
 #ifndef CONFIG_EPI12
-#define	CONFIG_EPI12   1
+#define  CONFIG_EPI12   1
 #endif
 #ifndef CONFIG_EPI13
-#define	CONFIG_EPI13   1
+#define  CONFIG_EPI13   1
 #endif
 #ifndef CONFIG_EPI15
-#define	CONFIG_EPI15   1
+#define  CONFIG_EPI15   1
 #endif
 #ifndef CONFIG_EPI16
-#define	CONFIG_EPI16   1
+#define  CONFIG_EPI16   1
 #endif
 #ifndef CONFIG_EPI17
-#define	CONFIG_EPI17   1
+#define  CONFIG_EPI17   1
 #endif
 #ifndef CONFIG_EPI18
-#define	CONFIG_EPI18   1
+#define  CONFIG_EPI18   1
 #endif
 #ifndef CONFIG_EPI19
-#define	CONFIG_EPI19   1
+#define  CONFIG_EPI19   1
 #endif
 #ifndef CONFIG_EPI20
-#define	CONFIG_EPI20   1
+#define  CONFIG_EPI20   1
 #endif
 
 /************************************************************************/
@@ -424,7 +439,7 @@ Default all except E1.31
   get simpler.
 */
 #ifndef CONFIG_SINGLE_COMPONENT
-#define	CONFIG_SINGLE_COMPONENT   1
+#define  CONFIG_SINGLE_COMPONENT   1
 #endif
 
 /* See EIP 19, standard allows these to be bigger but to keep memory usage and avoid malloc */
@@ -481,7 +496,7 @@ Default all except E1.31
 #endif
 
 #ifndef CONFIG_SDTMEM_STATIC
-#define	CONFIG_SDTMEM_STATIC   1
+#define  CONFIG_SDTMEM_STATIC   1
 #endif
 
 /* Configures the limit to for SDT  */
@@ -542,7 +557,7 @@ Default all except E1.31
 
 /************************************************************************/
 /* checks on network stack */
-#if (CONFIG_STACK_BSD + CONFIG_STACK_WIN32 + CONFIG_STACK_PATHWAY + CONFIG_STACK_LWIP + CONFIG_STACK_NETBURNER) != 1
+#if (CONFIG_STACK_BSD + CONFIG_STACK_WIN32 + CONFIG_STACK_PATHWAY + CONFIG_STACK_LWIP + CONFIG_STACK_NETBURNER + CONFIG_STACK_CYGWIN) != 1
 #error Need to select exactly one network stack
 #endif
 

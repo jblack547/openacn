@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CONFIG_STACK_LWIP      0
 #define CONFIG_STACK_BSD       0
 #define CONFIG_STACK_WIN32     1
+#define  CONFIG_STACK_CYGWIN    0
 
 #define MAX_RLP_SOCKETS 2    /* need 2 for sdt */
 /* #define MAX_LISTENERS      /* need 2 for sdt plus one for each component */
@@ -90,5 +91,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* #define CONFIG_ACNLOG ACNLOG_SYSLOG */
 /* #define CONFIG_ACNLOG ACNLOG_NONE */
 /* #define CONFIG_LOCALIP_ANY       0 */
+
 
 #endif

@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*
@@ -54,7 +54,7 @@ extern "C" {
 #endif
 
 
-#if CONFIG_STACK_BSD
+#if (CONFIG_STACK_BSD || CONFIG_STACK_CYGWIN)
 #include "netx_bsd.h"
 #elif CONFIG_STACK_LWIP
 #include "netx_lwip.h"
@@ -70,4 +70,4 @@ extern "C" {
 }
 #endif
 
-#endif	/* #ifndef __netxface_h__ */
+#endif  /* #ifndef __netxface_h__ */

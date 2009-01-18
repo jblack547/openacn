@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 
 TODO: - REMOVE DMP dependancy if DMP is not enabled.
@@ -124,7 +124,7 @@ enum
 };
 
 /* local variables */
-static sdt_resend_t   *resends = NULL;							/* list of buffers to resend */
+static sdt_resend_t   *resends = NULL;              /* list of buffers to resend */
 static component_t    *components = NULL;           /* list of components */
        netxsocket_t   *sdt_adhoc_socket = NULL;     /* socket for adhock */
 struct rlp_listener_s *sdt_adhoc_listener = NULL;   /* listener for RLP */
@@ -200,7 +200,7 @@ sdt_local_init(void)
   my_component = sdt_add_component(my_xcid, my_xdcid, true, accUNKNOWN);
   if (!my_component) {
     acnlog(LOG_ERR | LOG_SDT, "sdt_local_init : failed to get new component");
-  	return;
+    return;
   }
 }
 
@@ -637,8 +637,7 @@ sdt_first_component(void)
 sdt_channel_t *
 sdt_add_channel(component_t *leader, uint16_t channel_number)
 {
-	sdt_channel_t *channel;
-  //acn_protect_t  protect;
+  sdt_channel_t *channel;
 
   assert(leader);             /* must have a leader */
 
@@ -651,7 +650,6 @@ sdt_add_channel(component_t *leader, uint16_t channel_number)
 
   /* We need to PROTECT this because incomming data is a higher priority and can add it's own channels */
   /* find and empty one */
-  //protect = ACN_PORT_PROTECT();
   channel = sdtm_new_channel();
   if (channel) {
     /* assign this to our leader */
@@ -666,10 +664,8 @@ sdt_add_channel(component_t *leader, uint16_t channel_number)
     /* channel->listener;       = */ /* multicast listener, default null */
     channel->mak_ms = FOREIGN_MEMBER_MAK_TIME_ms;
     leader->tx_channel = channel; /* put address of this chan structure into the component struct */
-    //ACN_PORT_UNPROTECT(protect);
     return channel;
   }
-  //ACN_PORT_UNPROTECT(protect);
   acnlog(LOG_ERR | LOG_SDT,"sdt_add_channel: failed to get new channel");
   return NULL; /* none left */
 }
@@ -684,7 +680,6 @@ sdt_del_channel(component_t *leader)
 {
   sdt_member_t  *member;
   sdt_channel_t *channel;
-  //acn_protect_t  protect;
 
   assert(leader);
 
@@ -695,11 +690,9 @@ sdt_del_channel(component_t *leader)
 
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_channel: %d", leader->tx_channel->number);
 
-  //protect = ACN_PORT_PROTECT();
   channel = leader->tx_channel;
   /* remove it from the leader */
   leader->tx_channel = NULL;
-  //ACN_PORT_UNPROTECT(protect);
 
   /* now we can clean it up */
   /* remove members */
@@ -714,9 +707,7 @@ sdt_del_channel(component_t *leader)
     }
   }
   /* and nuke it */
-  //protect = ACN_PORT_PROTECT();
   sdtm_free_channel(channel);
-  //ACN_PORT_UNPROTECT(protect);
 
   return NULL;
 }
@@ -730,7 +721,6 @@ sdt_member_t *
 sdt_add_member(sdt_channel_t *channel, component_t *component)
 {
   sdt_member_t *member;
-  //acn_protect_t  protect;
 
   assert(channel);
   assert(component);
@@ -749,7 +739,6 @@ sdt_add_member(sdt_channel_t *channel, component_t *component)
 
   /* we need to protect this because incomming data is a higher priority and can add it's own members */
   /* find and empty one */
-  //protect = ACN_PORT_PROTECT();
   member = sdtm_new_member();
   if (member) {
     /* put this one at the head of the list */
@@ -769,10 +758,8 @@ sdt_add_member(sdt_channel_t *channel, component_t *component)
     /* member->last_acked   = */ /* default 0 */
     /* member->nak_modulus  = */ /* default 0 */
     /* member->nak_max_wait  = */ /* default 0 */
-    //ACN_PORT_UNPROTECT(protect);
     return member;
   }
-  //ACN_PORT_UNPROTECT(protect);
   acnlog(LOG_ERR | LOG_SDT,"sdt_new_member: none left");
 
   return NULL; /* none left */
@@ -788,7 +775,6 @@ sdt_member_t *
 sdt_del_member(sdt_channel_t *channel, sdt_member_t *member)
 {
   sdt_member_t *cur;
-  //acn_protect_t  protect;
 
   assert(channel);
   assert(member);
@@ -797,10 +783,8 @@ sdt_del_member(sdt_channel_t *channel, sdt_member_t *member)
 
   /* if it is at top, then we just move leader */
   if (member == channel->member_list) {
-    //protect = ACN_PORT_PROTECT();
     channel->member_list = member->next;
     sdtm_free_member(member);
-    //ACN_PORT_UNPROTECT(protect);
     return channel->member_list;
   }
 
@@ -809,10 +793,8 @@ sdt_del_member(sdt_channel_t *channel, sdt_member_t *member)
   while (cur) {
     if (cur->next == member) {
       /* jump around it */
-      //protect = ACN_PORT_PROTECT();
       cur->next = member->next;
       sdtm_free_member(member);
-      //ACN_PORT_UNPROTECT(protect);
       return cur->next;
     }
     cur = cur->next;
@@ -911,6 +893,7 @@ sdt_find_component(const cid_t cid)
   return NULL;  /* oops */
 }
 
+
 /*****************************************************************************/
 /*
   Callback from ACN RLP layer (listener)
@@ -927,58 +910,59 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const netx_addr_t *
 {
   const uint8_t    *data_end;
   uint8_t           vector   = 0;
-	uint32_t          data_size = 0;
-	const uint8_t    *pdup, *datap = NULL;
+  uint32_t          data_size = 0;
+  const uint8_t    *pdup, *datap = NULL;
   acn_protect_t     protect;
 
   LOG_FSTART();
 
   /* just in case something comes in while shutting down */
   if (sdt_state != ssSTARTED) {
-		acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_handler: sdt not started");
+    acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_handler: sdt not started");
     return;
   }
 
   /* local pointer */
-	pdup = data;
+  pdup = data;
 
   /* verify min data length */
   if (data_len < 3) {
-		acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_handler: Packet too short to be valid");
+    acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_handler: Packet too short to be valid");
     return;
   }
   data_end = data + data_len;
 
   /* On first packet, flags should all be set */
   /* TODO: support for long packets? */
-	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
-		acnlog(LOG_WARNING | LOG_SDT,"sdt_rx_handler: illegal first PDU flags");
-		return;
-	}
+  if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
+    acnlog(LOG_WARNING | LOG_SDT,"sdt_rx_handler: illegal first PDU flags");
+    return;
+  }
 
   /* Process all PDU's in root layer PDU*/
   while(pdup < data_end)  {
-	const uint8_t *pp;
-	uint8_t  flags;
+    const uint8_t *pp;
+    uint8_t  flags;
 
     /* Decode the sdt base layer header, getting flags, length and vector */
     flags = unmarshalU8(pdup);
 
     /* save pointer, on second pass, we don't know if this is vector or data until we look at flags*/
-	pp = pdup + 2;
+    pp = pdup + 2;
 
     /* get pdu length and point to next pdu */
     pdup += getpdulen(pdup);
+
     /* fail if outside our packet */
-	if (pdup > data_end) {
-		acnlog(LOG_WARNING | LOG_SDT,"sdt_rx_handler: packet length error");
-		return;
-	}
+    if (pdup > data_end) {
+      acnlog(LOG_WARNING | LOG_SDT,"sdt_rx_handler: packet length error");
+      return;
+    }
 
     /* Get vector or leave the same as last*/
     if (flags & VECTOR_bFLAG) {
       vector = unmarshalU8(pp);
-	  pp += sizeof(uint8_t);
+    pp += sizeof(uint8_t);
     }
     /* pp now points to potential start of data */
 
@@ -986,10 +970,8 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const netx_addr_t *
     if (flags & DATA_bFLAG) {
       datap = pp;
       /* calculate reconstructed pdu length */
-	  data_size = pdup - pp;
+    data_size = pdup - pp;
     }
-
-
 
     protect = ACN_PORT_PROTECT();
     /* Dispatch to vector */
@@ -1329,7 +1311,7 @@ unmarshal_transport_address(const uint8_t *data, const netx_addr_t *transport_ad
 uint8_t *
 sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_channel, uint16_t first_mid, uint16_t last_mid, uint16_t mak_threshold)
 {
-	static int sent_reliable = 0;
+  static int sent_reliable = 0;
 
   assert(local_channel);
 
@@ -1347,8 +1329,8 @@ sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_chan
     local_channel->oldest_avail = (local_channel->reliable_seq - local_channel->oldest_avail == SDT_MAX_RESENDS) ?
                                    local_channel->reliable_seq - SDT_MAX_RESENDS + 1 : local_channel->oldest_avail;
     } else {
-    	local_channel->oldest_avail = local_channel->reliable_seq;
-    	sent_reliable = 1;
+      local_channel->oldest_avail = local_channel->reliable_seq;
+      sent_reliable = 1;
     }
 
   }
@@ -1384,9 +1366,9 @@ static void
 sdt_client_rx_handler(component_t *local_component, component_t *foreign_component, const uint8_t *data, uint32_t data_len)
 {
   const uint8_t    *data_end;
-	const uint8_t    *pdup, *datap = NULL;
+  const uint8_t    *pdup, *datap = NULL;
   uint8_t           vector   = 0;
-	uint32_t          data_size = 0;
+  uint32_t          data_size = 0;
 
   LOG_FSTART();
 
@@ -1395,7 +1377,7 @@ sdt_client_rx_handler(component_t *local_component, component_t *foreign_compone
 
   /* verify min data length */
   if (data_len < 3) {
-		acnlog(LOG_WARNING | LOG_SDT,"sdt_client_rx_handler: Packet too short to be valid");
+    acnlog(LOG_WARNING | LOG_SDT,"sdt_client_rx_handler: Packet too short to be valid");
     return;
   }
   data_end = data + data_len;
@@ -1403,33 +1385,33 @@ sdt_client_rx_handler(component_t *local_component, component_t *foreign_compone
   /* start of our pdu block containing one or multiple pdus*/
   pdup = data;
 
-	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
-		acnlog(LOG_WARNING | LOG_SDT,"sdt_client_rx_handler: illegal first PDU flags");
-		return;
-	}
+  if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
+    acnlog(LOG_WARNING | LOG_SDT,"sdt_client_rx_handler: illegal first PDU flags");
+    return;
+  }
 
   while(pdup < data_end)  {
-		const uint8_t *pp;
-		uint8_t  flags;
+    const uint8_t *pp;
+    uint8_t  flags;
 
     /* Decode flags */
     flags = unmarshalU8(pdup);
 
     /* save pointer*/
-		pp = pdup + 2;
+    pp = pdup + 2;
 
     /* get pdu length and point to next pdu */
     pdup += getpdulen(pdup);
 
-		if (pdup > data_end) {
-			acnlog(LOG_WARNING | LOG_SDT,"sdt_client_rx_handler: packet length error");
-			return;
-		}
+    if (pdup > data_end) {
+      acnlog(LOG_WARNING | LOG_SDT,"sdt_client_rx_handler: packet length error");
+      return;
+    }
 
     /* Get vector or leave the same as last */
     if (flags & VECTOR_bFLAG) {
       vector = unmarshalU8(pp);
-			pp += sizeof(uint8_t);
+      pp += sizeof(uint8_t);
     }
     /* pp now points to potential start of data */
 
@@ -1437,7 +1419,7 @@ sdt_client_rx_handler(component_t *local_component, component_t *foreign_compone
     if (flags & DATA_bFLAG) {
       datap = pp;
       /* calculate reconstructed pdu length */
-			data_size = pdup - pp;
+      data_size = pdup - pp;
     }
 
 
@@ -1571,9 +1553,9 @@ sdt_format_client_block(uint8_t *client_block, uint16_t foreign_mid, uint32_t pr
   /* skip flags and length for now */
   client_block += 2;
 
-  client_block = marshalU16(client_block, foreign_mid); 	/* Vector */
-  client_block = marshalU32(client_block, protocol);		  /* Header, Client protocol */
-  client_block = marshalU16(client_block, association); 	/* Header, Association */
+  client_block = marshalU16(client_block, foreign_mid);   /* Vector */
+  client_block = marshalU32(client_block, protocol);      /* Header, Client protocol */
+  client_block = marshalU16(client_block, association);   /* Header, Association */
 
   /* returns pointer to opaque datagram */
   return client_block;
@@ -1988,8 +1970,8 @@ sdt_tx_nak(component_t *foreign_component, component_t *local_component, uint32_
   buffer = marshalCID(buffer, foreign_component->cid);
   buffer = marshalU16(buffer, foreign_channel->number);
   buffer = marshalU16(buffer, local_member->mid);
-  buffer = marshalU32(buffer, foreign_channel->reliable_seq);		/* last known good one */
-  buffer = marshalU32(buffer, foreign_channel->reliable_seq + 1);	/* then the next must be the first I missed */
+  buffer = marshalU32(buffer, foreign_channel->reliable_seq);    /* last known good one */
+  buffer = marshalU32(buffer, foreign_channel->reliable_seq + 1);  /* then the next must be the first I missed */
   buffer = marshalU32(buffer, last_missed);
 
   /* add our PDU */
@@ -2190,7 +2172,7 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
   if (address_type == SDT_ADDR_IPV4) {
     groupaddr = netx_INADDR(&foreign_channel->destination_addr);
     if (is_multicast(groupaddr)) {
-      foreign_channel->listener = rlp_add_listener(sdt_multicast_socket, groupaddr, PROTO_SDT, sdt_rx_handler, NULL);
+      foreign_channel->listener = rlp_add_listener(sdt_multicast_socket, groupaddr, PROTO_SDT, sdt_rx_handler, foreign_component);
       if (!foreign_channel->listener) {
         acnlog(LOG_ERR | LOG_SDT, "sdt_rx_join: failed to add multicast listener");
         sdt_tx_join_refuse(foreign_cid, local_component, source_addr, foreign_channel_number, local_mid, foreign_reliable_seq, SDT_REASON_RESOURCES);
@@ -2740,8 +2722,8 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
 
   const uint8_t    *wrapperp;
   const uint8_t    *data_end;
-	uint32_t          data_size = 0;
-	const uint8_t    *pdup, *datap = NULL;
+  uint32_t          data_size = 0;
+  const uint8_t    *pdup, *datap = NULL;
 
   uint16_t    local_mid = 0;
   uint32_t    protocol = 0;
@@ -2768,12 +2750,22 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
   }
   data_end = wrapper + data_len;
 
+
+  /* our callback saved the reference to the component */
+  foreign_component = (component_t*)ref;
+  if (!cidIsEqual(foreign_component->cid, foreign_cid)) {
+    /* just return, not for us */
+    return;
+  }
+
+#if 0
   /* verify we are tracking this component */
   foreign_component = sdt_find_component(foreign_cid);
   if (!foreign_component)  {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper: Not tracking this component");
     return;
   }
+#endif
 
   if (!foreign_component->tx_channel) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper : foreign component without channel");
@@ -2884,46 +2876,46 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
 
   /* check to see if we have any packets */
   if (pdup == data_end) {
-		acnlog(LOG_DEBUG | LOG_SDT,"sdt_rx_wrapper: wrapper with no pdu");
+    acnlog(LOG_DEBUG | LOG_SDT,"sdt_rx_wrapper: wrapper with no pdu");
     return;
   }
 
   /* check first packet */
-	if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
-		acnlog(LOG_WARNING | LOG_SDT,"sdt_rx_wrapper: illegal first PDU flags");
-		return;
-	}
+  if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
+    acnlog(LOG_WARNING | LOG_SDT,"sdt_rx_wrapper: illegal first PDU flags");
+    return;
+  }
 
   /* decode and dispatch the wrapped pdus (SDT Client Block, wrapped SDT or DMP) */
   while(pdup < data_end)  {
-		const uint8_t *pp;
-		uint8_t  flags;
+    const uint8_t *pp;
+    uint8_t  flags;
 
     flags = unmarshalU8(pdup);
 
     /* save pointer, on second pass, we don't know if this is vector, header or data until we look at flags*/
-		pp = pdup + 2;
+    pp = pdup + 2;
 
     /* get pdu length and point to next pdu */
     pdup += getpdulen(pdup);
     /* fail if outside our packet */
-		if (pdup > data_end) {
-			acnlog(LOG_WARNING | LOG_SDT,"sdt_rx_wrapper: packet length error");
-			return;
-		}
+    if (pdup > data_end) {
+      acnlog(LOG_WARNING | LOG_SDT,"sdt_rx_wrapper: packet length error");
+      return;
+    }
 
     /* Get vector or leave the same as last = MID*/
     if (flags & VECTOR_bFLAG) {
       local_mid = unmarshalU16(pp);
-			pp += sizeof(uint16_t);
+      pp += sizeof(uint16_t);
     }
 
     /* Get header or leave the same as last = Client Protocal & Association*/
     if (flags & HEADER_bFLAG) {
       protocol = unmarshalU32(pp);
-			pp += sizeof(uint32_t);
+      pp += sizeof(uint32_t);
       association = unmarshalU16(pp);
-			pp += sizeof(uint16_t);
+      pp += sizeof(uint16_t);
     }
     /* pp now points to potential start of data*/
 
@@ -2931,7 +2923,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
     if (flags & DATA_bFLAG) {
       datap = pp;
       /* calculate reconstructed pdu length */
-			data_size = pdup - pp;
+      data_size = pdup - pp;
     }
 
     /* now dispatch to members */
@@ -2969,7 +2961,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
             break;
           #if CONFIG_DMP
           case PROTO_DMP:
-          	acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper: PROTO_DMP");
+            acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper: PROTO_DMP");
             dmp_client_rx_handler(local_member->component, foreign_component, is_reliable, datap, data_size, ref);
 
           /* TODO: replace with registered callback */
@@ -3034,7 +3026,7 @@ sdt_tx_ack(component_t *local_component, component_t *foreign_component)
   /* this one fails sometimes */
   if (!local_component->tx_channel) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_tx_ack : local component without channel");
-  	return FAIL;
+    return FAIL;
   }
 
   if (!foreign_component->tx_channel) {
@@ -4277,7 +4269,6 @@ sdt_save_buffer(rlp_txbuf_t *tx_buffer, uint8_t *pdup, uint32_t size, component_
 {
   sdt_resend_t  *resend = NULL;
   sdt_resend_t  *last = NULL;
-  //acn_protect_t  protect;
 
   LOG_FSTART();
 
@@ -4293,7 +4284,6 @@ sdt_save_buffer(rlp_txbuf_t *tx_buffer, uint8_t *pdup, uint32_t size, component_
       if (!resend->next) {
         acnlog(LOG_DEBUG | LOG_SDT,"sdt_save_buffer: buffer full truncating");
 
-        //protect = ACN_PORT_PROTECT();
         /* expire it */
         resend->expires_ms = 0;
         /* free buffer */
@@ -4302,7 +4292,6 @@ sdt_save_buffer(rlp_txbuf_t *tx_buffer, uint8_t *pdup, uint32_t size, component_
         if (last) {
           last->next = NULL;
         }
-        //ACN_PORT_UNPROTECT(protect);
         break;
       }
       last = resend;

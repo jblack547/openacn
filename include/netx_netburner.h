@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*
@@ -71,7 +71,7 @@ extern "C" {
                                ((uint32_t)((c) & 0xff) << 8) | \
                                 (uint32_t)((d) & 0xff))
 
-#endif	/* CONFIG_NET_IPV4 */
+#endif  /* CONFIG_NET_IPV4 */
 
 typedef void netx_callback_t (
   /* component_event_t state, */
@@ -117,10 +117,10 @@ typedef struct sockaddr_in netx_addr_t;
 #define netx_INADDR(addrp) (addrp)->sin_addr
 #define netx_INIT_ADDR_STATIC(inaddr, port) {netx_FAMILY, port, inaddr}
 #define netx_INIT_ADDR(addrp, inaddr, port) ( \
-		(addrp)->sin_family = netx_FAMILY, \
-		netx_INADDR(addrp) = (inaddr), \
-		netx_PORT(addrp) = (port) \
-	)
+    (addrp)->sin_family = netx_FAMILY, \
+    netx_INADDR(addrp) = (inaddr), \
+    netx_PORT(addrp) = (port) \
+  )
 
 /************************************************************************/
 
@@ -139,8 +139,8 @@ typedef void netx_process_packet_t (
 /************************************************************************/
 #if CONFIG_LOCALIP_ANY
 struct netxsocket_s {
-	netx_nativeSocket_t nativesock;
-	port_t localaddr;
+  netx_nativeSocket_t nativesock;
+  port_t localaddr;
   netx_process_packet_t *data_callback;  /* pointer to call back when data is available */
 };
 #define NETX_SOCK_HAS_CALLBACK 1
@@ -163,8 +163,8 @@ struct netxsocket_s {
 #else /* !CONFIG_LOCALIP_ANY */
 
 struct netxsocket_s {
-	netx_nativeSocket_t   *nativesock;     /* pointer to native socket structure */
-	netx_addr_t            localaddr;      /* local address */
+  netx_nativeSocket_t   *nativesock;     /* pointer to native socket structure */
+  netx_addr_t            localaddr;      /* local address */
   netx_process_packet_t *data_callback;  /* pointer to call back when data is available */
 };
 #define NETX_SOCK_HAS_CALLBACK 1
@@ -197,6 +197,9 @@ extern void *netx_new_txbuf(int size);
 extern void  netx_release_txbuf(void * pkt);
 extern void  netx_free_txbuf(void *pkt);
 extern char *netx_txbuf_data(void *pkt);
+#define netx_startup() /* nothing  for this port */
+#define netx_shutdown() /* nothing  for this port */
+
 
 /* operation argument for netx_change_group */
 #define netx_JOINGROUP 1
@@ -233,12 +236,16 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 #define netx_GROUP_UNICAST netx_INADDR_ANY
 #endif
 
-#ifndef netx_INIT_ADDR 
+#ifndef netx_INIT_ADDR
 #define netx_INIT_ADDR(addrp, addr, port) (netx_INADDR(addrp) = (addr), netx_PORT(addrp) = (port))
+#endif
+
+#ifndef netx_SOCK_NONE
+#define netx_SOCK_NONE 0
 #endif
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif	/* #if CONFIG_STACK_NETBURNER && !defined(__netx_netburner_h__) */
+#endif  /* #if CONFIG_STACK_NETBURNER && !defined(__netx_netburner_h__) */

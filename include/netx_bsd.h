@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*
@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 
-#if CONFIG_STACK_BSD && !defined(__netx_bsd_h__)
+#if (CONFIG_STACK_BSD || CONFIG_STACK_CYGWIN) && !defined(__netx_bsd_h__)
 #define __netx_bsd_h__ 1
 
 #include <sys/socket.h>
@@ -82,7 +82,7 @@ typedef char UDPPacket[MAX_MTU];
                                ((uint32_t)((c) & 0xff) << 8) | \
                                 (uint32_t)((d) & 0xff))
 
-#endif	/* CONFIG_NET_IPV4 */
+#endif  /* CONFIG_NET_IPV4 */
 
 typedef void netx_callback_t (
   /* component_event_t state, */
@@ -128,10 +128,10 @@ typedef struct sockaddr_in netx_addr_t;
 #define netx_INADDR(addrp) (addrp)->sin_addr.s_addr
 #define netx_INIT_ADDR_STATIC(inaddr, port) {netx_FAMILY, (port), {inaddr}}
 #define netx_INIT_ADDR(addrp, addr, port) ( \
-		(addrp)->sin_family = netx_FAMILY, \
-		netx_INADDR(addrp) = (addr), \
-		netx_PORT(addrp) = (port) \
-	)
+    (addrp)->sin_family = netx_FAMILY, \
+    netx_INADDR(addrp) = (addr), \
+    netx_PORT(addrp) = (port) \
+  )
 
 /************************************************************************/
 
@@ -161,8 +161,8 @@ struct netxsocket_s {
 #define NSK_INADDR(x) netx_INADDR_ANY
 
 #ifndef HAVE_localaddr_t
-	typedef port_t          localaddr_t;
-	#define HAVE_localaddr_t
+  typedef port_t          localaddr_t;
+  #define HAVE_localaddr_t
 #endif
 
 /* operation when looking at localaddr_t */
@@ -174,8 +174,8 @@ struct netxsocket_s {
 #else /* !CONFIG_LOCALIP_ANY */
 
 struct netxsocket_s {
-	netx_nativeSocket_t   *nativesock;     /* pointer to native socket structure */
-	netx_addr_t            localaddr;      /* local address */
+  netx_nativeSocket_t   *nativesock;     /* pointer to native socket structure */
+  netx_addr_t            localaddr;      /* local address */
   netx_process_packet_t *data_callback;  /* pointer to call back when data is available */
 };
 #define NETX_SOCK_HAS_CALLBACK 1
@@ -259,4 +259,4 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 }
 #endif
 
-#endif	/* #if CONFIG_STACK_BSD && !defined(__netx_bsd_h__) */
+#endif  /* #if (CONFIG_STACK_BSD || CONFIG_STACK_CYGWIN) && !defined(__netx_bsd_h__) */

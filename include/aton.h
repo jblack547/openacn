@@ -29,7 +29,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
   
   Description:
     Header file for aton.c
@@ -51,7 +51,7 @@ up as a macro. A simple version is provided for the few which don't
 #define aton(ip_str) inet_addr(ip_str)
 #define HAVE_aton 1
 
-#elif CONFIG_STACK_BSD
+#elif (CONFIG_STACK_BSD || CONFIG_STACK_CYGWIN)
 
 /*
 #include <sys/socket.h>

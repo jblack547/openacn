@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acn_port.h"
 #include "acnlog.h"
 
-#if CONFIG_STACK_BSD
+#if CONFIG_STACK_BSD || CONFIG_STACK_CYGWIN
 #include <malloc.h>
 #include <netinet/in.h>
 #include <net/if.h>
@@ -56,6 +56,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /************************************************************************/
 /* local memory */
 
+#if STACK_RETURNS_DEST_ADDR
+#define EXTENDED_BSD_STACK 1
+#else 
+#define EXTENDED_BSD_STACK 0
+#endif
+ 
 
 /************************************************************************/
 /*
@@ -200,9 +206,9 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   /* save the passed in address/port number into the passed in netxsocket_s struct */
   NSK_PORT(netsock) = LCLAD_PORT(*localaddr);
 
-	/* we will need information on destination address used */
-	ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
-	if (ret == SOCKET_ERROR) {
+  /* we will need information on destination address used */
+  ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
+  if (ret == SOCKET_ERROR) {
     acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : setsockopt:IP_PKTINFO fail");
     close(netsock->nativesock);
     netsock->nativesock = 0;
@@ -259,7 +265,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
   
   /* if the IP passed in is not a valid multicast address */
   if (!is_multicast(local_group)) {
-	 return FAIL;
+   return FAIL;
   }
 
   acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group, port: %d, group: %s", ntohs(NSK_PORT(netsock)), ntoa(local_group));
@@ -293,9 +299,9 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
 
   mreq.imr_multiaddr.s_addr = local_group;
 #if CONFIG_LOCALIP_ANY
-	mreq.imr_interface.s_addr = INADDR_ANY;
+  mreq.imr_interface.s_addr = INADDR_ANY;
 #else
-	mreq.imr_interface.s_addr = NSK_INADDR(*netsock);
+  mreq.imr_interface.s_addr = NSK_INADDR(*netsock);
 #endif
 
   
@@ -317,10 +323,10 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
     The call returns the number of characters sent, or negitive if an error occurred. 
 */
 int netx_send_to(
-	netxsocket_t      *netsock,    /* contains a flag if port is open and the local port number */
-	const netx_addr_t *destaddr,   /* contians dest port and ip numbers */
-	void              *pkt,        /* pointer data packet if type UPDPacket (return from netx_new_txbuf()) */
-	size_t             datalen     /* length of data */
+  netxsocket_t      *netsock,    /* contains a flag if port is open and the local port number */
+  const netx_addr_t *destaddr,   /* contians dest port and ip numbers */
+  void              *pkt,        /* pointer data packet if type UPDPacket (return from netx_new_txbuf()) */
+  size_t             datalen     /* length of data */
 )
 {
   netx_addr_t  dest_addr;
@@ -349,7 +355,7 @@ int netx_send_to(
   /* create a new UDP packet */
   /* Note: we don' need to copy as we are passing in a UDPPacket  
    *   get buffer
-   * UDPPacket pkt;	            
+   * UDPPacket pkt;              
    *   get address of where data will go in the packet
    * UdpBuffer = pkt.GetDataBuffer();
    *   copy data into packet
@@ -378,10 +384,12 @@ netx_poll(void)
   netx_nativeSocket_t high_sock = 0;
   struct timeval      timeout;  /* Timeout for select */
   int                 readsocks;
- 
+  socklen_t           addr_len = sizeof(netx_addr_t);
   netx_addr_t         source;
   netx_addr_t         dest;
 
+
+  #if EXTENDED_BSD_STACK
   uint8_t pktinfo[CMSG_SPACE(sizeof(struct in_pktinfo))];
   struct iovec bufvec[1];
   struct msghdr hdr;
@@ -403,6 +411,7 @@ netx_poll(void)
   hdr.msg_control = &pktinfo;
   hdr.msg_controllen = sizeof(pktinfo);
   hdr.msg_flags = 0;
+  #endif
  
 
   FD_ZERO(&socks);
@@ -430,7 +439,7 @@ netx_poll(void)
   
   /* TODO: what should timeout be? */
   timeout.tv_sec = 10;
-	timeout.tv_usec = 0;
+  timeout.tv_usec = 0;
   readsocks = select(high_sock+1, &socks, NULL, NULL, &timeout);
   if (readsocks < 0) {
     acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: select fail: %d", errno);
@@ -442,7 +451,11 @@ netx_poll(void)
     while (nsk && nsk->nativesock) {
       if (FD_ISSET(nsk->nativesock,&socks)) {
         /* Get some data */
+        #if EXTENDED_BSD_STACK
         length = recvmsg(nsk->nativesock, &hdr, 0);
+        #else
+        length = recvfrom(nsk->nativesock, recv_buffer, sizeof(recv_buffer), 0, (SOCKADDR *)&source, &addr_len);
+        #endif
 
         /* Test for error */
         if (length == -1) {
@@ -452,6 +465,7 @@ netx_poll(void)
 
         /* make sure we actually have some data to process */
         if (length > 0) {
+          #if EXTENDED_BSD_STACK
           got_ancillary = false;
           /* Look for ancillary data of our type*/
           for (cmp = CMSG_FIRSTHDR(&hdr); cmp != NULL; cmp = CMSG_NXTHDR(&hdr, cmp)) {
@@ -469,6 +483,9 @@ netx_poll(void)
             acnlog(LOG_DEBUG | LOG_NETX , "netx_poll: unable to get ancillary data");
             return FAIL;
           }
+          #else
+            netx_INIT_ADDR(&dest, netx_INADDR_ANY, NSK_PORT(nsk));
+          #endif
 
           /* call our data handler */
           netx_handler(recv_buffer, length, &source, &dest);
@@ -544,7 +561,7 @@ TODO: Should find the local IP address which would be used to send to
 
 /* this works too */
 /*
-	char    s[256];
+  char    s[256];
   struct  hostent *local_host;
   struct  in_addr *in;
 
@@ -581,7 +598,7 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
   return ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
 }
 
-#endif	/* CONFIG_NET_IPV4 */
+#endif  /* CONFIG_NET_IPV4 */
 
 #endif /* CONFIG_STACK_BSD */
 

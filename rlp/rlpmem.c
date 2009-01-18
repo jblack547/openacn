@@ -29,7 +29,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -251,6 +251,14 @@ void __free_listener(rlp_listener_t *listener)
 
 
 /***********************************************************************************************/
+rlp_rxgroup_t *
+rlpm_first_rxgroup(void)
+{
+  return rxgroups;
+}
+
+
+/***********************************************************************************************/
 /*
  * find a rxgroup associated with this socket which has the correct groupaddr
  */
@@ -286,14 +294,16 @@ rlpm_free_rxgroup(netxsocket_t *netsock, rlp_rxgroup_t *rxgroup)
 {
   rlp_rxgroup_t  *this_rxgroup;
   rlp_listener_t *listener;
-
+  rlp_listener_t *next_listener;
   UNUSED_ARG(netsock);
 
-  /* if, for some reason, we have listeners, set their rxgroup to NULL */
+  /* if, for some reason, we have listeners, free them */
+  /* since we are nuking all of them in the chain, this is faster than calling rlpm_free_listener() */
   listener = rxgroup->listeners;
   while(listener) {
-    listener->rxgroup = NULL;
-    listener = listener->next;
+    next_listener = listener;
+    __free_listener(listener);
+    listener = next_listener;
   }
 
   /* see if its the first one */
@@ -607,42 +617,42 @@ rlpm_release_txbuf(rlp_txbuf_t *txbuf)
 struct
 rlp_txbuf_s *rlpm_new_txbuf(int size, component_t *owner)
 {
-	uint8_t *buf;
+  uint8_t *buf;
 
-	buf = malloc(
-			sizeof(struct rlp_txbuf_s)
-			+ RLP_PREAMBLE_LENGTH
-			+ sizeof(protocolID_t)
-			+ sizeof(cid_t)
-			+ size
-			+ RLP_POSTAMBLE_LENGTH
-		);
-	if (buf != NULL)
-	{
-		rlp_getuse(buf) = 0;
-		((struct rlp_txbuf_s *)buf)->datasize = RLP_PREAMBLE_LENGTH
-				+ sizeof(protocolID_t)
-				+ sizeof(cid_t)
-				+ size
-				+ RLP_POSTAMBLE_LENGTH;
-		((struct rlp_txbuf_s *)buf)->owner = owner;
-	}
+  buf = malloc(
+      sizeof(struct rlp_txbuf_s)
+      + RLP_PREAMBLE_LENGTH
+      + sizeof(protocolID_t)
+      + sizeof(cid_t)
+      + size
+      + RLP_POSTAMBLE_LENGTH
+    );
+  if (buf != NULL)
+  {
+    rlp_getuse(buf) = 0;
+    ((struct rlp_txbuf_s *)buf)->datasize = RLP_PREAMBLE_LENGTH
+        + sizeof(protocolID_t)
+        + sizeof(cid_t)
+        + size
+        + RLP_POSTAMBLE_LENGTH;
+    ((struct rlp_txbuf_s *)buf)->owner = owner;
+  }
 
-	return buf;
+  return buf;
 }
 
 /***********************************************************************************************/
 void rlpm_free_txbuf(struct rlp_txbuf_s *buf)
 {
   rlp_decuse(buf);
-	if (!rlp_getuse(buf)) free(buf);
+  if (!rlp_getuse(buf)) free(buf);
 }
 
 #define rlpItsData(buf) ((uint8_t *)(buf) \
-			+ sizeof(struct rlpTxbufhdr_s) \
-			+ RLP_PREAMBLE_LENGTH \
-			+ sizeof(protocolID_t) \
-			+ sizeof(cid_t))
+      + sizeof(struct rlpTxbufhdr_s) \
+      + RLP_PREAMBLE_LENGTH \
+      + sizeof(protocolID_t) \
+      + sizeof(cid_t))
 
 #endif
 

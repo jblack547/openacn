@@ -29,7 +29,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
   Description:
   Header file for slp.c
@@ -45,13 +45,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*=========================================================================*/
 /* defines */
 /*=========================================================================*/
-#define SLP_UNUSED_ARG(x) (void)x
-
 #define SLP_RESERVED_PORT       427
 #define SLP_MCAST_ADDRESS       0xeffffffd  /* 239.255.255.253 */
 
 #define SLP_VERSION             2
-#define SLP_TTL					        16
+#define SLP_TTL                  16
 
 /* #define SLP_THREAD_PRIO         3   */
 /* #define SLP_THREAD_STACK        600 */ /* FIXME What should this be? */
@@ -80,35 +78,35 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CONFIG_MC_RETRY_COUNT (3)              /* number of times we should retry a multicast message) */
 
 /* Wait to perform DA discovery on reboot. */
-#define CONFIG_START_WAIT	( 3 * SLP_TMR_TPS ) /* default: 3 seconds */
+#define CONFIG_START_WAIT  ( 3 * SLP_TMR_TPS ) /* default: 3 seconds */
 
 /* Wait interval before initial retransmission of multicast or unicast requests. */
 #define CONFIG_RETRY      ( 2  * SLP_TMR_TPS ) /* default: 2 seconds */
 
 /* Give up on unicast request retransmission. */
-#define CONFIG_RETRY_MAX	( 15 * SLP_TMR_TPS ) /* default: 15 seconds */
+#define CONFIG_RETRY_MAX  ( 15 * SLP_TMR_TPS ) /* default: 15 seconds */
 
 /* DA Heartbeat, so that SAs passively detect new DAs. */
 #define CONFIG_DA_BEAT    (  3*60*60 * SLP_TMR_TPS ) /* default: 3 hours */
 
 /* Minimum interval to wait before repeating Active DA discovery. */
-#define CONFIG_DA_FIND	( 15*60*60 * SLP_TMR_TPS ) /* default: 15 minutes */
+#define CONFIG_DA_FIND  ( 15*60*60 * SLP_TMR_TPS ) /* default: 15 minutes */
 
 /* Wait to register services on passive DA discovery. */
-#define CONFIG_REG_PASSIVE	( 3 * SLP_TMR_TPS ) /* default: 1-3 seconds */
+#define CONFIG_REG_PASSIVE  ( 3 * SLP_TMR_TPS ) /* default: 1-3 seconds */
 
 /* Wait to register services on active DA discovery. */
-#define CONFIG_REG_ACTIVE	( 3 * SLP_TMR_TPS ) /* default: 1-3 seconds */
+#define CONFIG_REG_ACTIVE  ( 3 * SLP_TMR_TPS ) /* default: 1-3 seconds */
 
 /* DAs and SAs close idle connections. */
-#define CONFIG_CLOSE_CONN	( 5*60*60 * SLP_TMR_TPS ) /* default: 5 minutes */
+#define CONFIG_CLOSE_CONN  ( 5*60*60 * SLP_TMR_TPS ) /* default: 5 minutes */
 
 #define SLP_DA_SERVICE_TYPE       "service:directory-agent"
 #define SLP_SA_SERVICE_TYPE       "service:service-agent"
 
-#define SLP_REGIGRATION_LIFETIME	(5*60 + 30)        /* valid for 5+ minutes, we will update 5 minutes (value is in seconds) */
+#define SLP_REGIGRATION_LIFETIME  (5*60 + 30)        /* valid for 5+ minutes, we will update 5 minutes (value is in seconds) */
 
-#define SLP_REGIGISTION_REFRESH	(5*60 * SLP_TMR_TPS) /* must be less than SLP_REGIGRATION_LIFETIME (value is TPS ) */
+#define SLP_REGIGISTION_REFRESH  (5*60 * SLP_TMR_TPS) /* must be less than SLP_REGIGRATION_LIFETIME (value is TPS ) */
 
 #define SLP_RETRIES               2
 
@@ -146,9 +144,9 @@ typedef enum {
 typedef enum {
   /* internal errors */
   SLP_UNEXPECTED_MSG               = -14,
-	SLP_NOT_OPEN                     = -13,
-	SLP_DA_NOT_FOUND								 = -12,
-	SLP_DA_LIST_FULL								 = -11,
+  SLP_NOT_OPEN                     = -13,
+  SLP_DA_NOT_FOUND                 = -12,
+  SLP_DA_LIST_FULL                 = -11,
   SLP_BUFFER_OVERFLOW              = -10,
   SLP_NETWORK_TIMED_OUT            = -9,
   SLP_NETWORK_INIT_FAILED          = -8,
@@ -169,7 +167,7 @@ typedef enum {
   SLP_AUTHENTICATION_UNKNOWN       = 5,
   SLP_AUTHENTICATION_ABSENT        = 6,
   SLP_AUTHENTICATION_FAILED        = 7,
-  SLP_VERSION_NOT_SUPPORTED		     = 9,
+  SLP_VERSION_NOT_SUPPORTED         = 9,
   SLP_INTERNAL_ERROR               = 10,
   SLP_DA_BUSY                      = 11,
   SLP_OPTION_NOT_UNDERSTOOD        = 12,
@@ -186,10 +184,10 @@ typedef enum {
 } SLPBoolean;
 
 
-#define DA_CLOSED    		0  /* closed, no active registrions. */
-#define DA_SEND_REG 		1  /* need to send registration */
-#define DA_WAIT_REG 		2  /* waiting for ack from registration */
-#define DA_EXPIRE   		3  /* timing out refresh registation */
+#define DA_CLOSED        0  /* closed, no active registrions. */
+#define DA_SEND_REG     1  /* need to send registration */
+#define DA_WAIT_REG     2  /* waiting for ack from registration */
+#define DA_EXPIRE       3  /* timing out refresh registation */
 #define DA_SEND_DEREG   4  /* waiting for ack from deregistration */
 #define DA_WAIT_DEREG   5  /* send deregister message */
 
@@ -205,10 +203,10 @@ typedef struct _SLPDa_list
 
 typedef struct _SLPdda_timer
 {
-  uint8_t     discover;			/* set to TRUE to start discovery */
-  uint32_t    counter;  		/* counter */
-  uint8_t	    xmits;        /* number of times we have sent message */
-  uint16_t	  xid;          /* xid of the message */
+  uint8_t     discover;      /* set to TRUE to start discovery */
+  uint32_t    counter;      /* counter */
+  uint8_t      xmits;        /* number of times we have sent message */
+  uint16_t    xid;          /* xid of the message */
 } SLPdda_timer;
 
 /*=========================================================================*/
@@ -280,7 +278,7 @@ typedef struct _SLPSrvRequest
 /*=========================================================================*/
 typedef struct _SLPSrvAck
 {
-	uint16_t	error_code;
+  uint16_t  error_code;
 }SLPSrvAck;
 
 typedef enum _SLPMsgType
@@ -357,7 +355,7 @@ SLPError slp_attrrqst(ip4addr_t ip, char *req_url, char *req_tags,      void (*c
 /* UA and SA functions */
 #if SLP_IS_UA || SLP_IS_SA
 void    slp_active_discovery_start(void);
-void		slp_stats(void);
+void    slp_stats(void);
 
 #endif
 

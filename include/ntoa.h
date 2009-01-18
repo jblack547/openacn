@@ -29,7 +29,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
   
   Description:
     Header file for ntoa.c
@@ -50,13 +50,13 @@ up as a macro. A simple version is provided for the few which don't
 
 static __inline char *ntoa(ip4addr_t ipad)
 {
-	struct in_addr addr;
-	addr.S_un.S_addr = ipad;
-	return inet_ntoa(addr);
+  struct in_addr addr;
+  addr.S_un.S_addr = ipad;
+  return inet_ntoa(addr);
 }
 #define HAVE_ntoa 1
 
-#elif CONFIG_STACK_BSD
+#elif (CONFIG_STACK_BSD || CONFIG_STACK_CYGWIN)
 
 /*
 #include <sys/socket.h>
@@ -65,8 +65,8 @@ static __inline char *ntoa(ip4addr_t ipad)
 #include <arpa/inet.h>
 static inline char *ntoa(ip4addr_t ipad)
 {
-	struct in_addr addr = {ipad};
-	return inet_ntoa(addr);
+  struct in_addr addr = {ipad};
+  return inet_ntoa(addr);
 }
 
 #define HAVE_ntoa 1
