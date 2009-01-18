@@ -199,6 +199,7 @@ static void attrrqst_callback(int error, char *attr_list, int count)
   char ip_str[16]              = {'\0'};
   char port_str[6]             = {'\0'};
   char dd[64]                  = {'\0'};
+  UNUSED_ARG(count);
 
 #if CONFIG_SDT
   component_t *comp = NULL;
@@ -349,6 +350,7 @@ static void attrrqst_callback(int error, char *attr_list, int count)
 /* for directory agent builds */
 static void srvrqst_callback(int error, char *url, int count)
 {
+  UNUSED_ARG(count);
   if (!error) {
     acnlog(LOG_DEBUG | LOG_DISC , "srvrqst_callback: %s", url);
 
