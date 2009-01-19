@@ -56,7 +56,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* System includes */
 #include <string.h>
-/* #include <datatypes.h> */
 #include <assert.h>
 
 /* OpenACN includes */
@@ -296,7 +295,7 @@ uint8_t* dmp_encode_address_header(dmp_address_t *dmp_address, uint8_t *encode_b
 	  	datap = marshalU32(datap , (uint8_t)dmp_address->address_start);
     	break;
     default:
-      acnlog(LOG_WARNING | LOG_DMP,"dmp_encode_address_header: Address length not valid... %lx", dmp_address->address_size);
+      acnlog(LOG_WARNING | LOG_DMP,"dmp_encode_address_header: Address length not valid... %" PRIx32, dmp_address->address_size);
   }
 
   /* if the address type is non-zero then a range address was specified */
@@ -505,7 +504,7 @@ void dmp_tx_event(component_t *local_component, component_t *foreign_component, 
 
 /* ******************************************************************************* */
 /* Create a Send Property Fail message and send it */
-void dmp_tx_set_prop_fail(component_t *local_component, component_t *foreign_component, dmp_address_t *address, sint8_t result)
+void dmp_tx_set_prop_fail(component_t *local_component, component_t *foreign_component, dmp_address_t *address, int8_t result)
 {
   uint8_t      *datap;     /* temp pointer used for PDU */
   int           data_len;  /* length of this PDU */
@@ -537,7 +536,7 @@ void dmp_tx_set_prop_fail(component_t *local_component, component_t *foreign_com
 
 /* ******************************************************************************* */
 /* Create a Get Property Fail message and send it */
-void dmp_tx_get_prop_fail(component_t *local_component, component_t *foreign_component, dmp_address_t *address, sint8_t result)
+void dmp_tx_get_prop_fail(component_t *local_component, component_t *foreign_component, dmp_address_t *address, int8_t result)
 {
   uint8_t       *datap;    /* temp pointer used for PDU */
   int           data_len;  /* length of this PDU */
@@ -601,7 +600,7 @@ void dmp_tx_subscribe_accept(component_t *local_component, component_t *foreign_
 
 /* ******************************************************************************* */
 /* Create a Subscribe Reject message and send it */
-void dmp_tx_subscribe_reject(component_t *local_component, component_t *foreign_component, dmp_address_t *address, sint8_t result)
+void dmp_tx_subscribe_reject(component_t *local_component, component_t *foreign_component, dmp_address_t *address, int8_t result)
 {
   uint8_t       *datap;  /* temp pointer used for PDU */
   int           data_len;  /* length of this PDU */
