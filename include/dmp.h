@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opt.h"
 #include "acn_arch.h"
-#include "types.h"
+#include "acnstdtypes.h"
 #include "component.h"
 /* #include "sdt.h" */
 

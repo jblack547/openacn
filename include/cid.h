@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdio.h>
 #include "opt.h"
-#include "types.h"
+#include "acnstdtypes.h"
 
 #ifdef __cplusplus
 extern "C" {

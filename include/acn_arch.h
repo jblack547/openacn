@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __acn_arch_h__
 #define __acn_arch_h__ 1
 
-#include "types.h"
+#include "acnstdtypes.h"
 #include "cid.h"
 
 typedef uint32_t protocolID_t;

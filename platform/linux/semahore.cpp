@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opt.h"
 #if NEVER /* NOT USED AT THE MOMENT */
 
-#include "types.h"
+#include "acnstdtypes.h"
 #include "acn_arch.h"
 
 #include "constants.h"

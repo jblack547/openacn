@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if CONFIG_STACK_NETBURNER /* don't build if not configured for use  */
 
 #include "opt.h"
-#include "types.h"
+#include "acnstdtypes.h"
 #include "acn_arch.h"
 
 /* members are in network byte order */

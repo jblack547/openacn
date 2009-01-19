@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #include "opt.h"
-#include "types.h"
+#include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
 
@@ -384,7 +384,6 @@ netx_poll(void)
   netx_nativeSocket_t high_sock = 0;
   struct timeval      timeout;  /* Timeout for select */
   int                 readsocks;
-  socklen_t           addr_len = sizeof(netx_addr_t);
   netx_addr_t         source;
   netx_addr_t         dest;
 
@@ -454,7 +453,11 @@ netx_poll(void)
         #if EXTENDED_BSD_STACK
         length = recvmsg(nsk->nativesock, &hdr, 0);
         #else
-        length = recvfrom(nsk->nativesock, recv_buffer, sizeof(recv_buffer), 0, (SOCKADDR *)&source, &addr_len);
+		{
+		  socklen_t           addr_len = sizeof(netx_addr_t);
+
+          length = recvfrom(nsk->nativesock, recv_buffer, sizeof(recv_buffer), 0, (SOCKADDR *)&source, &addr_len);
+		}
         #endif
 
         /* Test for error */

@@ -43,7 +43,7 @@ handling.
 /*   "$Id$"; */
 
 #include "opt.h"
-#include "types.h"
+#include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
 

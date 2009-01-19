@@ -1,6 +1,7 @@
 /*--------------------------------------------------------------------*/
 /*
-Copyright (c) 2008, Electronic Theatre Controls, Inc.
+
+Copyright (c) 2007, Pathway Connectivity Inc.
 
 All rights reserved.
 
@@ -13,7 +14,7 @@ met:
  * Redistributions in binary form must reproduce the above copyright
    notice, this list of conditions and the following disclaimer in the
    documentation and/or other materials provided with the distribution.
- * Neither the name of Electronic Theatre Controls, Inc. nor the names of its
+ * Neither the name of Pathway Connectivity Inc. nor the names of its
    contributors may be used to endorse or promote products derived from
    this software without specific prior written permission.
 
@@ -29,22 +30,72 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-  $Id$
+	$Id$
+
 */
-#ifndef HAVE_TYPES_H_
-#define HAVE_TYPES_H_
+/*--------------------------------------------------------------------*/
+#ifndef __types_h__
+#define __types_h__ 1
 
-#include "opt.h"
+/*
+  Type definitions for fixed size types in 8, 16, 32 bits
+  
+  For ISO C99 compilers this should just pull in inttypes.h
+  For C89 we can deduce them mostly from limits.h
+  If USER_DEFINE_INTTYPES is set the user wants to define these themselves
+*/
 
-#if CONFIG_STACK_NETBURNER
-#include <includes.h>
-/* #include "acn_port.h" */
-#define __HAVE_uint8_t 1
-#define __HAVE_int8_t 1
-#define __HAVE_uint16_t 1
-#define __HAVE_int16_t 1
-#define __HAVE_uint32_t 1
-#define __HAVE_int32_t 1
+#if USER_DEFINE_INTTYPES
+#include "user_types.h"
+
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#include <inttypes.h>
+#include <stdbool.h>
+
+#elif defined(__STDC__)
+#include "typefromlimits.h"
+
+/*
+  Booleans
+  This is the same as stdbool.h
+*/
+#ifndef bool
+#define bool _Bool
 #endif
 
-#endif /*HAVE_TYPES_H_*/
+#ifndef true
+#define true 1
+#endif
+
+#ifndef false
+#define false 0
+#endif
+#define __bool_true_false_are_defined	1
+
+#endif
+
+#ifndef OK
+#define OK 0
+#endif
+
+#ifndef FAIL
+#define FAIL -1
+#endif
+
+#ifndef HAVE_ip4addr_t
+  typedef uint32_t ip4addr_t; /* ip address as a long */
+  #define HAVE_ip4addr_t
+#endif
+
+#define PACKED __attribute__((__packed__))
+
+#define UNUSED_ARG(x) (void)(x)
+#define _Bool int8_t
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#define ZEROARRAY
+#else
+#define ZEROARRAY 1
+#endif
+
+#endif /* __types_h__ */

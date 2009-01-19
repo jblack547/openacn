@@ -67,6 +67,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   names and allow user override in user_opt.h
 */
 
+/* Best to use GCC if available */
 #ifndef CONFIG_GNUCC
 #ifdef __GNUC__
 #define CONFIG_GNUCC 1
@@ -75,17 +76,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
-/*
-  Inline functions for marshaling data are efficient and typecheck
-  the code. If the compiler supports inline code then they are
-  preferable.
-
-  If you do not want to compile inline, then setting this false
-  uses macros instead, but these eveluate their arguments multiple times
-  and do not check their types so beware.
-*/
-#ifndef CONFIG_MARSHAL_INLINE
-#define CONFIG_MARSHAL_INLINE 1
+/* MS Visual C - only for Windows native targets */
+#ifndef CONFIG_MSVC
+#ifdef _MSC_VER
+#define CONFIG_MSVC _MSC_VER
+#else
+#define CONFIG_MSVC 0
+#endif
 #endif
 
 /************************************************************************/
@@ -98,7 +95,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #ifndef ARCH_x86_64
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(_M_X64)
 #define ARCH_x86_64 1
 #else
 #define ARCH_x86_64 0
@@ -106,7 +103,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #ifndef ARCH_i386
-#if defined(__i386__)
+#if defined(__i386__) || defined(_M_IX86)
 #define ARCH_i386 1
 #else
 #define ARCH_i386 0
@@ -159,6 +156,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #else
 #define ARCH_m68k 0
 #endif
+#endif
+
+/************************************************************************/
+/*
+Standard type names (e.g. uint16_t etc.)
+
+These are standard names in ISO C99 defined in inttypes.h. For archaic
+ISO C89 compilers (Windows et al) these can be derive in acn_types.h
+from C89 standard header limits.h.
+You only need to define this if for some reason your build wants to
+define them itself. If this is set, the build just looks for your own
+user_inttypes.h header. See acn_types.h for more info.
+*/
+#ifndef USER_DEFINE_INTTYPES
+#define USER_DEFINE_INTTYPES 0
 #endif
 
 /************************************************************************/
@@ -370,8 +382,6 @@ as required.
   #define LOG_ASSERT LOG_NONE
 #endif
 
-
-
 /************************************************************************/
 /*
   ACN Protocols
@@ -449,6 +459,20 @@ Default all except E1.31
 #endif
 #ifndef ACN_UACN_SIZE
 #define ACN_UACN_SIZE 64  /* be sure to include one for a null terminator */
+#endif
+
+/************************************************************************/
+/*
+  Inline functions for marshaling data are efficient and typecheck
+  the code. If the compiler supports inline code then they are
+  preferable.
+
+  If you do not want to compile inline, then setting this false
+  uses macros instead, but these eveluate their arguments multiple times
+  and do not check their types so beware.
+*/
+#ifndef CONFIG_MARSHAL_INLINE
+#define CONFIG_MARSHAL_INLINE 1
 #endif
 
 /************************************************************************/

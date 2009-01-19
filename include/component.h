@@ -41,7 +41,7 @@ Information structures and handling relating to components
 #define __component_h__ 1
 
 #include "opt.h"
-#include "types.h"
+#include "acnstdtypes.h"
 
 #include "cid.h"
 #include "netxface.h"

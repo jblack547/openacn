@@ -43,7 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef PACK_H
 #define PACK_H
 
-#include "types.h"
+#include "acnstdtypes.h"
 
 #define MAKEIP(a,b,c,d)    (a<<24|b<<16|c<<8|d) /* in Host Order */
 

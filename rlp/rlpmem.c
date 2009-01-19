@@ -42,7 +42,7 @@ handling. See rlp.c for description of 3-level structure.
 
 #include <string.h>
 #include "opt.h"
-#include "types.h"
+#include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
 

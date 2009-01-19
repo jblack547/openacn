@@ -36,12 +36,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "opt.h"
-#include "types.h"
+#include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
 #if NEVER /* NOT USED AT THE MOMENT */
 
-#include "types.h"
+#include "acnstdtypes.h"
 
 #include "constants.h"
 

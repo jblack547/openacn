@@ -79,7 +79,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* General ACN includes */
 #include "opt.h"
-#include "types.h"
+#include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
 
@@ -2923,7 +2923,7 @@ void slp_init(void)
   memset(&dda_timer, 0, sizeof(SLPdda_timer));
 
   /* clear message buffers */
-  printf("size: %d, %d\n", sizeof(SLPMsg), sizeof(Msgs));
+  printf("size: %" PRIuPTR ", %"PRIuPTR "\n", sizeof(SLPMsg), sizeof(Msgs));
   memset(Msgs, 0, sizeof(Msgs));
 
   /* clear registration property buffers */

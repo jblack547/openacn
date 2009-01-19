@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __marshal_h__ 1
 
 #include "opt.h"
-#include "types.h"
+#include "acnstdtypes.h"
 #include "cid.h"
 
 #ifdef __cplusplus
@@ -87,11 +87,6 @@ static __inline uint8_t *marshalVar(uint8_t *data, const uint8_t *src, uint16_t 
 	return data + size + 2;
 }
 
-static __inline uint8_t *marshal_p_string(uint8_t *data, const p_string_t *str)
-{
-	return marshalVar(data, str->value, str->length);
-}
-
 static __inline uint8_t unmarshalU8(const uint8_t *data)
 {
 	return *data;
@@ -117,12 +112,6 @@ static __inline uint16_t unpackVar(const uint8_t *data, uint8_t *dest)
 	uint16_t len = unmarshalU16(data) - 2;
 	memcpy(dest, data + 2, len);
 	return len;
-}
-
-static __inline p_string_t *unmarshal_p_string(const uint8_t *data, p_string_t *str)
-{
-	str->length = unpackVar(data, str->value);
-	return str;
 }
 
 #else
@@ -172,15 +161,6 @@ static uint16_t unpackVar(const uint8_t *data, uint8_t *dest)
 	return len;
 }
 
-#define marshal_p_string(datap, str) marshalVar((datap), ((p_string_t *)(str))->value, ((p_string_t *)(str))->length)
-#define unmarshal_p_string(datap, str) \
-					( \
-						memcpy( \
-							((p_string_t *)(str))->value, \
-							((uint8_t *)(datap)) + sizeof(uint16_t), \
-							((p_string_t *)(str))->length = unmarshalU16((uint8_t *)(datap)) - sizeof(uint16_t) \
-						), ((p_string_t *)(str)) \
-					)
 #endif
 
 #ifdef __cplusplus

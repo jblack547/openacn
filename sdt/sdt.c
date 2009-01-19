@@ -64,7 +64,7 @@ Notes:
 #include <assert.h>  /* for assert() */
 
 #include "opt.h"
-#include "types.h"
+#include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
 
@@ -2614,7 +2614,7 @@ sdt_rx_nak(const cid_t foreign_cid, const uint8_t *nak, uint32_t data_len)
   }
 
   last_missed = unmarshalU32(nak);
-  acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_nak : channel %hd, %ld - %ld", local_channel_number, first_missed, last_missed);
+  acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_nak : channel %" PRId16 ", %" PRId32 " - %" PRId32 , local_channel_number, first_missed, last_missed);
 
   if (last_missed < first_missed) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_nak: Illogical parameters");
@@ -2662,7 +2662,7 @@ sdt_flag_for_resend(sdt_channel_t *channel, uint32_t reliable_seq)
       }
     }
   }
-  acnlog(LOG_WARNING | LOG_SDT, "sdt_flag_for_resend: sequence %ld not found", reliable_seq);
+  acnlog(LOG_WARNING | LOG_SDT, "sdt_flag_for_resend: sequence %" PRId32 " not found", reliable_seq);
   return FAIL;
 }
 
@@ -3794,13 +3794,13 @@ sdt_tx_reliable_data(component_t *local_component, component_t *foreign_componen
 
   /* and send it on */
   /* HACK FOR TESTING */
-  acnlog(LOG_INFO | LOG_SDT, "sdt_tx_reliable_data : %ld %ld", *(uint32_t*)(pdup + 0x09), *(uint32_t*)(pdup + 0x09) % 5   );
+  acnlog(LOG_INFO | LOG_SDT, "sdt_tx_reliable_data : %" PRId32 " %" PRId32 , *(uint32_t*)(pdup + 0x09), *(uint32_t*)(pdup + 0x09) % 5   );
 
   if (!(*(uint32_t*)(pdup + 0x09) % 5)) {
-    acnlog(LOG_INFO | LOG_SDT, "sdt_tx_reliable_data : %ld", *(uint32_t*)(pdup + 0x09));
+    acnlog(LOG_INFO | LOG_SDT, "sdt_tx_reliable_data : %" PRId32 , *(uint32_t*)(pdup + 0x09));
     rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
   } else {
-    acnlog(LOG_INFO | LOG_SDT, "sdt_tx_reliable_data : %ld skipped", *(uint32_t*)(pdup + 0x09));
+    acnlog(LOG_INFO | LOG_SDT, "sdt_tx_reliable_data : %" PRId32 " skipped", *(uint32_t*)(pdup + 0x09));
   }
   rlpm_release_txbuf(tx_buffer);
 }
@@ -4133,7 +4133,7 @@ sdt_rx_connect_refuse(component_t *local_component, component_t *foreign_compone
     switch (protocol) {
       #if CONFIG_DMP
       case PROTO_DMP:
-        acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_connect_refuse : channel %d, protocol: %ld, reason %d", local_component->tx_channel->number, protocol, reason);
+        acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_connect_refuse : channel %" PRIu16 ", protocol: %" PRIu32 ", reason %" PRIu8, local_component->tx_channel->number, protocol, reason);
         /* TODO: Callback to DMP/APPLICATION */
         break;
       #endif
@@ -4185,7 +4185,7 @@ sdt_rx_disconnect(component_t *local_component, component_t *foreign_component, 
     switch (protocol) {
       #if CONFIG_DMP
       case PROTO_DMP:
-        acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_disconnect : channel %d, protocol: %ld", foreign_component->tx_channel->number, protocol);
+        acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_disconnect : channel %" PRIu16 ", protocol: %" PRIu32, foreign_component->tx_channel->number, protocol);
         if (local_component->callback)
           (*local_component->callback)(SDT_EVENT_DISCONNECT, foreign_component, local_component);
 
@@ -4248,7 +4248,7 @@ sdt_rx_disconnecting(component_t *local_component, component_t *foreign_componen
         if (local_component->callback)
           (*local_component->callback)(SDT_EVENT_DISCONNECT, local_component, foreign_component);
 
-        acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_disconnecting : channel %d, protocol: %ld, reason %d", local_component->tx_channel->number, protocol, reason);
+        acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_disconnecting : channel %" PRIu16 ", protocol: %" PRIu32 ", reason %" PRIu8, local_component->tx_channel->number, protocol, reason);
         foreign_member->state = msJOINED;
         break;
       #endif
@@ -4340,7 +4340,7 @@ void sdt_stats(void)
   component = components;
   while(component) {
     acnlog(LOG_INFO | LOG_STAT, "------------------------");
-    acnlog(LOG_INFO | LOG_STAT, "Component: %ld", x);
+    acnlog(LOG_INFO | LOG_STAT, "Component: %" PRIu32, x);
     cidToText(component->cid, cid_text);
     acnlog(LOG_INFO | LOG_STAT, "CID: %s", cid_text);
     cidToText(component->dcid, cid_text);
@@ -4373,9 +4373,9 @@ void sdt_stats(void)
       port = netx_PORT(&channel->source_addr);
       addr = netx_INADDR(&channel->source_addr);
       acnlog(LOG_INFO | LOG_STAT, " source_addr: %s: %d", ntoa(addr), port);
-      acnlog(LOG_INFO | LOG_STAT, " total_seq: %ld", channel->total_seq);
-      acnlog(LOG_INFO | LOG_STAT, " reliable_seq: %ld", channel->reliable_seq);
-      acnlog(LOG_INFO | LOG_STAT, " oldest_avail: %ld", channel->oldest_avail);
+      acnlog(LOG_INFO | LOG_STAT, " total_seq: %" PRIu32, channel->total_seq);
+      acnlog(LOG_INFO | LOG_STAT, " reliable_seq: %" PRIu32, channel->reliable_seq);
+      acnlog(LOG_INFO | LOG_STAT, " oldest_avail: %" PRIu32, channel->oldest_avail);
       acnlog(LOG_INFO | LOG_STAT, " mak_ms: %d", channel->mak_ms);
       member = channel->member_list;
       while (member) {
@@ -4404,7 +4404,7 @@ void sdt_stats(void)
       acnlog(LOG_INFO | LOG_STAT, "channel: NULL");
     }
     if (component->callback) {
-      acnlog(LOG_INFO | LOG_STAT, "callback: %x", (int)component->callback);
+      acnlog(LOG_INFO | LOG_STAT, "callback: %" PRIxPTR, (uintptr_t)component->callback);
     }
     component = component->next;
     x++;

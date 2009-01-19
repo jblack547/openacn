@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SLP_H
 
 #include "opt.h"
-#include "types.h"
+#include "acnstdtypes.h"
 #include "netxface.h"
 
 /*=========================================================================*/
