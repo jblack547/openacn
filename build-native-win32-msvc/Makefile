@@ -52,7 +52,7 @@ ACNROOT=..
 # the compiler may be the only Make configuration items you need to
 # change.
 #
-PLATFORMNAME:=native-win32-msvc
+PLATFORMNAME:=win32
 
 ##########################################################################
 # Systems using GCC can deduce ARCH, but Win cannot.

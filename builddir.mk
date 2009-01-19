@@ -61,7 +61,7 @@ endif
 #
 # Find or create an object code directory and a library directory
 #
-ifeq "${findstring, native-win32,${PLATFORMNAME}}" "native-win32"
+ifeq "${PLATFORMNAME}" "win32"
 MKDIR=mkdir
 else
 MKDIR=mkdir -p
