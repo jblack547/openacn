@@ -61,25 +61,31 @@ endif
 #
 # Find or create an object code directory and a library directory
 #
+ifeq "${findstring, native-win32,${PLATFORMNAME}}" "native-win32"
+MKDIR=mkdir
+else
+MKDIR=mkdir -p
+endif
+
 ifeq "${OBJDIR}" ""
 OBJDIR:=obj
 endif
 ifneq "${wildcard ${OBJDIR}}" "${OBJDIR}"
-${shell mkdir -p ${OBJDIR}}
+${shell ${MKDIR} ${OBJDIR}}
 endif
 
 ifeq "${LIBDIR}" ""
 LIBDIR:=lib
 endif
 ifneq "${wildcard ${LIBDIR}}" "${LIBDIR}"
-${shell mkdir -p ${LIBDIR}}
+${shell ${MKDIR} ${LIBDIR}}
 endif
 
 ifeq "${DEPDIR}" ""
 DEPDIR:=deps
 endif
 ifneq "${wildcard ${DEPDIR}}" "${DEPDIR}"
-${shell mkdir -p ${DEPDIR}}
+${shell ${MKDIR} ${DEPDIR}}
 endif
 
 ##########################################################################
@@ -90,6 +96,11 @@ endif
 # Output flag for CC
 ifeq "${CCOUTPUT}" ""
 CCOUTPUT:=-o
+endif
+
+# Output flag for CC
+ifeq "${CPPOUTPUT}" ""
+CPPOUTPUT:=-o
 endif
 
 # Compile only (no link) flag for CC
@@ -193,32 +204,35 @@ clean :
 ##########################################################################
 # Track dependencies
 #
-${DEPDIR}/%.d: %.c
+# Make sure we have its dependencies OK
+ifeq "${COMPILER}" "gcc"
+
+${DEPDIR}/%.d : %.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
 	| sed 's/^\([^ :]\+\)\.o:/${OBJDIR}\/\1.o ${DEPDIR}\/\1.d:/' > $@
 
 include ${DEPS}
+endif
 
 ##########################################################################
 # ts is a target for miscellaneous debug and doesn't do much
 #
 .PHONY : ts
 ts:
-	@echo ${ACNPARTS} ${SUBDIRS}  ${DEPS}
+	@echo ${COMPILER}
 
 ##########################################################################
 # .opts.mk contains Make relevant options extracted from the
 # configuration headers opt.h and user_opt.h
 #
 .opts.mk: ${ACNROOT}/opts.mk.c ${ACNROOT}/include/opt.h include/user_opt.h
-	${CPP} ${CPPFLAGS} $< ${CCOUTPUT}$@
+	${CPP} ${CPPFLAGS} $< | sed -e "/^[ \t]*$$/d" -e "/^[ \t]*#/d" > $@
 
-# Make sure we have its dependencies OK
-#${DEPDIR}/opts.mk.d: opts.mk.c
-#	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
-#	| sed 's/^\([^ :]\+\)\.o:/.\1 \1.d:/' > $@
-
-#include ${DEPDIR}/opts.mk.d
+# ${DEPDIR}/opts.mk.d: opts.mk.c
+# 	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
+# 	| sed 's/^\([^ :]\+\)\.o:/.\1 \1.d:/' > $@
+# 
+# include ${DEPDIR}/opts.mk.d
 
 ##########################################################################
 # .defs produces a complete preprocessor dump of the symbols defined in a

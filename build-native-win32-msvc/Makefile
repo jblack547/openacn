@@ -64,7 +64,7 @@ ARCH:=i386
 # If compiling is native, then it is usually best to leave this to Make.
 #
 VISUALCDIR:=C:\Program Files\Microsoft Visual Studio 9.0\VC\bin
-CC=${VISUALCDIR}\cl.exe
+CC="${VISUALCDIR}\cl.exe"
 COMPILER:=visualc
 CCOUTPUT:=-Fo
 
@@ -73,7 +73,8 @@ CCOUTPUT:=-Fo
 # necessary for GCC because it can be accessed through CC, but other
 # compilers are different.
 #
-CPP=${CC} /TC /EP
+CPP=${CC} /TC /E
+CPPOUTPUT:=/P ${CCOUTPUT}
 
 ##########################################################################
 # CFLAGS are the compiler option flags
