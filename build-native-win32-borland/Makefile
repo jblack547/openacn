@@ -52,7 +52,7 @@ ACNROOT=..
 # the compiler may be the only Make configuration items you need to
 # change.
 #
-PLATFORMNAME:=native-win32-borland
+PLATFORMNAME:=win32
 
 ##########################################################################
 # Systems using GCC can deduce ARCH, but Win cannot.
@@ -63,22 +63,24 @@ ARCH:=i386
 # If you are corss compiling, you need to define yourC compiler here.
 # If compiling is native, then it is usually best to leave this to Make.
 #
-VISUALCDIR:=C:\Program Files\Microsoft Visual Studio 9.0\VC\bin
-CC=${VISUALCDIR}\cl.exe
-COMPILER:=visualc
-CCOUTPUT:=-Fo
+BCCDIR:=C:\usr\bcc55
+CC=${BCCDIR}\bin\bcc32.exe
+COMPILER:=bcc32
+CCOUTPUT:=-o
+CPPFLAGS:=-I${BCCDIR}\include
 
 ##########################################################################
 # You may need to define the C preprocessor as well - not usually
 # necessary for GCC because it can be accessed through CC, but other
 # compilers are different.
 #
-CPP=${CC} /TC /EP
+CPP=${BCCDIR}\cpp32.exe
+CPPOUTPUT:=-o
 
 ##########################################################################
 # CFLAGS are the compiler option flags
 # Note include directories belong in CPPFLAGS not here
-CFLAGS+=/O2 /Za /Wall
+CFLAGS+=-O2 -A -w
 
 ##########################################################################
 # Include any more build specific configuration or rules here
