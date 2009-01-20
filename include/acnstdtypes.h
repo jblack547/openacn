@@ -52,7 +52,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <inttypes.h>
 #include <stdbool.h>
 
-#elif defined(__STDC__)
+/*
+_MSC_VER is still defined when VisualC is not in ISO mode
+(and limits.h still works).
+*/
+#elif defined(__STDC__) || defined(_MSC_VER)
 #include "typefromlimits.h"
 
 /*
@@ -72,7 +76,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #define __bool_true_false_are_defined	1
 
-#endif
+#endif  /* defined(__STDC__) || defined(_MSC_VER) */
 
 #ifndef OK
 #define OK 0
