@@ -38,11 +38,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __types_h__ 1
 
 /*
-  Type definitions for fixed size types in 8, 16, 32 bits
-  
-  For ISO C99 compilers this should just pull in inttypes.h
-  For C89 we can deduce them mostly from limits.h
-  If USER_DEFINE_INTTYPES is set the user wants to define these themselves
+  Type definitions for fixed size types in 8, 16, 32 bits and booleans.
+
+  These are a subset of the ISO C99 types and should be kept to the
+  standard.
+
+  If USER_DEFINE_INTTYPES is set the user wants to define these
+  themselves
+
+  For ISO C99 compilers we just pull in inttypes.h and stdbool.h
+
+  Otherwise we try and deduce them mostly from limits.h which is a C89
+  header  and present on most systems.
+
 */
 
 #if USER_DEFINE_INTTYPES
@@ -56,12 +64,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _MSC_VER is still defined when VisualC is not in ISO mode
 (and limits.h still works).
 */
-#elif defined(__STDC__) || defined(_MSC_VER)
+#else  /* defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L */
 #include "typefromlimits.h"
 
 /*
   Booleans
-  This is the same as stdbool.h
+  These definitions are the same as stdbool.h (C99 standard header)
 */
 #ifndef bool
 #define bool _Bool
@@ -76,7 +84,7 @@ _MSC_VER is still defined when VisualC is not in ISO mode
 #endif
 #define __bool_true_false_are_defined	1
 
-#endif  /* defined(__STDC__) || defined(_MSC_VER) */
+#endif  /* defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L */
 
 #ifndef OK
 #define OK 0
