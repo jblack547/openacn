@@ -83,10 +83,6 @@ Notes:
 #include "mcast_util.h" /* handy multicast utilities */
 #include "ntoa.h"
 
-#if 0
-#include "inet.h"       /* network to address translation */
-#endif
-
 #if CONFIG_STACK_LWIP
 #include "lwip/sys.h"
 #endif
@@ -4243,7 +4239,7 @@ sdt_rx_disconnecting(component_t *local_component, component_t *foreign_componen
   foreign_member = sdt_find_member_by_component(local_component->tx_channel, foreign_component);
   if (foreign_member) {
     switch (protocol) {
-      #ifdef CONFIG_DMP
+      #if CONFIG_DMP
       case PROTO_DMP:
         if (local_component->callback)
           (*local_component->callback)(SDT_EVENT_DISCONNECT, local_component, foreign_component);
@@ -4404,7 +4400,7 @@ void sdt_stats(void)
       acnlog(LOG_INFO | LOG_STAT, "channel: NULL");
     }
     if (component->callback) {
-      acnlog(LOG_INFO | LOG_STAT, "callback: %" PRIxPTR, (uintptr_t)component->callback);
+      acnlog(LOG_INFO | LOG_STAT, "callback: %" PRIxPTR, (uint32_t)component->callback);
     }
     component = component->next;
     x++;
