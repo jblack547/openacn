@@ -185,7 +185,7 @@ typedef int64_t intptr_t;
 typedef uint64_t uintptr_t;
 #define __PRIPTR_PREFIX __PRI64_PREFIX
 
-#elif (defined(__WORDSIZE) && __WORDSIZE == 32) || (defined(_WIN64) && !defined(_WIN64))
+#elif (defined(__WORDSIZE) && __WORDSIZE == 32) || (defined(_WIN32) && !defined(_WIN64))
 
 #define __intptr_t_defined
 typedef int32_t intptr_t;

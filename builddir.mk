@@ -194,7 +194,11 @@ ${LIBRARY}: ${all_OBJS}
 .PHONY : clean
 
 clean :
-	rm -f *.defs .arch.mk ${OBJDIR}/*.o ${LIBRARY} ${DEPDIR}/*.d
+ifneq "${PLATFORMNAME}" "win32"
+	rm -f *.defs .opts.mk ${OBJDIR}/*.o ${LIBRARY} ${DEPDIR}/*.d
+else
+	del /a .opts.mk opts.mk.i ${OBJDIR}\*.o ${subst /,\,${LIBRARY}} ${DEPDIR}\*.d
+endif
 
 ##########################################################################
 # Track dependencies

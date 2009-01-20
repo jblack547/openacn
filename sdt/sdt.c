@@ -4400,7 +4400,7 @@ void sdt_stats(void)
       acnlog(LOG_INFO | LOG_STAT, "channel: NULL");
     }
     if (component->callback) {
-      acnlog(LOG_INFO | LOG_STAT, "callback: %" PRIxPTR, (uint32_t)component->callback);
+      acnlog(LOG_INFO | LOG_STAT, "callback: %" PRIxPTR, (uintptr_t)component->callback);
     }
     component = component->next;
     x++;

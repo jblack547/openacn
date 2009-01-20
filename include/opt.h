@@ -208,21 +208,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Standard type names (e.g. uint16_t etc.)
 
 These are standard names in ISO C99 defined in inttypes.h. For archaic
-ISO C89 compilers (Windows et al) these can be derive in acn_types.h
-from C89 standard header limits.h.
+ISO C89 compilers (Windows et al) these can be automatically derived in
+typefromlimits.h from C89 standard header limits.h.
+
+Leaving USER_DEFINE_INTTYPES false is likely to be far more portable.
 You only need to define this if for some reason your build wants to
 define them itself. If this is set, the build just looks for your own
-user_inttypes.h header. See acn_types.h for more info.
+user_types.h header. See acnstdtypes.h for more info.
 */
-#if CONFIG_STACK_WIN32
-#define USER_DEFINE_INTTYPES 1
-#endif
-
-#if CONFIG_STACK_NETBURNER
-#define USER_DEFINE_INTTYPES 1
-#endif
-
-/* Default */
 #ifndef USER_DEFINE_INTTYPES
 #define USER_DEFINE_INTTYPES 0
 #endif
