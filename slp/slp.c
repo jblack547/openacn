@@ -2923,7 +2923,7 @@ void slp_init(void)
   memset(&dda_timer, 0, sizeof(SLPdda_timer));
 
   /* clear message buffers */
-  printf("size: %" PRIuPTR ", %"PRIuPTR "\n", sizeof(SLPMsg), sizeof(Msgs));
+  printf("size: %" PRIuPTR ", %"PRIuPTR "\n", (uint32_t)sizeof(SLPMsg), (uint32_t)sizeof(Msgs));
   memset(Msgs, 0, sizeof(Msgs));
 
   /* clear registration property buffers */
