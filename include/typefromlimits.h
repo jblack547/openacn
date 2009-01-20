@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	$Id$
 
 */
-/*--------------------------------------------------------------------*/
+/************************************************************************/
 #ifndef __typefromlimits_h__
 #define __typefromlimits_h__ 1
 

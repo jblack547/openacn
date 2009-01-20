@@ -56,7 +56,7 @@ Notes:
 */
 /*--------------------------------------------------------------------*/
 /* static const char *rcsid __attribute__ ((unused)) = */
-/*   "$Id$"; */
+/*   $Id$ */
 
 #include <string.h>
 #include <stdio.h>
