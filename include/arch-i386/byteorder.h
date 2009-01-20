@@ -64,13 +64,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if !defined(__bswap_16)
 #define __bswap_16(x) \
-      	( (((x) & 0xff00) >> 8) \
+      	(uint16_t)( (((x) & 0xff00) >> 8) \
       	| (((x) & 0x00ff) << 8) )
 #endif
 
 #if !defined(__bswap_32)
 #define __bswap_32(x) \
-      	( (((x) & 0xff000000) >> 24) \
+      	(uint32_t)( (((x) & 0xff000000) >> 24) \
       	| (((x) & 0x00ff0000) >> 8) \
       	| (((x) & 0x0000ff00) << 8) \
       	| (((x) & 0x000000ff) << 24) )
@@ -112,27 +112,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   then, with the version below, foo(x) will only be called once and not 
   re-evaluated on each call.
 */
-static __inline unsigned long int acn_ntohl(register unsigned long int x) 
+static __inline uint32_t acn_ntohl(register uint32_t x) 
 {
-  register unsigned long int __x = x;
+  register uint32_t __x = x;
   return __bswap_32(__x); 
 }
 
-static __inline unsigned short acn_ntohs(register unsigned short int x) 
+static __inline uint16_t acn_ntohs(register uint16_t x) 
 {
-  register unsigned short int __x = x;
+  register uint16_t __x = x;
   return __bswap_16(__x); 
 }
 
-static __inline unsigned long int acn_htonl(register unsigned long int x) 
+static __inline uint32_t acn_htonl(register uint32_t x) 
 {
-  register unsigned long int __x = x;
+  register uint32_t __x = x;
   return __bswap_32(__x); 
 }
 
-static __inline unsigned short acn_htons(register unsigned short int x) 
+static __inline uint16_t acn_htons(register uint16_t x) 
 {
-  register unsigned short int __x = x;
+  register uint16_t __x = x;
   return __bswap_16(__x); 
 }
 
