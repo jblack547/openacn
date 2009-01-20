@@ -79,7 +79,7 @@ CPPOUTPUT:=/P ${CCOUTPUT}
 ##########################################################################
 # CFLAGS are the compiler option flags
 # Note include directories belong in CPPFLAGS not here
-CFLAGS+=/O2 /Za /Wall
+CFLAGS+=/O2 /Wall
 
 ##########################################################################
 # Include any more build specific configuration or rules here
