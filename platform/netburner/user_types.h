@@ -1,90 +1,97 @@
 /*--------------------------------------------------------------------*/
 /*
-Copyright (c) 2008, Electronic Theatre Controls, Inc.
+ Copyright (c) 2008, Electronic Theatre Controls, Inc.
 
-All rights reserved.
+ All rights reserved.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are
+ met:
 
  * Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
+ notice, this list of conditions and the following disclaimer.
  * Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
+ notice, this list of conditions and the following disclaimer in the
+ documentation and/or other materials provided with the distribution.
  * Neither the name of Electronic Theatre Controls, Inc. nor the names of its
-   contributors may be used to endorse or promote products derived from
-   this software without specific prior written permission.
+ contributors may be used to endorse or promote products derived from
+ this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
-IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
-TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
-OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-  $Id$
-*/
+ $Id$
+ */
 /*
-For normal C99 or C89 compliant environments the integer types in
-acnstdtypes  are a subset of the C99 standards defined in inttypes.h.
-For C89 compliant environments these types are inferred and defined.
+ For normal C99 or C89 compliant environments the integer types in
+ acnstdtypes  are a subset of the C99 standards defined in inttypes.h.
+ For C89 compliant environments these types are inferred and defined.
 
-For special cases when you need to define the types separately, #define
-USER_DEFINE_INTTYPES 1 in your user_opt.h and include a user_types.h
-header in your platform directory. The following types must be defined:
+ For special cases when you need to define the types separately, #define
+ USER_DEFINE_INTTYPES 1 in your user_opt.h and include a user_types.h
+ header in your platform directory. The following types must be defined:
 
-  int8_t
-  uint8_t
-  int16_t
-  uint16_t
-  int32_t
-  uint32_t
-  intptr_t
-  uintptr_t
+ int8_t
+ uint8_t
+ int16_t
+ uint16_t
+ int32_t
+ uint32_t
+ intptr_t
+ uintptr_t
 
-These two may be necessary if you have 64-bit entities in your system
-  int64_t
-  uint64_t
+ These two may be necessary if you have 64-bit entities in your system
+ int64_t
+ uint64_t
 
-The corresponding macros should also be defined to 1 if their types are
-defined:
-  __int8_t_defined
-  __int16_t_defined
-  __int32_t_defined
-  __int64_t_defined
-  __intptr_t_defined
+ The corresponding macros should also be defined to 1 if their types are
+ defined:
+ __int8_t_defined
+ __int16_t_defined
+ __int32_t_defined
+ __int64_t_defined
+ __intptr_t_defined
 
-Also you must define macros for printf and scanf conversion specifiers -
-these are necessary for portability across systems with differing word
-lengths:
+ Also you must define macros for printf and scanf conversion specifiers -
+ these are necessary for portability across systems with differing word
+ lengths:
 
-  PRId8  PRIi8  PRIu8  PRIx8  PRIX8  
-  SCNd8  SCNi8  SCNu8  SCNx8  
-  PRId16 PRIi16 PRIu16 PRIx16 PRIX16
-  SCNd16 SCNi16 SCNu16 SCNx16
-  PRId32 PRIi32 PRIu32 PRIx32 PRIX32
-  SCNd32 SCNi32 SCNu32 SCNx32
+ PRId8  PRIi8  PRIu8  PRIx8  PRIX8
+ SCNd8  SCNi8  SCNu8  SCNx8
+ PRId16 PRIi16 PRIu16 PRIx16 PRIX16
+ SCNd16 SCNi16 SCNu16 SCNx16
+ PRId32 PRIi32 PRIu32 PRIx32 PRIX32
+ SCNd32 SCNi32 SCNu32 SCNx32
 
-  PRIdPTR PRIiPTR PRIuPTR PRIxPTR PRIXPTR
-  SCNdPTR SCNiPTR SCNuPTR SCNxPTR
+ PRIdPTR PRIiPTR PRIuPTR PRIxPTR PRIXPTR
+ SCNdPTR SCNiPTR SCNuPTR SCNxPTR
 
-And if 64-bit values are used:
-  PRId64 PRIi64 PRIu64 PRIx64 PRIX64
-  SCNd64 SCNi64 SCNu64 SCNx64
+ And if 64-bit values are used:
+ PRId64 PRIi64 PRIu64 PRIx64 PRIX64
+ SCNd64 SCNi64 SCNu64 SCNx64
 
-*/
+ */
 
 #ifndef USER_TYPES_H_
 #define USER_TYPES_H_
 
 #include <includes.h>
+
+#define intptr_t  int*
+#define uintptr_t unsigned int*
+
+#define bool     char
+#define false    0
+#define true     1
 
 #define __int8_t_defined
 #define __int16_t_defined
