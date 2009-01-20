@@ -508,6 +508,7 @@ netx_poll(void)
             IN_PKTINFO *pPktInfo;
             pPktInfo = (IN_PKTINFO *)WSA_CMSG_DATA(pCMsgHdr);
             netx_INADDR(&dest) = pPktInfo->ipi_addr.S_un.S_addr;
+            netx_PORT(&dest) = NSK_PORT(nsk);
           } else {
             acnlog(LOG_ERR | LOG_NETX , "netx_poll: extended data does not contain IP_PKTINFO");
             return FAIL;
@@ -567,9 +568,12 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
     if (socket->data_callback) {
       (*socket->data_callback)(socket, (uint8_t *)data, length, dest, source, NULL);
       return;
+    } else {
+      acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: socket but no callback, port: %d", ntohs(LCLAD_PORT(host)));
+      return;
     }
   }
-  acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: no callback, port: %d", ntohs(LCLAD_PORT(host)));
+  acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: no socket for port: %d", ntohs(LCLAD_PORT(host)));
 }
 
 
