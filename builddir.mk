@@ -98,7 +98,7 @@ ifeq "${CCOUTPUT}" ""
 CCOUTPUT:=-o
 endif
 
-# Output flag for CC
+# Output flag for CPP
 ifeq "${CPPOUTPUT}" ""
 CPPOUTPUT:=-o
 endif
@@ -106,11 +106,6 @@ endif
 # Compile only (no link) flag for CC
 ifeq "${CCONLY}" ""
 CCONLY:=-c
-endif
-
-# File path separator
-ifeq "$Z" ""
-Z:=/
 endif
 
 ##########################################################################
@@ -129,7 +124,7 @@ INCLUDEDIRS+=${ACNROOT}/include/arch-${ARCH}
 INCLUDEDIRS+=${ACNROOT}/${PLATFORM}
 INCLUDEDIRS+=${ACNROOT}/include
 
-CPPFLAGS:=${addprefix -I,${INCLUDEDIRS}}
+CPPFLAGS:=${CPPFLAGS} ${addprefix -I,${INCLUDEDIRS}}
 
 ##########################################################################
 # Cancel all built in make rules axcept the ones we are likely to use
@@ -223,10 +218,23 @@ ts:
 
 ##########################################################################
 # .opts.mk contains Make relevant options extracted from the
-# configuration headers opt.h and user_opt.h
+# configuration headers opt.h and user_opt.h using dummy C file opts.mk.c
 #
+ifneq "${PLATFORMNAME}" "win32"
+
 .opts.mk: ${ACNROOT}/opts.mk.c ${ACNROOT}/include/opt.h include/user_opt.h
 	${CPP} ${CPPFLAGS} $< | sed -e "/^[ \t]*$$/d" -e "/^[ \t]*#/d" > $@
+
+else
+
+%.i: ${ACNROOT}/%.c ${ACNROOT}/include/opt.h include/user_opt.h
+	${CPP} ${CPPFLAGS} $< ${CPPOUTPUT}$@
+
+.opts.mk: opts.mk.i
+	sed -e "/^Borland/d" -e "/^[ \t]*#/d" -e "s@^/\*.*\*/@@" -e "/^ *$$/d" opts.mk.i > $@
+
+endif
+
 
 # ${DEPDIR}/opts.mk.d: opts.mk.c
 # 	${CC} ${CFLAGS} ${CPPFLAGS} -MM -MG -MP $< \
