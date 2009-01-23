@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual C++ Express 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenACNTest", "OpenACNTest.vcproj", "{22D5B5BA-D5ED-4727-978A-22F10419295F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{22D5B5BA-D5ED-4727-978A-22F10419295F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{22D5B5BA-D5ED-4727-978A-22F10419295F}.Debug|Win32.Build.0 = Debug|Win32
+		{22D5B5BA-D5ED-4727-978A-22F10419295F}.Release|Win32.ActiveCfg = Release|Win32
+		{22D5B5BA-D5ED-4727-978A-22F10419295F}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
