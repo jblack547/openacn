@@ -34,50 +34,103 @@
 #
 #tabs=8
 ##########################################################################
-
 #
 # Some default variables - override on command line if desired
 #
 FOP:=fop9x
 SVNVERSION:=${shell svnversion}
 
+##########################################################################
+# Directories
+# Predefine SRCROOT HTMLDIR and DEPDIR and simply include this Makefile
+# if you want to build in a different directory
+#
+ifeq "${SRCROOT}" ""
+SRCROOT:=.
+endif
+
+ifeq "${HTMLDIR}" ""
+HTMLDIR:=./html
+endif
+
+ifeq "${DEPDIR}" ""
+DEPDIR:=./dep
+endif
+
+##########################################################################
+# Main targets
+#
+.PHONY : all chunks singlepage
+
+all : singlepage chunks
+
+chunks: ${HTMLDIR}/openacndoc.css ${HTMLDIR}/index.html
+
+singlepage: ${HTMLDIR}/openacndoc.css ${HTMLDIR}/openacn.html
+
+##########################################################################
+# Subdirectories
+#
+XSLDIR:=${SRCROOT}/style
+CSSDIR:=${SRCROOT}/style
+DOCDIR:=${SRCROOT}/docbook
+
+##########################################################################
+# Some parameters
+#
 XSLPARAMS:=
 XSLPARAMS+=--stringparam draft.mode "${DRAFT}"
 XSLPARAMS+=--stringparam release.level "${RELEASELEVEL}"
 XSLPARAMS+=--stringparam vcs.version "${SVNVERSION}"
 
+##########################################################################
+# A macro defining a dependency file name
 #
-# Directories
+DEPFILE=${DEPDIR}/${basename ${notdir $@}}.d
+
+##########################################################################
+# XSLT rules
 #
-SRCDIR:=src
-HTMLDIR:=html
 
 #
-# Stylesheets
+# Chunked output
 #
-#XSLXHTML:=http://docbook.sourceforge.net/release/xsl/current/html/docbook.xsl
-XSL_HTML:=${SRCDIR}/openacndoc.xsl
+${HTMLDIR}/index.html : ${DOCDIR}/openacn.docbook ${XSLDIR}/html.*.xsl ${XSLDIR}/common.*.xsl
+	@echo XSL generating $@
+	@xsltproc --xinclude ${XSLPARAMS} --output $@ ${XSLDIR}/html.chunk.xsl $<
+	@echo -n $@: > ${DEPFILE}
+	@xsltproc --stringparam rootfile $< ${XSLDIR}/xdep.xsl $< >> ${DEPFILE}
 
+#
+# Single-page output will work with any chapter
+#
+${HTMLDIR}/%.html : ${DOCDIR}/%.docbook  ${XSLDIR}/html.*.xsl ${XSLDIR}/common.*.xsl
+	@echo XSL generating $@
+	@xsltproc --xinclude ${XSLPARAMS} --output $@ ${XSLDIR}/html.monolithic.xsl $<
+	@echo -n $@: > ${DEPFILE}
+	@xsltproc --stringparam rootfile $< ${XSLDIR}/xdep.xsl $< >> ${DEPFILE}
 
-.PHONY : all
+##########################################################################
+# Put the CSS stylesheet in place
+#
+${HTMLDIR}/%.css : ${CSSDIR}/%.css
+	@Copying $@
+	@cp $< $@
 
-all : ${HTMLDIR}/index.html ${HTMLDIR}/openacn.html
+##########################################################################
+# ts is used as a target in debugging
+#
+.PHONY: ts
+ts :
+	@echo ${patsubst ${DOCDIR}/%.docbook,${DEPDIR}/%.d,${DOCDIR}/openacn.docbook}
 
-${HTMLDIR}/index.html : ${SRCDIR}/*.docbook ${SRCDIR}/html.*.xsl ${SRCDIR}/common.*.xsl ${HTMLDIR}/openacndoc.css
-	xsltproc --xinclude --output $@ ${SRCDIR}/html.chunk.xsl ${SRCDIR}/openacn.docbook
-
-${HTMLDIR}/openacn.html : ${SRCDIR}/*.docbook  ${SRCDIR}/html.*.xsl ${SRCDIR}/common.*.xsl ${HTMLDIR}/openacndoc.css
-	xsltproc --xinclude --output $@ ${SRCDIR}/html.monolithic.xsl ${SRCDIR}/openacn.docbook
-
-${HTMLDIR}/%.html : ${SRCDIR}/%.docbook  ${SRCDIR}/html.*.xsl ${SRCDIR}/common.*.xsl
-	xsltproc --xinclude --output $@ ${SRCDIR}/html.monolithic.xsl $<
-
-${HTMLDIR}/%.css : ${SRCDIR}/%.css
-	cp $< $@
-
+##########################################################################
+# Cleanup
+#
 clean :
 	rm -f ${HTMLDIR}/*.html ${HTMLDIR}/*.css
 
-error :
-	echo Error: ${ERROR}
-	false
+##########################################################################
+# Include any dependencies
+#
+-include ${DEPDIR}/*.d
