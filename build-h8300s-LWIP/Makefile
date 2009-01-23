@@ -43,7 +43,7 @@
 # ACNROOT is the route to the OpenACN top level directory (corresponding
 # to openacn/trunk or whatever tag you have downloaded).
 
-ACNROOT=..
+ACNROOT=..acnsrc
 
 ##########################################################################
 # PLATFORMNAME is the name of your platform.
