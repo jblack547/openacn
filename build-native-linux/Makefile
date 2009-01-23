@@ -29,7 +29,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 
-# 	$Id$
+#   $Id$
 # 
 ##########################################################################
 #
@@ -43,7 +43,7 @@
 # ACNROOT is the route to the OpenACN top level directory (corresponding
 # to openacn/trunk or whatever tag you have downloaded).
 
-ACNROOT=..
+ACNROOT=../openacn
 
 ##########################################################################
 # PLATFORMNAME is the name of your platform.
