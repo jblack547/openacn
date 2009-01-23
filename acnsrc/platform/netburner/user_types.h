@@ -86,8 +86,9 @@
 
 #include <includes.h>
 
-#define intptr_t  int*
-#define uintptr_t unsigned int*
+
+typedef int32_t  intptr_t;
+typedef uint32_t uintptr_t;
 
 #define bool     char
 #define false    0
