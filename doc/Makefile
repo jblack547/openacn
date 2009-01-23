@@ -30,7 +30,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 #
-# $Id: Makefile 327 2008-03-26 11:32:49Z philip $
+# $Id$
 #
 #tabs=8
 ##########################################################################
@@ -54,7 +54,7 @@ HTMLDIR:=./html
 endif
 
 ifeq "${DEPDIR}" ""
-DEPDIR:=./dep
+DEPDIR:=./.deps
 endif
 
 ##########################################################################
@@ -98,6 +98,7 @@ DEPFILE=${DEPDIR}/${basename ${notdir $@}}.d
 ${HTMLDIR}/index.html : ${DOCDIR}/openacn.docbook ${XSLDIR}/html.*.xsl ${XSLDIR}/common.*.xsl
 	@echo XSL generating $@
 	@xsltproc --xinclude ${XSLPARAMS} --output $@ ${XSLDIR}/html.chunk.xsl $<
+	@mkdir -p ${DEPDIR}
 	@echo -n $@: > ${DEPFILE}
 	@xsltproc --stringparam rootfile $< ${XSLDIR}/xdep.xsl $< >> ${DEPFILE}
 
@@ -107,6 +108,7 @@ ${HTMLDIR}/index.html : ${DOCDIR}/openacn.docbook ${XSLDIR}/html.*.xsl ${XSLDIR}
 ${HTMLDIR}/%.html : ${DOCDIR}/%.docbook  ${XSLDIR}/html.*.xsl ${XSLDIR}/common.*.xsl
 	@echo XSL generating $@
 	@xsltproc --xinclude ${XSLPARAMS} --output $@ ${XSLDIR}/html.monolithic.xsl $<
+	@mkdir -p ${DEPDIR}
 	@echo -n $@: > ${DEPFILE}
 	@xsltproc --stringparam rootfile $< ${XSLDIR}/xdep.xsl $< >> ${DEPFILE}
 
@@ -114,7 +116,7 @@ ${HTMLDIR}/%.html : ${DOCDIR}/%.docbook  ${XSLDIR}/html.*.xsl ${XSLDIR}/common.*
 # Put the CSS stylesheet in place
 #
 ${HTMLDIR}/%.css : ${CSSDIR}/%.css
-	@Copying $@
+	@echo Copying $@
 	@cp $< $@
 
 ##########################################################################

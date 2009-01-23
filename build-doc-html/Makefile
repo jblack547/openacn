@@ -30,7 +30,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 #
-# $Id: Makefile 327 2008-03-26 11:32:49Z philip $
+# $Id$
 #
 #tabs=8
 ##########################################################################
