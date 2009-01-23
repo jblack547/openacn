@@ -1,6 +1,5 @@
 /*--------------------------------------------------------------------*/
 /*
-
 Copyright (c) 2008, Electronic Theatre Controls, Inc.
 
 All rights reserved.
@@ -14,7 +13,7 @@ met:
  * Redistributions in binary form must reproduce the above copyright
    notice, this list of conditions and the following disclaimer in the
    documentation and/or other materials provided with the distribution.
- * Neither the name of Pathway Connectivity Inc. nor the names of its
+ * Neither the name of Electronic Theatre Controls, Inc. nor the names of its
    contributors may be used to endorse or promote products derived from
    this software without specific prior written permission.
 
