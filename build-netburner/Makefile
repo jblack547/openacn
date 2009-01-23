@@ -71,4 +71,4 @@ CC=/usr/x86_64-pc-linux-gnu/m68k-elf/gcc-bin/4.3.2/m68k-elf-gcc
 ##########################################################################
 # Now include rules common to all builds
 #
-include ${ACNROOT}/builddir.mk
+include ${ACNROOT}/build-gcc.gmk

@@ -46,20 +46,18 @@
 ACNROOT=../acnsrc
 
 ##########################################################################
-# PLATFORMNAME is the name of your platform.
-# This is often the processor  architecture combined with the stack.
-# If you are building on a Linux/Unix system or under Cygwin, this and
-# the compiler may be the only Make configuration items you need to
-# change.
+# PLATFORMNAME is the name of your platform. This is often the processor 
+# architecture combined with the stack. If you are building on a
+# Linux/Unix system or under Cygwin, this and the source directory may be
+# the only Make configuration items you need to change.
 #
 PLATFORMNAME:=linux
 
 ##########################################################################
-# If you are corss compiling, you need to define yourC compiler here.
+# If you are cross compiling, you need to define yourC compiler here.
 # If compiling is native, then it is usually best to leave this to Make.
 #
 # CC=cc
-COMPILER:=gcc
 CFLAGS:=-O2
 
 ##########################################################################
@@ -76,4 +74,4 @@ CFLAGS:=-O2
 ##########################################################################
 # Now include rules common to all builds
 #
-include ${ACNROOT}/builddir.mk
+include ${ACNROOT}/build-gcc.gmk

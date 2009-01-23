@@ -43,7 +43,7 @@
 # ACNROOT is the route to the OpenACN top level directory (corresponding
 # to openacn/trunk or whatever tag you have downloaded).
 
-ACNROOT=../openacn
+ACNROOT=../acnsrc
 
 ##########################################################################
 # PLATFORMNAME is the name of your platform.
@@ -59,7 +59,6 @@ PLATFORMNAME:=linux
 # If compiling is native, then it is usually best to leave this to Make.
 #
 # CC=cc
-COMPILER:=gcc
 CFLAGS:=-O2
 
 ##########################################################################
@@ -76,4 +75,4 @@ CFLAGS:=-O2
 ##########################################################################
 # Now include rules common to all builds
 #
-include ${ACNROOT}/builddir.mk
+include ${ACNROOT}/build-gcc.gmk

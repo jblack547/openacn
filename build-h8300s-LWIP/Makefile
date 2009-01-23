@@ -78,4 +78,4 @@ INCLUDEDIRS+=${LWIPDIR}/src/include
 ##########################################################################
 # Now include rules common to all builds
 #
-include ${ACNROOT}/builddir.mk
+include ${ACNROOT}/build-gcc.gmk
