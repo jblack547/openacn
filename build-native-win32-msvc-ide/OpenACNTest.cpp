@@ -63,7 +63,7 @@ WORD tick_thread_id;
 static DWORD WINAPI recv_funct(LPVOID lParam)
 {
   while (!recv_thread_terminate) {
-		/* netx_poll is semi-blocking. It only returns to give app time to shut things down. */
+    /* netx_poll is semi-blocking. It only returns to give app time to shut things down. */
     netx_poll();
   }
   return 0;
@@ -72,7 +72,7 @@ static DWORD WINAPI recv_funct(LPVOID lParam)
 /* Thread to deal with timer (100ms) intervals */
 static DWORD WINAPI tick_funct(LPVOID lParam)
 {
-	/* call tick functions */
+  /* call tick functions */
   while (!tick_thread_terminate) {
     sdt_tick(NULL);
     slp_tick(NULL);
@@ -120,8 +120,8 @@ void process_keys(void)
   bool          WaitingForJoin = false;
   bool          WaitingForLeave = false;
 
-  int		ch;
-  bool	doexit = false;
+  int    ch;
+  bool  doexit = false;
 
   /* wait for ip address (in host format)*/
   while (!myip) {
@@ -143,12 +143,12 @@ void process_keys(void)
     strcpy(local_component->fctn, myfctn);
   }
 
-	/* main is debug thread */
-	while (!doexit) {
-		ch = _getch();
-		if (ch == EOF) {
-			break;
-		}
+  /* main is debug thread */
+  while (!doexit) {
+    ch = _getch();
+    if (ch == EOF) {
+      break;
+    }
  
     if (ch) {
       if (WaitingForJoin || WaitingForLeave) {
@@ -159,18 +159,18 @@ void process_keys(void)
       }
     }
 
-		switch (ch) {
+    switch (ch) {
       case 0:
         /* do nothing */
         break;
-			case 8: _putch(8); _putch(' '); _putch(8);
-  			/* backspace  */
-				break;
+      case 8: _putch(8); _putch(' '); _putch(8);
+        /* backspace  */
+        break;
       case 10: _putch(10);
         break;
-			case 13: _putch(10);
-  			/* LF */
-				break;
+      case 13: _putch(10);
+        /* LF */
+        break;
       case 'j': case 'J':
         printf("Enter component number to join: ");
         WaitingForJoin = true;
@@ -210,15 +210,15 @@ void process_keys(void)
           WaitingForLeave = false;
         }
         break;
-			case 'd': case 'D':
+      case 'd': case 'D':
         /* discover  */
-		    discover_acn(dcid_str1, discover_callback);
-				break;
-			case 'i': case 'I': 
+        discover_acn(dcid_str1, discover_callback);
+        break;
+      case 'i': case 'I': 
         /* We copy to local as ntoa can not be reused... */
         strcpy(ip, ntoa(netx_getmyip(0)));
         strcpy(mask, ntoa(netx_getmyipmask(0)));
-			  printf("My IP: %s, mask %s\n", ip, mask);
+        printf("My IP: %s, mask %s\n", ip, mask);
         break;
       case 'c': case 'C':
         protect = ACN_PORT_PROTECT();
@@ -236,20 +236,20 @@ void process_keys(void)
         }
         ACN_PORT_UNPROTECT(protect);
         break;
-			case 'r': case 'R': 
+      case 'r': case 'R': 
         discover_register(local_component);
-				break;
+        break;
       case 'u':case 'U':
         discover_deregister(local_component);
         break;
-			case 's': case 'S':
-				slp_stats();
+      case 's': case 'S':
+        slp_stats();
         sdt_stats();
-				break;
-  		case 3: case 'x': case 'X':
-	  		/* exit test app */
-				doexit = true;
-				break;
+        break;
+      case 3: case 'x': case 'X':
+        /* exit test app */
+        doexit = true;
+        break;
       case 't': case 'T':
         {
           #if 0
@@ -277,11 +277,11 @@ void process_keys(void)
         }
         break;
       default:
-		    if (ch >= ' ' && ch <= 126) {
-			    _putch(ch);
-		    }
-		}
-	}
+        if (ch >= ' ' && ch <= 126) {
+          _putch(ch);
+        }
+    }
+  }
 
   if (local_component) {
     sdt_del_component(local_component);
@@ -307,7 +307,7 @@ HANDLE recv_thread;
   */
   srand(GetTickCount() + netx_getmyip(0));
 
-	/* init our acn stack */
+  /* init our acn stack */
   acn_port_protect_startup();
   netx_init();
   netx_startup();
@@ -321,11 +321,11 @@ HANDLE recv_thread;
   sdt_startup(true);
   /* dmp_startup(); */
 
-	/* create timer thread */
+  /* create timer thread */
   tick_thread = CreateThread(NULL,0, tick_funct, NULL, CREATE_SUSPENDED, (LPDWORD)&tick_thread_id);
   SetThreadPriority(tick_thread,THREAD_PRIORITY_BELOW_NORMAL);
 
-	/* create receive thread */
+  /* create receive thread */
   recv_thread = CreateThread(NULL,0, recv_funct, NULL, CREATE_SUSPENDED, (LPDWORD)&recv_thread_id);
   SetThreadPriority(recv_thread,THREAD_PRIORITY_ABOVE_NORMAL);
 
@@ -350,13 +350,13 @@ HANDLE recv_thread;
   netx_shutdown();
   acn_port_protect_shutdown();
 
-	slp_stats();
+  slp_stats();
   sdt_stats();
   printf("========================\n");
 
   printf("Done...press any key to exit\n");
   _getch();
   printf("Bye bye..\n");
-	return 0;
+  return 0;
 }
 
