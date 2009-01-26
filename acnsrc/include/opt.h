@@ -220,7 +220,7 @@ user_types.h header. See acnstdtypes.h for more info.
 #define USER_DEFINE_INTTYPES 0
 #endif
 
-/* 
+/*
   If the stack has the option of return the (multicast) destination address then RLP
   will make sure that callback to STD are filtered by the desired multicast address.
   Otherwise, the filtering in only done by socket callbacks to the same socket will get
@@ -407,7 +407,9 @@ Default all except E1.31
 #ifndef CONFIG_SLP
 #define CONFIG_SLP     1
 #endif
-
+#ifndef CONFIG_NSK
+#define CONFIG_NSK     1
+#endif
 
 /*
   EPI conformance

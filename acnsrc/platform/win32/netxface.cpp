@@ -35,11 +35,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #include "opt.h"
+#if CONFIG_NSK
+#if CONFIG_STACK_WIN32
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
 
-#if CONFIG_STACK_WIN32
 #include <malloc.h>
 #include <Mswsock.h>
 
@@ -59,7 +60,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #else 
 #define EXTENDED_WIN_STACK 0
 #endif
-
 
 
 /************************************************************************/
@@ -148,7 +148,6 @@ void netx_release_txbuf(void * pkt)
 {
   free(pkt);
 }
-
 
 
 /************************************************************************/
@@ -678,4 +677,5 @@ return result;
 #endif  /* CONFIG_NET_IPV4 */
 
 #endif /* CONFIG_STACK_WIN32 */
+#endif /* CONFIG_NSK */
 

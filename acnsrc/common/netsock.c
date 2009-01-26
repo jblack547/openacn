@@ -45,13 +45,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***********************************************************************************************/
 
 #include "opt.h"
+#if CONFIG_NSK
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
 
 #include "netxface.h"
 #include "netsock.h"
-
 
 
 /***********************************************************************************************/
@@ -180,5 +180,5 @@ nsk_first_netsock(void)
   return nsk_next_netsock(sockets_tbl - 1);
 }
 
-
+#endif /* CONFIG_NSK */
 

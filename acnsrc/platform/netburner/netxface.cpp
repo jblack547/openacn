@@ -30,16 +30,16 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
 #include "opt.h"
+#if CONFIG_NSK
+#if CONFIG_STACK_NETBURNER
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
-
-#if CONFIG_STACK_NETBURNER
 
 #include "constants.h"
 #include "ip.h"
@@ -49,7 +49,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <startnet.h>
 #include <netinterface.h>
-#endif
 
 #include "netxface.h"
 #include "netsock.h"
@@ -59,12 +58,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define INPACKETSIZE DEFAULT_MTU
 #define LOG_FSTART() acnlog(LOG_DEBUG | LOG_NETX, "%s :...", __func__)
 
-
 /************************************************************************/
 /* local memory */
 OS_FIFO netx_fifo;    /* FIFO to store all incoming UPD packets */
 int native_sock = 1;  /* we dont really have socket but we need some marker... */
-
 
 /************************************************************************/
 /*
@@ -88,7 +85,6 @@ void netx_init(void)
   return;
 }
 
-
 /************************************************************************/
 void *netx_new_txbuf(int size)
 {
@@ -110,8 +106,6 @@ void netx_release_txbuf(void * pkt)
 {
 /*  delete (UDPPacket*)pkt; */
 }
-
-
 
 /************************************************************************/
 /* Get pointer to data inside tranmit buffer */
@@ -154,7 +148,6 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   return OK;
 }
 
-
 /************************************************************************/
 /*
   netx_udp_close()
@@ -177,7 +170,6 @@ void netx_udp_close(netxsocket_t *netsock)
   netsock->nativesock = NULL;
 }
 
-
 /************************************************************************/
 /*
   netx_change_group
@@ -191,7 +183,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
 
   /* if the IP passed in is not a valid multicast address */
   if (!is_multicast(local_group)) {
-	 return FAIL;
+   return FAIL;
   }
 
   acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group, port, %d, group: %s", NSK_PORT(netsock), ntoa(local_group));
@@ -215,10 +207,10 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
     The call returns the number of characters sent, or negitive if an error occurred.
 */
 int netx_send_to(
-	netxsocket_t      *netsock,    /* contains a flag if port is open and the local port number */
-	const netx_addr_t *destaddr,   /* contians dest port and ip numbers */
-	void              *pkt,        /* pointer data packet if type UPDPacket (return from netx_new_txbuf()) */
-	size_t             datalen     /* length of data */
+  netxsocket_t      *netsock,    /* contains a flag if port is open and the local port number */
+  const netx_addr_t *destaddr,   /* contians dest port and ip numbers */
+  void              *pkt,        /* pointer data packet if type UPDPacket (return from netx_new_txbuf()) */
+  size_t             datalen     /* length of data */
 )
 {
   ip4addr_t dest_addr;   /* this is a long int */
@@ -355,19 +347,18 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
 #if CONFIG_NET_IPV4
 ip4addr_t netx_getmyip(netx_addr_t *destaddr)
 {
-	int inf;
+  int inf;
   UNUSED_ARG(destaddr);
 
-	/* get interface */
+  /* get interface */
   inf = GetFirstInterface();
 
   /* force refresh of structure */
- 	GetIfConfig(inf);		/* perhaps this should be done globally once at boot! */
+   GetIfConfig(inf);    /* perhaps this should be done globally once at boot! */
 
- 	/* get IP */
+   /* get IP */
   return InterfaceIP(inf);
 }
-
 
 /************************************************************************/
 /*
@@ -376,18 +367,20 @@ ip4addr_t netx_getmyip(netx_addr_t *destaddr)
 */
 ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
 {
-	int inf;
+  int inf;
   UNUSED_ARG(destaddr);
 
-	/* get interface */
+  /* get interface */
   inf = GetFirstInterface();
 
   /* force refresh of structure */
- 	GetIfConfig(inf);		/* perhaps this should be done globally once at boot! */
+   GetIfConfig(inf);    /* perhaps this should be done globally once at boot! */
 
- 	/* get IP Mask */
+   /* get IP Mask */
   return InterfaceMASK(inf);
 }
 
-#endif	/* CONFIG_NET_IPV4 */
+#endif  /* CONFIG_NET_IPV4 */
 
+#endif /* CONFIG_STACK_NETBURNER */
+#endif /* CONFIG_NSK */
