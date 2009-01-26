@@ -488,9 +488,9 @@ void da_ip_list(char *str)
   while (da < da_list + MAX_DA) {
     if (da->ip) {
       if (first) {
-        sprintf(str, "%s", ntoa(da->ip));
+        SPRINTF(str, "%s", ntoa(da->ip));
       } else {
-        sprintf(str, "%s, %s", str, ntoa(da->ip));
+        SPRINTF(str, "%s, %s", str, ntoa(da->ip));
       }
       first = SLP_FALSE;
     }
@@ -2923,7 +2923,7 @@ void slp_init(void)
   memset(&dda_timer, 0, sizeof(SLPdda_timer));
 
   /* clear message buffers */
-  printf("size: %" PRIu32 ", %" PRIu32 "\n", (uint32_t)sizeof(SLPMsg), (uint32_t)sizeof(Msgs));
+  PRINTF("size: %" PRIu32 ", %"PRIu32 "\n", (uint32_t)sizeof(SLPMsg), (uint32_t)sizeof(Msgs));
   memset(Msgs, 0, sizeof(Msgs));
 
   /* clear registration property buffers */

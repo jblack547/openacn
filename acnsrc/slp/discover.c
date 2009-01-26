@@ -132,7 +132,7 @@ static void create_attr_list(char *new_attr_list, component_t *component)
     }
     
     /* create the attribute string for SLP discovery */
-    sprintf(new_attr_list, attr_list_fmt, cid_str, fctn, uacn, ip_str, SDT_ADHOC_PORT, access_str, dcid_str, ip_str);
+    SPRINTF(new_attr_list, attr_list_fmt, cid_str, fctn, uacn, ip_str, SDT_ADHOC_PORT, access_str, dcid_str, ip_str);
     /*                                    %s       %s    %s    %s      %d              %s          %s        %s */
   }
 }
@@ -145,7 +145,7 @@ static void create_url(char *new_url, component_t *component)
   /* convert the CID to a string */
   cidToText(component->cid, cid_str);
   /* put the CID string into the URL string */
-  sprintf(new_url, acn_reg_fmt, cid_str);
+  SPRINTF(new_url, acn_reg_fmt, cid_str);
 }
 
 /* examples of attribute lists */
@@ -390,7 +390,7 @@ void discover_acn(char *dcid_str, void (*callback) (component_t *component))
   /* perhaps we can auto-clear it with a timeout */
   discover_callback = callback;
 
-  sprintf(predicate_str, predicate_fmt, dcid_str);
+  SPRINTF(predicate_str, predicate_fmt, dcid_str);
     
   slp_srvrqst(0, "service:acn.esta", predicate_str, srvrqst_callback);
 }

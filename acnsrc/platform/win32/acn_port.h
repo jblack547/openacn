@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -53,13 +53,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "byteorder.h"
 
 /* ignore warnings: */
-/* This function or variable may be unsafe. Consider using xxx instead. 
+/* This function or variable may be unsafe. Consider using xxx instead.
    To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. */
 /* #define _CRT_SECURE_NO_WARNINGS <- does not seem to work*/
 #pragma warning(disable:4996)
 
 /* msvsc++ uses a different prefix */
 #define __func__ __FUNCTION__
+
+/* Defined platform specific sprintf() */
+#define SPRINTF(buf, ...) sprintf(buf, ##__VA_ARGS__)
+#define PRINTF(format, ...) printf(format, ##__VA_ARGS__)
 
 /* platform specific means to lock resources */
 typedef int acn_protect_t;
@@ -78,6 +82,7 @@ extern CRITICAL_SECTION CriticalSection;
 /* allow other threads */
 void acn_port_protect_startup(void);
 void acn_port_protect_shutdown(void);
+
 
 #ifdef __cplusplus
 }

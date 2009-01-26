@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -43,16 +43,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if CONFIG_STACK_NETBURNER
 #include "includes.h"       /* netburner types */
 
-/* NETBURNER does not have it's own version of these (nor does it really need them)*/
-/*
-#define HAVE_htons
-#define HAVE_htonl
-#define HAVE_ntohs
-#define HAVE_ntohl
-*/
 #include "byteorder.h"
 
-#define printf(format, ...) iprintf(format, ##__VA_ARGS__)
+/* Defined platform specific sprintf() */
+#define SPRINTF(buf, ...) siprintf(buf, ##__VA_ARGS__)
+#define PRINTF(format, ...) iprintf(format, ##__VA_ARGS__)
 
 extern OS_CRIT DASemaphore; /* semaphore to protect directory agent list */
 #define ACN_PORT_PROTECT()        0;OSLock()/* OSCritEnter(&DASemaphore, 0) */

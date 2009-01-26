@@ -615,7 +615,7 @@ return result;
 
 #if 0
 /* this works if we need to get MAC at some time! */
-printf("your MAC is %02x-%02x-%02x-%02x-%02x-%02x\n", 
+PRINTF("your MAC is %02x-%02x-%02x-%02x-%02x-%02x\n", 
        FixedInfo->Address[0],
        FixedInfo->Address[1],
        FixedInfo->Address[2],

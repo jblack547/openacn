@@ -52,6 +52,10 @@ BSD has it's own version of these
 #include "byteorder.h"
 */
 
+/* Defined platform specific sprintf() */
+#define SPRINTF(buf, ...) sprintf(buf, ##__VA_ARGS__)
+#define PRINTF(format, ...) printf(format, ##__VA_ARGS__)
+
 /* TODO: need to define this! */
 /* extern OS_CRIT DASemaphore; */ /* semaphore to protect directory agent list */
 typedef int acn_protect_t;
