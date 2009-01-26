@@ -53,8 +53,8 @@ BSD has it's own version of these
 */
 
 /* Defined platform specific sprintf() */
-#define SPRINTF(buf, ...) sprintf(buf, ##__VA_ARGS__)
-#define PRINTF(format, ...) printf(format, ##__VA_ARGS__)
+#define SPRINTF(buf, ...) sprintf(buf, __VA_ARGS__)
+#define PRINTF(format, ...) printf(format, __VA_ARGS__)
 
 /* TODO: need to define this! */
 /* extern OS_CRIT DASemaphore; */ /* semaphore to protect directory agent list */
@@ -70,6 +70,9 @@ extern "C" {
 acn_protect_t  acn_port_protect(void);
 /* allow other threads */
 void           acn_port_unprotect(acn_protect_t param);
+/* nothing */
+#define acn_port_protect_startup()
+#define acn_port_protect_shutdown()
 
 #ifdef __cplusplus
 }

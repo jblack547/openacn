@@ -46,12 +46,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "byteorder.h"
 
 /* Defined platform specific sprintf() */
-#define SPRINTF(buf, ...) siprintf(buf, ##__VA_ARGS__)
-#define PRINTF(format, ...) iprintf(format, ##__VA_ARGS__)
+#define SPRINTF(buf, ...) siprintf(buf, __VA_ARGS__)
+#define PRINTF(format, ...) iprintf(format, __VA_ARGS__)
 
 extern OS_CRIT DASemaphore; /* semaphore to protect directory agent list */
 #define ACN_PORT_PROTECT()        0;OSLock()/* OSCritEnter(&DASemaphore, 0) */
 #define ACN_PORT_UNPROTECT(pval)  OSUnlock()/* OSCritLeave(&DASemaphore) */
+
+#define acn_port_protect_startup()
+#define acn_port_protect_shutdown()
+
 
 #ifdef __cplusplus
 extern "C" {

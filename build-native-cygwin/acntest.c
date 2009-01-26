@@ -128,40 +128,50 @@ component_t *foreign_component = NULL;
 
 static void discover_callback(component_t *foreign_component)
 {
+  PRINTF("%s\n","joining new device");
   if (local_component && foreign_component) {
-    /* we could auto join here... */
-    /*sdt_join(local_component, foreign_component); */
+    /* sdt_join(local_component, foreign_component); */
   } else {
-    printf("bad component\n");
+    PRINTF("%s\n","bad component");
   }
 }
 /* TODO: need to know if join succeeds or is disconnected. */
 
 void process_keys(void)
 {
-  cid_t cid;
-  cid_t dcid;
+#if CONFIG_NSK
   char ip[50]   = "";
   char mask[50] = "";
   /* netx_addr_t   addr; */
   ip4addr_t     myip = 0;
+#endif
+
   acn_protect_t protect;
   component_t  *comp;
   int           cnt;
   int           x;
   char          cid_text[37];
+
+#if CONFIG_SDT
+  cid_t cid;
+  cid_t dcid;
   sdt_member_t  *member;
+#endif
+
   bool          WaitingForJoin = false;
   bool          WaitingForLeave = false;
 
-  int    ch;
+  int   ch;
   bool  doexit = false;
 
   /* wait for ip address (in host format)*/
+#if CONFIG_NSK
   while (!myip) {
     myip = ntohl(netx_getmyip(NULL));
   }
-  
+#endif
+
+#if CONFIG_SDT
   /* make a local component */
   textToCid(cid_str1, cid);
   textToCid(dcid_str1, dcid);
@@ -169,21 +179,21 @@ void process_keys(void)
   cid[15] = (uint8_t)(myip & 0xff);
   /* create our local component */
   local_component = sdt_add_component(cid, dcid, true, accBOTH);
-  
+
   /* fill in some required data */
   if (local_component) {
     /* local_component->callback = component_callback; */
     strcpy(local_component->uacn, myuacn);
     strcpy(local_component->fctn, myfctn);
   }
-
-  /* main is debug thread */
+#endif
+  /*  main is debug thread */
   while (!doexit) {
     ch = _getch();
     if (ch == EOF) {
       break;
     }
- 
+
     if (ch) {
       if (WaitingForJoin || WaitingForLeave) {
         if (ch < '1' || ch > '9') {
@@ -198,21 +208,22 @@ void process_keys(void)
         /* do nothing */
         break;
       case 8: _putch(8); _putch(' '); _putch(8);
-        /* backspace  */
+        /* backspace */
         break;
       case 10: _putch(10);
         break;
       case 13: _putch(10);
-        /* LF */
+        /* lf */
         break;
       case 'j': case 'J':
-        printf("Enter component number to join: ");
+        PRINTF("%s","Enter component number to join: ");
         WaitingForJoin = true;
         break;
       case 'l': case 'L':
-        printf("Enter component number to leave: ");
+        PRINTF("%s","Enter component number to leave: ");
         WaitingForLeave = true;
         break;
+#if CONFIG_SDT
       case '1': case '2': case '3':
         if (WaitingForJoin || WaitingForLeave) {
           x = ch - '0';
@@ -224,17 +235,17 @@ void process_keys(void)
             if (cnt == x) {
               if (!comp->is_local) {
                 if (WaitingForJoin) {
-                  printf("Joining %d\n",cnt);
+                  PRINTF("Joining %d\n",cnt);
                   sdt_join(local_component, comp);
                 }
                 if (WaitingForLeave) {
-                printf("Leaving %d\n",cnt);
+                  PRINTF("Leaving %d\n",cnt);
                 sdt_leave(local_component, comp);
 
                 }
 
               } else {
-                printf("Nope, %d is local!\n", cnt);
+                PRINTF("Nope, %d is local!\n", cnt);
               }
             }
             comp = comp->next;
@@ -242,18 +253,26 @@ void process_keys(void)
           ACN_PORT_UNPROTECT(protect);
           WaitingForJoin = false;
           WaitingForLeave = false;
+        } else {
+          PRINTF("%s",".\n");
         }
         break;
+#endif
+#if CONFIG_SLP
       case 'd': case 'D':
-        /* discover  */
+        /*  discover */
         discover_acn(dcid_str1, discover_callback);
         break;
-      case 'i': case 'I': 
+#endif
+#if CONFIG_NSK
+      case 'i': case 'I':
         /* We copy to local as ntoa can not be reused... */
         strcpy(ip, ntoa(netx_getmyip(0)));
         strcpy(mask, ntoa(netx_getmyipmask(0)));
-        printf("My IP: %s, mask %s\n", ip, mask);
+        PRINTF("My IP: %s, mask %s\n", ip, mask);
         break;
+#endif
+#if CONFIG_SDT
       case 'c': case 'C':
         protect = ACN_PORT_PROTECT();
         comp = sdt_first_component();
@@ -265,30 +284,36 @@ void process_keys(void)
           if (local_component->tx_channel) {
             member = sdt_find_member_by_component(local_component->tx_channel, comp);
           }
-          printf("%d, %s %s\n", cnt, cid_text, comp->is_local?"(local)":(member?"(joined)":""));
+          PRINTF("%d, %s %s\n", cnt, cid_text, comp->is_local?"(local)":(member?"(joined)":""));
           comp = comp->next;
         }
         ACN_PORT_UNPROTECT(protect);
         break;
-      case 'r': case 'R': 
+#endif
+#if CONFIG_SLP
+      case 'r': case 'R':
         discover_register(local_component);
         break;
       case 'u':case 'U':
         discover_deregister(local_component);
         break;
+#endif
+#if CONFIG_SDT
       case 's': case 'S':
         slp_stats();
         sdt_stats();
         break;
+#endif
       case 3: case 'x': case 'X':
         /* exit test app */
         doexit = true;
         break;
       case 't': case 'T':
+#if 0
         {
-          #if 0
           rlp_txbuf_t *tx_buffer;
           uint8_t *buf_start;
+          /* uint8_t *buffer; */
 
           netx_INADDR(&addr) = DD2NIP(193,168,1,200);
           netx_PORT(&addr) = htons(6000);
@@ -304,12 +329,12 @@ void process_keys(void)
           }
           buf_start = rlp_init_block(tx_buffer, NULL);
           rlp_add_pdu(tx_buffer, buf_start, 49, NULL);
-          
+
           rlp_send_block(tx_buffer, local_component->tx_channel->sock, &addr);
           rlpm_release_txbuf(tx_buffer);
-          #endif
         }
         break;
+#endif
       default:
         if (ch >= ' ' && ch <= 126) {
           _putch(ch);
@@ -317,37 +342,49 @@ void process_keys(void)
     }
   }
 
+#if CONGIF_SDT
   if (local_component) {
     sdt_del_component(local_component);
   }
   if (foreign_component) {
     sdt_del_component(foreign_component);
   }
-  printf("Shutting down...\n");
+#endif
+  PRINTF("%s","Shutting down...\n");
 }
 /*****************************************************************************************/
 
 int main()
 {
-  printf("Hello ACN World\n");
+  PRINTF("%s","Hello ACN World\n");
 
    /* note, this may not work in all cases. 
    1) all systems might boot at the same time
    2) when they get to this point, they may not have an ip yet
    */
-  srand(microsecsonds_since_midnight_GMT() + netx_getmyip(0));
 
   /* init our acn stack */
+  acn_port_protect_startup();
+#if CONFIG_NSK
+  srand(microsecsonds_since_midnight_GMT() + netx_getmyip(0));
   netx_init();
   netx_startup();
+#endif
 
+#if CONFIG_SLP
   slp_init();
   slp_open();
   slp_active_discovery_start();
+#endif
 
+#if CONFIG_RLP
   rlp_init();
+#if CONFIG_SDT
   sdt_init();
   sdt_startup(true);
+#endif
+  /* dmp_startup(); */
+#endif /* RLP */
 
   pthread_create(&timer_thread_id, NULL, timer_funct, NULL);
   pthread_create(&recv_thread_id, NULL, recv_funct, NULL);
@@ -355,9 +392,13 @@ int main()
   process_keys();
 
   /* shut things down - these require the threads to continue run... */
+#if CONFIG_SDT
   sdt_shutdown();
-  slp_close();
-
+#endif
+#if CONFIG_SLP
+  slp_close();  
+#endif
+  /* dmp_shutdown() */
 
   /* close threads */
   pthread_cancel(recv_thread_id);
@@ -365,9 +406,16 @@ int main()
   pthread_cancel(timer_thread_id);
   pthread_join(timer_thread_id, NULL);
 
+#if CONFIG_NSK
   netx_shutdown();
+#endif
+  acn_port_protect_shutdown();
 
-  printf("Done...\n");
+  slp_stats();
+  sdt_stats();
+  PRINTF("%s","========================\n");
+
+  PRINTF("%s","Done...\n");
   return 0;
 }
 

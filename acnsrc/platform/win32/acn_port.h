@@ -62,8 +62,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __func__ __FUNCTION__
 
 /* Defined platform specific sprintf() */
-#define SPRINTF(buf, ...) sprintf(buf, ##__VA_ARGS__)
-#define PRINTF(format, ...) printf(format, ##__VA_ARGS__)
+#define SPRINTF(buf, ...) sprintf(buf, __VA_ARGS__)
+#define PRINTF(format, ...) printf(format, __VA_ARGS__)
 
 /* platform specific means to lock resources */
 typedef int acn_protect_t;
