@@ -60,11 +60,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* OpenACN includes */
 #include "opt.h"
+#if CONFIG_DMP
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acn_arch.h"
 
-#if CONFIG_DMP
 #include "dmp.h"
 #include "dmpmem.h"
 #include "acn_dmp.h"
@@ -138,7 +138,7 @@ dmp_client_rx_handler(component_t *local_component, component_t *foreign_compone
 
   /* verify min data length */
   if (data_len < 3) {
-	  acnlog(LOG_WARNING | LOG_DMP,"dmp_client_rx_handler: Packet too short to be valid");
+    acnlog(LOG_WARNING | LOG_DMP,"dmp_client_rx_handler: Packet too short to be valid");
     return;
   }
 
@@ -150,14 +150,14 @@ dmp_client_rx_handler(component_t *local_component, component_t *foreign_compone
 
   /* check for valid flags in the first pdu (there may be only one pdu) */
   if ((*pdup & (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG | LENGTH_bFLAG)) != (VECTOR_bFLAG | HEADER_bFLAG | DATA_bFLAG)) {
-		acnlog(LOG_WARNING | LOG_DMP,"dmp_client_rx_handler: illegal first PDU flags");
-		return;
+    acnlog(LOG_WARNING | LOG_DMP,"dmp_client_rx_handler: illegal first PDU flags");
+    return;
   }
 
   /* while there is still a pdu to process */
   while(pdup < data_end)  {
     uint8_t *pp; /* pointer to curren PDU */
-	  uint8_t  flags; /* flag byte */
+    uint8_t  flags; /* flag byte */
 
     /* get the flags from this pdu */
     flags = unmarshalU8(pdup);
@@ -168,24 +168,24 @@ dmp_client_rx_handler(component_t *local_component, component_t *foreign_compone
     /* get pdu length and point to next pdu */
     pdup += getpdulen(pdup);
 
-	/* if length of this pdu is longer than we were given data for */
-	if (pdup > data_end) {
-	  acnlog(LOG_WARNING | LOG_DMP,"dmp_client_rx_handler: packet length error");
-	  return;
-	}
+  /* if length of this pdu is longer than we were given data for */
+  if (pdup > data_end) {
+    acnlog(LOG_WARNING | LOG_DMP,"dmp_client_rx_handler: packet length error");
+    return;
+  }
 
     /* Get vector or inherit the last one if not present */
     /* vector is command (message type) */
-	if (flags & VECTOR_bFLAG) {
+  if (flags & VECTOR_bFLAG) {
       vector = unmarshalU8(pp);
-  	  pp++;
+      pp++;
     }
 
     /* Get header (Address/Data encode byte) or inherit the last one if not present */
     if (flags & HEADER_bFLAG) {
-	  header = unmarshalU8(pp);   /* header = address type */
-	  pp++;
-	}
+    header = unmarshalU8(pp);   /* header = address type */
+    pp++;
+  }
 
     /* Get packet data or inherit pointer to the last one if not present */
     if (flags & DATA_bFLAG) {
@@ -194,72 +194,72 @@ dmp_client_rx_handler(component_t *local_component, component_t *foreign_compone
       data_size = pdup - pp;
     }
 
-	switch(vector) {
-	  case DMP_GET_PROPERTY:
-	    acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_GET_PROPERTY");
-	    /* app_rx_get_property(local_component, foreign_component, header, datap, data_size); */
-	    break;
-	  case DMP_SET_PROPERTY:
-	    acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_SET_PROPERTY");
-	    /* app_rx_subscribe(local_component, foreign_component, header, datap, data_size); */ /* DEBUG */
-	    /* app_rx_set_property(local_component, foreign_component, header, datap, data_size); */
-	    break;
-	  case DMP_SUBSCRIBE:
-	    acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_SUBSCRIBE");
-	    /* app_rx_subscribe(local_component, foreign_component, header, datap, data_size); */
-	    break;
-	  case DMP_UNSUBSCRIBE:
-	    acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_UNSUBSCRIBE");
-	    /* app_rx_unsubscribe(local_component, foreign_component, header, datap, data_size); */
-	    break;
-	  case DMP_GET_PROPERTY_REPLY:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_GET_PROPERTY_REPLY not supported..");
-	    /* dmp_rx_get_prop_reply */
-	    break;
-	  case DMP_EVENT:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_EVENT not supported..");
-	    /* dmp_rx_event */
-	    break;
-	  case DMP_MAP_PROPERTY:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_MAP_PROPERTY not supported..");
-	    /* dmp_rx_map_property(foreign_compoent, local_component, srcSession, &pdu); */
-	    break;
-	  case DMP_UNMAP_PROPERTY:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_UNMAP_PROPERTY not supported..");
-	    /* dmp_rx_unmap_property */
-	    break;
-	  case DMP_GET_PROPERTY_FAIL:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_GET_PROPERTY_FAIL not supported..");
-	    /* dmp_rx_get_property_fail */
-	    break;
-	  case DMP_SET_PROPERTY_FAIL:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_SET_PROPERTY_FAIL not supported..");
-	    /* dmp_rx_set_property_fail */
-	    break;
-	  case DMP_MAP_PROPERTY_FAIL:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_MAP_PROPERTY_FAIL not supported..");
-	    /* dmp_rx_map_property_fail */
-	    break;
-	  case DMP_SUBSCRIBE_ACCEPT:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_SUBSCRIBE_ACCEPT not supported..");
-	    /* dmp_rx_subscribe_accept */
-	    break;
-	  case DMP_SUBSCRIBE_REJECT:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_SUBSCRIBE_REJECT not supported..");
-	    /* dmp_subscribe_reject */
-	    break;
-	  case DMP_ALLOCATE_MAP:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_ALLOCATE_MAP not supported..");
-	    /* dmp_rx_allocate_map(foreign_compoent, local_component, srcSession, &pdu); */
-	    break;
-	  case DMP_ALLOCATE_MAP_REPLY:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_ALLOCATE_MAP_REPLY not supported..");
-	    /* dmp_rx_allocate_map_reply */
-	    break;
-	  case DMP_DEALLOCATE_MAP:
-	    acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_DEALLOCATE_MAP not supported..");
-	    /* dmp_rx_deallocate_map(foreign_compoent, local_component, srcSession, &pdu); */
-	    break;
+  switch(vector) {
+    case DMP_GET_PROPERTY:
+      acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_GET_PROPERTY");
+      /* app_rx_get_property(local_component, foreign_component, header, datap, data_size); */
+      break;
+    case DMP_SET_PROPERTY:
+      acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_SET_PROPERTY");
+      /* app_rx_subscribe(local_component, foreign_component, header, datap, data_size); */ /* DEBUG */
+      /* app_rx_set_property(local_component, foreign_component, header, datap, data_size); */
+      break;
+    case DMP_SUBSCRIBE:
+      acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_SUBSCRIBE");
+      /* app_rx_subscribe(local_component, foreign_component, header, datap, data_size); */
+      break;
+    case DMP_UNSUBSCRIBE:
+      acnlog(LOG_DEBUG | LOG_DMP,"dmp_client_rx_handler: DMP_UNSUBSCRIBE");
+      /* app_rx_unsubscribe(local_component, foreign_component, header, datap, data_size); */
+      break;
+    case DMP_GET_PROPERTY_REPLY:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_GET_PROPERTY_REPLY not supported..");
+      /* dmp_rx_get_prop_reply */
+      break;
+    case DMP_EVENT:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_EVENT not supported..");
+      /* dmp_rx_event */
+      break;
+    case DMP_MAP_PROPERTY:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_MAP_PROPERTY not supported..");
+      /* dmp_rx_map_property(foreign_compoent, local_component, srcSession, &pdu); */
+      break;
+    case DMP_UNMAP_PROPERTY:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_UNMAP_PROPERTY not supported..");
+      /* dmp_rx_unmap_property */
+      break;
+    case DMP_GET_PROPERTY_FAIL:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_GET_PROPERTY_FAIL not supported..");
+      /* dmp_rx_get_property_fail */
+      break;
+    case DMP_SET_PROPERTY_FAIL:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_SET_PROPERTY_FAIL not supported..");
+      /* dmp_rx_set_property_fail */
+      break;
+    case DMP_MAP_PROPERTY_FAIL:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_MAP_PROPERTY_FAIL not supported..");
+      /* dmp_rx_map_property_fail */
+      break;
+    case DMP_SUBSCRIBE_ACCEPT:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_SUBSCRIBE_ACCEPT not supported..");
+      /* dmp_rx_subscribe_accept */
+      break;
+    case DMP_SUBSCRIBE_REJECT:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_SUBSCRIBE_REJECT not supported..");
+      /* dmp_subscribe_reject */
+      break;
+    case DMP_ALLOCATE_MAP:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_ALLOCATE_MAP not supported..");
+      /* dmp_rx_allocate_map(foreign_compoent, local_component, srcSession, &pdu); */
+      break;
+    case DMP_ALLOCATE_MAP_REPLY:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_ALLOCATE_MAP_REPLY not supported..");
+      /* dmp_rx_allocate_map_reply */
+      break;
+    case DMP_DEALLOCATE_MAP:
+      acnlog(LOG_INFO | LOG_DMP,"dmp_client_rx_handler: DMP_DEALLOCATE_MAP not supported..");
+      /* dmp_rx_deallocate_map(foreign_compoent, local_component, srcSession, &pdu); */
+      break;
     }
   }
 /*  LOG_FEND(); */
@@ -280,43 +280,43 @@ uint8_t* dmp_encode_address_header(dmp_address_t *dmp_address, uint8_t *encode_b
   /* write the Address/Data encoded byte */
   *encode_byte = (uint8_t)(dmp_address->address_size | dmp_address->address_type);
   if (dmp_address->is_virtual) {
-  	*encode_byte |= VIRTUAL_ADDRESS_BIT;
+    *encode_byte |= VIRTUAL_ADDRESS_BIT;
   }
 
   /* write the start address */
   switch (dmp_address->address_size) {
     case ONE_OCTET_ADDRESS :
-	  	datap = marshalU8(datap , (uint8_t)dmp_address->address_start);
-    	break;
+      datap = marshalU8(datap , (uint8_t)dmp_address->address_start);
+      break;
     case TWO_OCTET_ADDRESS :
-	  	datap = marshalU16(datap , (uint8_t)dmp_address->address_start);
-    	break;
+      datap = marshalU16(datap , (uint8_t)dmp_address->address_start);
+      break;
     case FOUR_OCTET_ADDRESS :
-	  	datap = marshalU32(datap , (uint8_t)dmp_address->address_start);
-    	break;
+      datap = marshalU32(datap , (uint8_t)dmp_address->address_start);
+      break;
     default:
       acnlog(LOG_WARNING | LOG_DMP,"dmp_encode_address_header: Address length not valid... %" PRIx32, dmp_address->address_size);
   }
 
   /* if the address type is non-zero then a range address was specified */
   if (dmp_address->address_type) {
-  	/* write the address increment and number of properties */
-  	switch (dmp_address->address_size) {
-  		case ONE_OCTET_ADDRESS:
-		  	datap = marshalU8(datap , (uint8_t)dmp_address->address_inc);
-		  	datap = marshalU8(datap , (uint8_t)dmp_address->num_props);
-  			break;
-  		case TWO_OCTET_ADDRESS:
-		  	datap = marshalU16(datap , (uint16_t)dmp_address->address_inc);
-		  	datap = marshalU16(datap , (uint16_t)dmp_address->num_props);
-	  		break;
-  		case FOUR_OCTET_ADDRESS:
-		  	datap = marshalU32(datap , dmp_address->address_inc);
-		  	datap = marshalU32(datap , dmp_address->num_props);
-  			break;
-  		default:
-  		;
-  	}
+    /* write the address increment and number of properties */
+    switch (dmp_address->address_size) {
+      case ONE_OCTET_ADDRESS:
+        datap = marshalU8(datap , (uint8_t)dmp_address->address_inc);
+        datap = marshalU8(datap , (uint8_t)dmp_address->num_props);
+        break;
+      case TWO_OCTET_ADDRESS:
+        datap = marshalU16(datap , (uint16_t)dmp_address->address_inc);
+        datap = marshalU16(datap , (uint16_t)dmp_address->num_props);
+        break;
+      case FOUR_OCTET_ADDRESS:
+        datap = marshalU32(datap , dmp_address->address_inc);
+        datap = marshalU32(datap , dmp_address->num_props);
+        break;
+      default:
+      ;
+    }
   }
   return datap;
 }
@@ -371,7 +371,7 @@ int dmp_decode_address_header(uint8_t address_type, uint8_t *data, dmp_address_t
 
   /* if address type is non-zero then a range address was specified */
   if(dmp_address->address_type) {
-  	/* get the increment for the range */
+    /* get the increment for the range */
     switch(size) {
       case 1 :
         dmp_address->address_inc = unmarshalU8(data);
@@ -398,7 +398,7 @@ int dmp_decode_address_header(uint8_t address_type, uint8_t *data, dmp_address_t
     }
     data += size;
   } else {
-  	/* only one address */
+    /* only one address */
     dmp_address->num_props = 1;
     dmp_address->address_inc = 0;
   }
@@ -412,9 +412,9 @@ int dmp_decode_address_header(uint8_t address_type, uint8_t *data, dmp_address_t
   if (address_type & RELATIVE_ADDRESS_BIT) {
     /* compute the address of the first property */
     if(dmp_address->is_virtual) {
-  	  dmp_address->address_start += lastVirtualAddress;
+      dmp_address->address_start += lastVirtualAddress;
     } else {
-  	  dmp_address->address_start += lastActualAddress;
+      dmp_address->address_start += lastActualAddress;
     }
   }
 
@@ -685,7 +685,7 @@ dmp_tx_pdu(component_t *local_component, component_t *foreign_component, bool is
 
   /* copy data to it starting with the flags byte */
   for (x=0; x<data_len; x++) {
-  	*pdup++ = *datap++;
+    *pdup++ = *datap++;
   }
 
   /* add length to client block pdu */

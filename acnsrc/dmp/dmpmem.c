@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /*--------------------------------------------------------------------*/
 #include "opt.h"
+#if CONFIG_DMP
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acn_arch.h"
@@ -47,8 +48,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "dmpmem.h"
 #include "component.h"
 #include "acnlog.h"
- 
- 
+
+
 /* holder... */
 dmp_subscription_t subscriptions_m[DMP_MAX_SUBSCRIPTIONS];
 
@@ -75,7 +76,7 @@ sys_sem_t dmp_queue_sem = 0;      /* fifo semaphore */
 #endif
 
 /*****************************************************************************/
-/* init routine 
+/* init routine
 */
 void
 dmpm_init(void)
@@ -96,7 +97,7 @@ dmpm_init(void)
 
 
 /*****************************************************************************/
-/* shut it down 
+/* shut it down
 */
 void
 dmpm_close(void)
@@ -117,11 +118,11 @@ dmpm_close(void)
 /*
   Put mail in our mailbox
 
-  Simple FIFO using zero copy  
+  Simple FIFO using zero copy
   it is designed so one thread can input records and the other
   can remove them.
 */
-void 
+void
 dmpm_add_queue(component_t *local_component, component_t *foreign_component, bool is_reliable, const uint8_t *data, uint32_t data_len, void *ref)
 {
   dmp_queue_t *next_ptr;
@@ -153,8 +154,8 @@ dmpm_add_queue(component_t *local_component, component_t *foreign_component, boo
 }
 
 /*****************************************************************************/
-/* 
-  Get mail from our mailbox - if any 
+/*
+  Get mail from our mailbox - if any
 */
 dmp_queue_t *
 dmpm_get_queue(void)
@@ -178,15 +179,15 @@ dmpm_get_queue(void)
     rtn_ptr = NULL;
   }
   DMP_UNLOCK_QUEUE();
-  return rtn_ptr; 
+  return rtn_ptr;
 }
 
 /*****************************************************************************/
-/* 
+/*
   Free queue memory as pointed to by output pointer
 */
 void
-dmpm_free_queue(void) 
+dmpm_free_queue(void)
 {
   DMP_LOCK_QUEUE();
   if (output_ptr->local_component) {
@@ -206,7 +207,7 @@ dmpm_free_queue(void)
 */
 dmp_subscription_t *
 dmpm_new_subscription(void)
-{ 
+{
   /* allocate */
   dmp_subscription_t   *subscription;
 
@@ -226,12 +227,12 @@ dmpm_new_subscription(void)
 /*
   free unused suscription
 */
-void 
+void
 dmpm_free_subscription(dmp_subscription_t *subscription)
 {
   subscription->state = DMP_SUB_EMPTY;
   return;
 }
 
-
+#endif /* CONFIG_DMP */
 

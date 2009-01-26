@@ -30,11 +30,12 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
 #include "opt.h"
+#if CONFIG_EPI10
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
@@ -43,10 +44,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "netxface.h"
 
 
-#if CONFIG_EPI10
 #include "epi10.h"
 
-ip4addr_t scope_and_host;	/* Network Byte Order */
+ip4addr_t scope_and_host;  /* Network Byte Order */
 uint16_t dyn_mask;
 
 
@@ -75,58 +75,58 @@ static __inline int ffs_1(register int x)
 */
 
 int mcast_alloc_init(
-	ip4addr_t scopeaddr,
-	ip4addr_t scopemask,
-	component_t *comp
+  ip4addr_t scopeaddr,
+  ip4addr_t scopemask,
+  component_t *comp
 )
 {
-	int HostShift;
-	uint32_t HostPart;
-	uint16_t uuidPart;
+  int HostShift;
+  uint32_t HostPart;
+  uint16_t uuidPart;
 
-	/* Set the scope part by masking the scope address with the scope mask. */
-	/* If a scope argument is zero, then set the ACN EPI 10 default. */
-	if(scopeaddr == 0)
-	{
-		scopeaddr = E1_17_AUTO_SCOPE_ADDRESS;
-		scopemask = E1_17_AUTO_SCOPE_MASK;
-	}
-	scopeaddr &= scopemask;	/* discard superfluous bits */
+  /* Set the scope part by masking the scope address with the scope mask. */
+  /* If a scope argument is zero, then set the ACN EPI 10 default. */
+  if(scopeaddr == 0)
+  {
+    scopeaddr = E1_17_AUTO_SCOPE_ADDRESS;
+    scopemask = E1_17_AUTO_SCOPE_MASK;
+  }
+  scopeaddr &= scopemask;  /* discard superfluous bits */
 
-	/* Adjust the scope mask to be within the spec range */
-	scopemask |= EPI10_SCOPE_MIN_MASK;
-	scopemask &= EPI10_SCOPE_MAX_MASK;
+  /* Adjust the scope mask to be within the spec range */
+  scopemask |= EPI10_SCOPE_MIN_MASK;
+  scopemask &= EPI10_SCOPE_MAX_MASK;
 
-	if ((scopeaddr & scopemask) != scopeaddr)
-	{
-		acnlog(LOG_ERR|LOG_MISC,"mcast_alloc_init: Scope-address out of range.");
-		return FAIL;
-	}
+  if ((scopeaddr & scopemask) != scopeaddr)
+  {
+    acnlog(LOG_ERR|LOG_MISC,"mcast_alloc_init: Scope-address out of range.");
+    return FAIL;
+  }
 
 /*
 From epi10 r4:
-	HostPart   = (IPaddress & 0xff) << HostShift
-	HostShift  = 24 - ScopeBits
-	ScopeBits  = bitcount(ScopeMask)
+  HostPart   = (IPaddress & 0xff) << HostShift
+  HostShift  = 24 - ScopeBits
+  ScopeBits  = bitcount(ScopeMask)
 
-	Function ffs_1 finds LS bit set
-	with lsb numbered as 1
+  Function ffs_1 finds LS bit set
+  with lsb numbered as 1
 */
-	HostShift = ffs_1(ntohl(scopemask)) - 9;  /* 10 */
-	HostPart = ntohl(netx_getmyip(NULL));     /* 216.253.200.200 */
-	HostPart &= EPI10_HOST_PART_MASK;         /* & 0xff  = 200 == 0xc8 */
-	HostPart <<= HostShift;                   /* TBD THIS CAME TO 0x32000 */
+  HostShift = ffs_1(ntohl(scopemask)) - 9;  /* 10 */
+  HostPart = ntohl(netx_getmyip(NULL));     /* 216.253.200.200 */
+  HostPart &= EPI10_HOST_PART_MASK;         /* & 0xff  = 200 == 0xc8 */
+  HostPart <<= HostShift;                   /* TBD THIS CAME TO 0x32000 */
 
-	dyn_mask = (1 << HostShift) - 1;          /* 0x3FF */
+  dyn_mask = (1 << HostShift) - 1;          /* 0x3FF */
 
-	scope_and_host = scopeaddr | htonl(HostPart); /* 0xEFC32000 */
+  scope_and_host = scopeaddr | htonl(HostPart); /* 0xEFC32000 */
 
 /*
 */
-	uuidPart = (CID_NODE(comp->cid)[4] << 8) | CID_NODE(comp->cid)[5];
-	uuidPart ^= (uint16_t)CID_TIME_LOW(comp->cid);
-	comp->dyn_mcast = uuidPart & dyn_mask;
-	return OK;
+  uuidPart = (CID_NODE(comp->cid)[4] << 8) | CID_NODE(comp->cid)[5];
+  uuidPart ^= (uint16_t)CID_TIME_LOW(comp->cid);
+  comp->dyn_mcast = uuidPart & dyn_mask;
+  return OK;
 }
 
 /************************************************************************/
@@ -138,8 +138,8 @@ From epi10 r4:
 groupaddr_t mcast_alloc_new(component_t *comp)
 {
 
-	return scope_and_host | htonl((uint32_t)(dyn_mask & comp->dyn_mcast++));
+  return scope_and_host | htonl((uint32_t)(dyn_mask & comp->dyn_mcast++));
 }
 #endif
 
-#endif	/* CONFIG_EPI10 */
+#endif  /* CONFIG_EPI10 */

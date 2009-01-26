@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
@@ -44,45 +44,45 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* stack independent calls usually found in ctype.h*/
 #ifndef isdigit
-	#define isdigit(c)	((c) >= '0' && (c) <= '9')
+  #define isdigit(c)  ((c) >= '0' && (c) <= '9')
 #endif
 #ifndef isxdigit
-	#define isxdigit(c)	(isdigit((c)) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
+  #define isxdigit(c)  (isdigit((c)) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
 #endif
 
 /******************************************************************************/
 /* Convert text based CID to uuit_t
  * Input format example: D1F6F109-8A48-4435-8157-A226604DEA89
- * Returns OK or non-zere if error in format found
+ * Returns OK or non-zero if error in format found
  */
 int textToCid(const char *cidText, cid_t cidp)
 {
-	uint8_t *bytp;
-	uint16_t byt;
+  uint8_t *bytp;
+  uint16_t byt;
 
-	byt = 1;	/* bit provides a shift marker */
+  byt = 1;  /* bit provides a shift marker */
 
-	for (bytp = cidp; bytp < cidp + CIDSIZE; ++cidText) {
-		if (*cidText == '-') continue;	/* ignore dashes */
-		if (isdigit(*cidText)) {
-			byt = (byt << 4) | (*cidText - '0');
-		} else
-			if (isxdigit(*cidText)) {
-			  byt = (byt << 4) | (toupper(*cidText) - 'A' + 10);
-		  } else {
-			  while (bytp < cidp + CIDSIZE) *bytp++ = 0;
-			  return FAIL;	/* error terminates */
-			}
-		if (byt >= 0x100) {
-			*bytp++ = (uint8_t)byt;
-			byt = 1;	/* restore shift marker */
-		}
-	}
-	/* TODO: - check for terminated input string here (what termination is allowed?) */
-	return OK;
+  for (bytp = cidp; bytp < cidp + CIDSIZE; ++cidText) {
+    if (*cidText == '-') continue;  /* ignore dashes */
+    if (isdigit(*cidText)) {
+      byt = (byt << 4) | (*cidText - '0');
+    } else
+      if (isxdigit(*cidText)) {
+        byt = (byt << 4) | (toupper(*cidText) - 'A' + 10);
+      } else {
+        while (bytp < cidp + CIDSIZE) *bytp++ = 0;
+        return FAIL;  /* error terminates */
+      }
+    if (byt >= 0x100) {
+      *bytp++ = (uint8_t)byt;
+      byt = 1;  /* restore shift marker */
+    }
+  }
+  /* TODO: - check for terminated input string here (what termination is allowed?) */
+  return OK;
 }
 
-const char hexdig[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+static const char hexdig[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 #define tohex(nibble) hexdig[nibble]
 
 /******************************************************************************/
@@ -92,25 +92,25 @@ Returns pointer to end of string
 */
 char *cidToText(const uint8_t *cidp, char *cidText)
 {
-	int octet;
+  int octet;
 
-	for (octet = 0; octet < 16; octet++) {
-		*cidText++ = tohex(*cidp >> 4);
-		*cidText++ = tohex(*cidp & 0x0f);
-		++cidp;
+  for (octet = 0; octet < 16; octet++) {
+    *cidText++ = tohex(*cidp >> 4);
+    *cidText++ = tohex(*cidp & 0x0f);
+    ++cidp;
 
-		switch(octet) {
-			case 3 :
-			case 5 :
-			case 7 :
-			case 9 :
-				*cidText++ = '-';
-			default :
-				break;
-		}
-	}
-	*cidText = '\0';	/* terminate the string */
-	return cidText;
+    switch(octet) {
+      case 3 :
+      case 5 :
+      case 7 :
+      case 9 :
+        *cidText++ = '-';
+      default :
+        break;
+    }
+  }
+  *cidText = '\0';  /* terminate the string */
+  return cidText;
 }
 
 /* Also see MACROS defined in header */
@@ -122,10 +122,10 @@ char *cidToText(const uint8_t *cidp, char *cidText)
  */
 int cidIsEqual(const cid_t cid1, const cid_t cid2)
 {
-	int count = 16;
+  int count = 16;
 
-	while (*cid1++ == *cid2++) if (--count == 0) return 1;
-	return OK;
+  while (*cid1++ == *cid2++) if (--count == 0) return 1;
+  return OK;
 }
 #endif
 
@@ -138,7 +138,7 @@ void cidNull(cid_t cid)
 {
   int count = 16;
 
-	while (count--) {
+  while (count--) {
     *cid = 0;;
   }
 }
@@ -160,9 +160,9 @@ int cidIsNull(const cid_t cid)
 /*****************************************************************************/
 void cidCopy(cid_t cid1, const cid_t cid2)
 {
-	int count = 16;
+  int count = 16;
 
-	while (count--) {
+  while (count--) {
     *cid1++ = *cid2++;
   }
 }

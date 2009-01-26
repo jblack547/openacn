@@ -42,6 +42,7 @@ handling. See rlp.c for description of 3-level structure.
 
 #include <string.h>
 #include "opt.h"
+#if CONFIG_RLP
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
@@ -656,4 +657,4 @@ void rlpm_free_txbuf(struct rlp_txbuf_s *buf)
 
 #endif
 
-
+#endif /* CONFIG_RLP */

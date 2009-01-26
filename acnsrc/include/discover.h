@@ -29,12 +29,13 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 */
 
 #ifndef __DISCOVER_H__
 #define __DISCOVER_H__
 
+#if SLP_IS_UA && CONFIG_SDT
 #include "component.h"
 
 #ifdef __cplusplus
@@ -47,6 +48,8 @@ void discover_deregister(component_t *component);
 
 #ifdef __cplusplus
 }
-#endif
+#endif 
+
+#endif /* SLP_IS_UA && CONFIG_SDT */
 
 #endif /*__DISCOVER_H__ */

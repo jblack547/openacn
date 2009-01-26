@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* General ACN includes */
 #include "opt.h"
+#if CONFIG_SLP && CONFIG_SDT
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
@@ -200,9 +201,7 @@ static void attrrqst_callback(int error, char *attr_list, int count)
   char port_str[6]             = {'\0'};
   char dd[64]                  = {'\0'};
 
-#if CONFIG_SDT
   component_t *comp = NULL;
-#endif
 
   ip4addr_t  ip = 0;
   ip4addr_t  myip = 0;
@@ -312,7 +311,6 @@ static void attrrqst_callback(int error, char *attr_list, int count)
   }
 
   /* create a component for this CID */
-#if CONFIG_SDT
   if (!cidIsNull(cid)) {
     /* am I looking in the mirror ? */
     if (ip == myip) {
@@ -330,7 +328,7 @@ static void attrrqst_callback(int error, char *attr_list, int count)
       comp->dirty = false;
     } else {
       /* create a new component struct at the end of the list */
-      comp = sdt_add_component(cid, dcid, false, accUNKNOWN); 
+      comp = sdt_add_component(cid, dcid, false, accUNKNOWN);
       if (!comp) {
         return;
       }
@@ -345,7 +343,6 @@ static void attrrqst_callback(int error, char *attr_list, int count)
       }
     }
   }
-#endif /* CONFIG_SDT */
 }
 
 #if SLP_IS_UA
@@ -397,6 +394,7 @@ void discover_acn(char *dcid_str, void (*callback) (component_t *component))
 #endif
 
 /* (cid=01000000-0000-0000-0000-000000000001),(acn-fctn=),(acn-uacn=),(acn-services=esta.dmp),(csl-esta.dmp=esta.sdt/192.168.1.201:5568;esta.dmp/cd:02000000-0000-0000-0000-000000000002),(device-description=$:tftp://192.168.1.2) */
+#if SLP_IS_UA
 char  acn_attr_list[500] = {'\0'};
 char  acn_srv_url[100] = {'\0'};
 void discover_register(component_t *component)
@@ -425,4 +423,6 @@ void discover_deregister(component_t *component)
   create_url(acn_srv_url, component);
   slp_dereg(acn_srv_url);
 }
+#endif /* SLP_IS_UA*/
 
+#endif /* CONFIG_SLP && CONFIG_SDT*/

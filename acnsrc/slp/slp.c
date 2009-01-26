@@ -79,9 +79,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* General ACN includes */
 #include "opt.h"
+#if CONFIG_SLP
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
+
+
 
 /* Platform dependent network interface*/
 #include "netxface.h"
@@ -3079,3 +3082,4 @@ void slp_stats(void)
   acnlog(LOG_INFO | LOG_STAT , "MSG: %d", msg_count());
 }
 
+#endif /* CONFIG_SLP */

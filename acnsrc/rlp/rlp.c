@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 
 #include "opt.h"
+#if CONFIG_RLP
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
@@ -655,7 +656,7 @@ rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_a
 #if !STACK_RETURNS_DEST_ADDR
   UNUSED_ARG(dest);
 #endif
-  
+
   LOG_FSTART();
 
   pdup = data;
@@ -747,3 +748,4 @@ rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_a
   }
 }
 
+#endif /* CONFIG_RLP */

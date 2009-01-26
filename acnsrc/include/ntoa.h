@@ -30,16 +30,21 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   $Id$
-  
+
   Description:
     Header file for ntoa.c
 */
 #ifndef __NTOA_H__
 #define __NTOA_H__
 
+#include "opt.h"
+#include "acnstdtypes.h"
+#include "acn_port.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 /************************************************************************/
 /*
@@ -70,16 +75,6 @@ static inline char *ntoa(ip4addr_t ipad)
 }
 
 #define HAVE_ntoa 1
-
-/*
-#elif CONFIG_STACK_NETBURNER
-
-FIXME: What is the Netburner function?
-
-#include "utils.h"
-#define ntoa(ipad) IpToAscii(ipad);
-#define HAVE_ntoa 1
-*/
 
 #else
 char * ntoa(ip4addr_t n);

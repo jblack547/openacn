@@ -30,11 +30,13 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id$
+  $Id$
 
 */
 /*--------------------------------------------------------------------*/
 #include "opt.h"
+#if CONFIG_NSK
+#if CONFIG_STACK_LWIP
 #include "acn_arch.h"
 #include "netxface.h"
 #include "rlp.h"
@@ -53,7 +55,7 @@ static void  netxhandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct 
 */
 void netx_init(void)
 {
-	return;
+  return;
 }
 
 /************************************************************************/
@@ -89,7 +91,7 @@ netx_udp_open(struct netxsocket_s *rlpsock, localaddr_t localaddr)
     NSK_PORT(*rlpsock) = LCLAD_PORT(localaddr);
   }
 #if !CONFIG_LOCALIP_ANY
-	NSK_INADDR(*rlpsock) = LCLAD_INADDR(localaddr);
+  NSK_INADDR(*rlpsock) = LCLAD_INADDR(localaddr);
 #endif
 
   /* UDP Callback */
@@ -102,9 +104,9 @@ netx_udp_open(struct netxsocket_s *rlpsock, localaddr_t localaddr)
 /*
   netx_udp_close()
     Close "socket"
-  
+
 */
-void 
+void
 netx_udp_close(struct netxsocket_s *rlpsock)
 {
   if (!rlpsock->nativesock) {
@@ -131,7 +133,7 @@ netx_change_group(struct netxsocket_s *rlpsock, ip4addr_t localGroup, int operat
 
   UNUSED_ARG(rlpsock);
 
-	if (!is_multicast(localGroup)) return -1;
+  if (!is_multicast(localGroup)) return -1;
 
   /* result = ERR_OK which is defined as zero so return value is consistent */
   addr.addr = localGroup;
@@ -145,15 +147,15 @@ netx_change_group(struct netxsocket_s *rlpsock, ip4addr_t localGroup, int operat
 /*
   netx_send_to()
     Send message to give address
-    The call returns the number of characters sent, or negitive if an error occurred. 
+    The call returns the number of characters sent, or negitive if an error occurred.
 */
 
 int
 netx_send_to(
-	struct netxsocket_s *rlpsock,
-	const netx_addr_t *destaddr,
-	uint8_t *data,
-	size_t datalen
+  struct netxsocket_s *rlpsock,
+  const netx_addr_t *destaddr,
+  uint8_t *data,
+  size_t datalen
 )
 {
   struct pbuf     *pkt;  /* Outgoing packet */
@@ -196,9 +198,9 @@ netx_send_to(
       }
     } else
       result = 0;
-  
+
     if (result != 0) {
-      acnlog(LOG_WARNING | LOG_NETI, "netx_send_to : ARP failure: %d.%d.%d.%d", 
+      acnlog(LOG_WARNING | LOG_NETI, "netx_send_to : ARP failure: %d.%d.%d.%d",
         ntohl(addr) >> 24 & 0x000000ff,
         ntohl(addr) >> 16 & 0x000000ff,
         ntohl(addr) >> 8 & 0x000000ff,
@@ -232,16 +234,16 @@ netx_send_to(
 
 
 /************************************************************************/
-/* 
+/*
   netxhandler()
-    Socket call back 
+    Socket call back
 */
 /*
-  This function is call for connections.  Our stack ensures us that if we get here, it is for us even 
-  if multicast.  So to get here it either is Unicast or multicats with a matching port as 
+  This function is call for connections.  Our stack ensures us that if we get here, it is for us even
+  if multicast.  So to get here it either is Unicast or multicats with a matching port as
   in this implementations we dont use ANY_PORT for local port
 */
-static void 
+static void
 netxhandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr, u16_t port)
 {
   netx_addr_t remhost;
@@ -279,5 +281,7 @@ netx_getmyip(netx_addr_t *destaddr)
   return netxf_default->ip_addr.addr;
 }
 
-#endif	/* CONFIG_NET_IPV4 */
+#endif  /* CONFIG_NET_IPV4 */
+#endif /* CONFIG_STACK_LWIP */
+#endif /* CONFIG_NSK */
 /************************************************************************/

@@ -64,13 +64,11 @@ Notes:
 #include <assert.h>  /* for assert() */
 
 #include "opt.h"
+#if CONFIG_SDT
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
-
 #include "acn_arch.h"
-
-#if CONFIG_SDT
 #include "netxface.h"   /* access to our network interface */
 
 #include "sdt.h"        /* our public header */

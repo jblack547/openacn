@@ -42,6 +42,7 @@ handling.
 /*   "$Id$"; */
 
 #include "opt.h"
+#if CONFIG_SDT
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acnlog.h"
@@ -54,7 +55,6 @@ static sdt_channel_t    channels_m[SDT_MAX_CHANNELS];
 static sdt_member_t     members_m[SDT_MAX_MEMBERS];
 static component_t      components_m[SDT_MAX_COMPONENTS];
 static sdt_resend_t     resends_m[SDT_MAX_RESENDS];  /* list of buffers */
-
 #endif
 
 #if CONFIG_SDTMEM_STATIC
@@ -79,7 +79,7 @@ sdtm_init(void)
   for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; ++component) cidNull(component->cid);
   for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; ++resend) resend->expires_ms = 0;
 
-}    
+}
 
 /*****************************************************************************/
 /*
@@ -108,7 +108,7 @@ sdtm_new_channel(void)
 /*
   Free an unused channel
 */
-void 
+void
 sdtm_free_channel(sdt_channel_t *channel)
 {
   acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_channel");
@@ -121,7 +121,7 @@ sdtm_free_channel(sdt_channel_t *channel)
 
 /*****************************************************************************/
 /*
-  Create a new member 
+  Create a new member
 */
 sdt_member_t *
 sdtm_new_member(void)
@@ -219,7 +219,7 @@ void
 sdtm_free_resend(sdt_resend_t *resend)
 {
   acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_resend...");
-  
+
   resend->tx_buffer = NULL;                           /* mark it empty */
 }
 
@@ -227,7 +227,7 @@ sdtm_free_resend(sdt_resend_t *resend)
 /*
   Free all resends
 */
-void 
+void
 sdtm_free_resends(void)
 {
   sdt_resend_t *resend;
@@ -247,8 +247,8 @@ sdtm_free_resends(void)
 void
 sdtm_init(void)
 {
-   
-}    
+
+}
 
 /*****************************************************************************/
 /*
@@ -266,27 +266,27 @@ sdtm_new_channel(void)
     acnlog(LOG_ERR | LOG_SDTM,"sdtm_new_channel: Out of Memory");
     return NULL;
   }
-  memset(channel,0,sizeof(sdt_channel_t));  
+  memset(channel,0,sizeof(sdt_channel_t));
   return channel;
 }
-  
+
 /*****************************************************************************/
 /*
   Free an unused channel
 */
-void 
+void
 sdtm_free_channel(sdt_channel_t *channel)
 {
   acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_channel");
-  
+
   /* mark channel as unused */
   free(channel);
   return;
 }
-  
+
 /*****************************************************************************/
 /*
-  Create a new member 
+  Create a new member
 */
 sdt_member_t *
 sdtm_new_member(void)
@@ -296,7 +296,7 @@ sdtm_new_member(void)
   acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_member");
 
   member = malloc(sizeof(sdt_member_t));
-    
+
   if(!member){
     acnlog(LOG_ERR | LOG_SDTM,"sdtm_new_member: Out of memory.");
     return NULL;
@@ -324,9 +324,9 @@ sdtm_free_member(sdt_member_t *member)
 component_t *
 sdtm_new_component(void)
 {
-  
+
   acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_component");
-    
+
   component = malloc(sizeof(component_t));
   if(!component){
     acnlog(LOG_ERR | LOG_SDTM,"sdtm_new_component: Out of memory.");
@@ -349,4 +349,4 @@ sdtm_free_component(component_t *component)
 
 #endif /* CONFIG_SDTMEM_MALLOC */
 
-
+#endif /* #if CONFIG_SDT */
