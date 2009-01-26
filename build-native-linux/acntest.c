@@ -342,7 +342,7 @@ void process_keys(void)
     }
   }
 
-#if CONGIF_SDT
+#if CONFIG_SDT
   if (local_component) {
     sdt_del_component(local_component);
   }
