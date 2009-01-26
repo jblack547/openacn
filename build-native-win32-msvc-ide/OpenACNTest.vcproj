@@ -212,38 +212,6 @@
 					</File>
 				</Filter>
 				<Filter
-					Name="Common"
-					>
-					<File
-						RelativePath="..\acnsrc\common\aton.c"
-						>
-					</File>
-					<File
-						RelativePath="..\acnsrc\common\cid.c"
-						>
-					</File>
-					<File
-						RelativePath="..\acnsrc\common\marshal.c"
-						>
-					</File>
-					<File
-						RelativePath="..\acnsrc\common\mcast_util.c"
-						>
-					</File>
-					<File
-						RelativePath="..\acnsrc\common\netsock.c"
-						>
-					</File>
-					<File
-						RelativePath="..\acnsrc\common\ntoa.c"
-						>
-					</File>
-					<File
-						RelativePath="..\acnsrc\common\pack.c"
-						>
-					</File>
-				</Filter>
-				<Filter
 					Name="include"
 					>
 					<File
@@ -466,6 +434,38 @@
 						RelativePath="..\acnsrc\dmp\dmpmem.c"
 						>
 					</File>
+					<Filter
+						Name="Common"
+						>
+						<File
+							RelativePath="..\acnsrc\common\aton.c"
+							>
+						</File>
+						<File
+							RelativePath="..\acnsrc\common\cid.c"
+							>
+						</File>
+						<File
+							RelativePath="..\acnsrc\common\marshal.c"
+							>
+						</File>
+						<File
+							RelativePath="..\acnsrc\common\mcast_util.c"
+							>
+						</File>
+						<File
+							RelativePath="..\acnsrc\common\netsock.c"
+							>
+						</File>
+						<File
+							RelativePath="..\acnsrc\common\ntoa.c"
+							>
+						</File>
+						<File
+							RelativePath="..\acnsrc\common\pack.c"
+							>
+						</File>
+					</Filter>
 				</Filter>
 				<Filter
 					Name="platform"
