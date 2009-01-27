@@ -36,7 +36,7 @@
 #   $Id: mktest $
 #
  
-cc -O2 -std=c99 -pedantic -Wall -Wextra -Wno-uninitialized -D_XOPEN_SOURCE=600 -D_BSD_SOURCE=1  -Iinclude -I../openacn/include/arch-1 -I../openacn/platform/linux -I../openacn/include  -c -oobj/acntest.o acntest.c
+cc -O2 -std=c99 -pedantic -Wall -Wextra -Wno-uninitialized -D_XOPEN_SOURCE=600 -D_BSD_SOURCE=1  -Iinclude -I../acnsrc/include/arch-1 -I../acnsrc/platform/linux -I../acnsrc/include  -c -oobj/acntest.o acntest.c
 ar rcs lib/acntest.a obj/acntest.o obj/acn_port.o  obj/aton.o obj/cid.o obj/discover.o obj/dmp.o obj/dmpmem.o obj/marshal.o obj/mcast_util.o obj/netsock.o obj/netxface.o obj/ntoa.o obj/pack.o obj/rlp.o obj/rlpmem.o obj/sdt.o obj/sdtmem.o obj/slp.o
 cc lib/acntest.a -lpthread -o acntest
 
