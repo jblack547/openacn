@@ -30,7 +30,9 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   $Id$
-
+*/
+/************************************************************************/
+/*
   Description:
   This module creates a SLP inteface. While much of it is generic, there are parts that have been hard coded
   to work in a ACN environment
@@ -2954,9 +2956,8 @@ SLPError slp_open(void)
   /* wait for network to be running. DHCP will bring it up after we get a IP address */
   /* ... */
 
-  /* TODO: make this a const */
   /* set address */
-  IP4_ADDR(&slpmcast, 239,255,255,253);
+  slpmcast = htonl(SLP_MCAST_ADDRESS);
 
   LCLAD_PORT(localaddr) = htons(SLP_RESERVED_PORT);
 

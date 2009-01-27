@@ -46,8 +46,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opt.h"
 #include "acnstdtypes.h"
 
-#define MAKEIP(a,b,c,d)    (a<<24|b<<16|c<<8|d) /* in Host Order */
-
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -33,22 +33,44 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	$Id$
 
 */
-/*--------------------------------------------------------------------*/
-
-#ifndef __epi10_h__
-#define __epi10_h__ 1
-
 /************************************************************************/
 /*
-  Constants from EPI10 spec - in Network Byte order
+  Common routines and macros for IPv4 - and eventually IPv6 - protocols
 */
-#define E1_17_AUTO_SCOPE_ADDRESS  DD2NIP( 239,192,0,0 )
-#define E1_17_AUTO_SCOPE_MASK     DD2NIP( 255,252,0,0 )
 
-#define EPI10_SCOPE_MIN_MASK      DD2NIP( 255,192,0,0 )
-#define EPI10_SCOPE_MAX_MASK      DD2NIP( 255,255,0,0 )
+#ifndef ACN_IP_H
+#define ACN_IP_H 1
 
-/* Note EPI10_HOST_PART_MASK is not in network byte order */
-#define EPI10_HOST_PART_MASK 0xff
+#if CONFIG_NET_IPV4
+
+#define DD2HIP(B3, B2, B1, B0) ((((B3) << 8 | (B2)) << 8 | (B1)) << 8 | (B0))      /* in Host order    */
+/* FIXME: this macro may evaluate its args multiple times - redefine dependent on byteorder */
+#define DD2NIP(B3, B2, B1, B0) htonl(DD2HIP(B3, B2, B1, B0)) /* in Network order */
+
+#ifndef HAVE_port_t
+  typedef uint16_t port_t;  /* net endpoint is a port */
+  #define HAVE_port_t
+#endif
+
+#ifndef HAVE_ip4addr_t
+  typedef uint32_t ip4addr_t; /* net group is a multicast address */
+  #define HAVE_ip4addr_t
+#endif
+
+#ifndef HAVE_groupaddr_t
+  typedef ip4addr_t groupaddr_t;
+  #define HAVE_groupaddr_t
+#endif
+
+#define is_multicast(addr) (((addr) & htonl(0xf0000000)) == htonl(0xe0000000))
+
+#include "aton.h"
+#include "ntoa.h"
 
 #endif
+
+#if CONFIG_NET_IPV6
+/* FIXME: Nothing here yet */
+#endif
+
+#endif  /* ACN_IP_H */

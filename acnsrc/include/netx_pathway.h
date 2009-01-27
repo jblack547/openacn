@@ -41,33 +41,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if CONFIG_STACK_PATHWAY && !defined(__netx_pathway_h__)
 #define __netx_pathway_h__ 1
 
+#include "acnip.h"
 #include "wattcp.h"
 
-#if CONFIG_NET_IPV4
-#ifndef HAVE_port_t
-  typedef uint16_t port_t;  /* net endpoint is a port */
-  #define HAVE_port_t
-#endif
+#if CONFIG_EPI20
+#include "epi20.h"
 
-#ifndef HAVE_ip4addr_t
-  typedef uint32_t ip4addr_t; /* net group is a multicast address */
-  #define HAVE_ip4addr_t
-#endif
-
-#ifndef HAVE_groupaddr_t
-  typedef ip4addr_t groupaddr_t;
-  #define HAVE_groupaddr_t
-#endif
-
-#define is_multicast(addr) (((addr) & htonl(0xf0000000)) == htonl(0xe0000000))
-
-#define IP4_ADDR(ip4addr, a,b,c,d) \
-        *ip4addr = htonl(((uint32_t)((a) & 0xff) << 24) | \
-                               ((uint32_t)((b) & 0xff) << 16) | \
-                               ((uint32_t)((c) & 0xff) << 8) | \
-                                (uint32_t)((d) & 0xff))
-
-#endif	/* CONFIG_NET_IPV4 */
+/* MAX_MTU is max size of Ethernet packet - see epi20 for discussion */
+typedef char UDPPacket[MAX_MTU];
+#endif  /* CONFIG_EPI20 */
 
 typedef void netx_callback_t (
   /* component_event_t state, */
