@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /************************************************************************/
 /*
   Constants from EPI10 spec - in Network Byte order
+  (you may need to include acnip.h before this).
 */
 #define E1_17_AUTO_SCOPE_ADDRESS  DD2NIP( 239,192,0,0 )
 #define E1_17_AUTO_SCOPE_MASK     DD2NIP( 255,252,0,0 )
