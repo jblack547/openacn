@@ -71,11 +71,11 @@ Notes:
 #include "acn_arch.h"
 #include "netxface.h"   /* access to our network interface */
 
-#include "sdt.h"        /* our public header */
-#include "sdtmem.h"     /* Memory management */
+#include "sdt.h"        /* SDT public header */
+#include "sdtmem.h"     /* SDT memory management */
 #include "acn_sdt.h"
 #include "rlp.h"        /* RLP layer */
-#include "rlpmem.h"       /* RLP memory layer */
+#include "rlpmem.h"     /* RLP memory layer */
 #include "acnlog.h"     /* acn log functions */
 #include "marshal.h"    /* machine independent packing and unpacking of data */
 #include "mcast_util.h" /* handy multicast utilities */
@@ -419,11 +419,12 @@ sdt_shutdown(void)
     if (component->tx_channel) {
       member = component->tx_channel->member_list;
       if (component->is_local) {
+        /* local component, foreign members */
         while(member) {
           /* Notify DMP/Application */
           if (member->state == msCONNECTED) {
             if (member->component->callback)
-              (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component);
+              (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component, false, NULL, 0, NULL);
               #if CONFIG_DMP
               sdt_tx_disconnect(component, member->component, PROTO_DMP);
               #endif
@@ -432,11 +433,12 @@ sdt_shutdown(void)
           member = member->next;
         }
       } else {
+        /* foreign component, local members */
         while(member) {
           /* Notify DMP/Application */
           if (member->state == msCONNECTED) {
             if (member->component->callback)
-              (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component);
+              (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component, false, NULL, 0, NULL);
             #if CONFIG_DMP
             sdt_tx_disconnecting(component, member->component, PROTO_DMP, SDT_REASON_NONSPEC);
             #endif
@@ -1090,7 +1092,7 @@ sdt_tick(void *arg)
               acnlog(LOG_DEBUG | LOG_SDT,"std_tick: foreign exipred in our list");
               if (member->state == msCONNECTED) {
                 if (member->component->callback)
-                  (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component);
+                  (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component, false, NULL, 0, NULL);
               }
               sdt_tx_leave(component, member->component, member);
               member->state = msDELETE;
@@ -1102,7 +1104,7 @@ sdt_tick(void *arg)
             acnlog(LOG_DEBUG | LOG_SDT,"std_tick: local exipred in his list");
             if (member->state == msCONNECTED) {
               if (member->component->callback)
-                (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component);
+                (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component, false, NULL, 0, NULL);
             }
             sdt_tx_leaving(component, member->component, member, SDT_REASON_CHANNEL_EXPIRED);
             member->state = msDELETE;
@@ -2524,7 +2526,7 @@ sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_le
   if (foreign_member)  {
     if (foreign_member->state == msCONNECTED) {
       if (local_component->callback)
-        (*local_component->callback)(SDT_EVENT_DISCONNECT, local_component, foreign_component);
+        (*local_component->callback)(SDT_EVENT_DISCONNECT, local_component, foreign_component, false, NULL, 0, NULL);
     }
 
     acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_leaving : channel %d, mid %d", local_channel_number, foreign_mid);
@@ -2934,6 +2936,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
             return;
           }
 
+           /* TODO: WRF - what it this below and why is it commented out? */
 /*          else { */
             /* got data so reset timer */
 /*            local_member->expires_ms = local_member->expiry_time_s * 1000; */
@@ -2946,9 +2949,10 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
 /*            } */
 /*          } */
         }
+
+        /*  TODO: WRF - what it this below and why is it commented out? */
         /* we have data on this channel from our leader so reset the expiry timeout */
         /* local_member->expires_ms = local_member->expiry_time_s * 1000; */
-
         switch (protocol) {
           case PROTO_SDT:
             sdt_client_rx_handler(local_member->component, foreign_component, datap, data_size);
@@ -2956,25 +2960,16 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
           #if CONFIG_DMP
           case PROTO_DMP:
             acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper: PROTO_DMP");
-            dmp_client_rx_handler(local_member->component, foreign_component, is_reliable, datap, data_size, ref);
+            if (local_member->component->callback)
+               (*local_member->component->callback)(SDT_EVENT_DATA, local_member->component, foreign_component, is_reliable, datap, data_size, ref);
 
-          /* TODO: replace with registered callback */
-
-/*            if (local_member->component->callback) */
-/*              (*local_member->component->callback)(SDT_EVENT_DATA, (void*)datap); */
+            /* WRF - below is old stub to be deleted when above is tested */
+            /* dmp_client_rx_handler(local_member->component, foreign_component, is_reliable, datap, data_size, ref); */
             break;
           #endif
           default:
             acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper: unknown protocol");
         }
-
-/*        rx_handler = sdt_get_rx_handler(clientProtocol,ref) */
-/*        if(!rx_handler) { */
-/*          acnlog(LOG_DEBUG | LOG_SDT,"sdt_rx_wrapper: Unknown Vector - skip"); */
-/*        } else { */
-/*          rx_handler(remoteLeader->component,member->component, */
-/*          remoteChannel, clientPdu.data, clientPdu.dataLength, ref); */
-/*        } */
       }
 
       local_member = local_member->next;
@@ -2986,6 +2981,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
 
   return;
 }
+
 
 /*****************************************************************************/
 /* TODO:         sdt_rx_get_sessions() */
@@ -3931,7 +3927,7 @@ sdt_rx_leave(component_t *local_component, component_t *foreign_component, const
   if (local_member) {
     if (local_member->state == msCONNECTED) {
       if (local_component->callback)
-        (*local_component->callback)(SDT_EVENT_DISCONNECT, foreign_component, local_component);
+        (*local_component->callback)(SDT_EVENT_DISCONNECT, foreign_component, local_component, false, NULL, 0, NULL);
     }
     /* send "I'm out of here" and delete the member */
     sdt_tx_leaving(foreign_component, local_member->component, local_member , SDT_REASON_ASKED_TO_LEAVE);
@@ -4011,7 +4007,7 @@ sdt_rx_connect(component_t *local_component, component_t *foreign_component, con
         acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_connect: session established");
         /* let our app know */
         if (local_component->callback) {
-          (*local_component->callback)(SDT_EVENT_CONNECT, foreign_component, local_component);
+          (*local_component->callback)(SDT_EVENT_CONNECT, foreign_component, local_component, false, NULL, 0, NULL);
         }
       }
       break;
@@ -4070,7 +4066,7 @@ sdt_rx_connect_accept(component_t *local_component, component_t *foreign_compone
         acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_connect_accept: session established");
         /* let our app know */
         if (local_component->callback) {
-          (*local_component->callback)(SDT_EVENT_CONNECT, local_component, foreign_component);
+          (*local_component->callback)(SDT_EVENT_CONNECT, local_component, foreign_component, false, NULL, 0, NULL);
         }
         break;
       #endif
@@ -4181,7 +4177,7 @@ sdt_rx_disconnect(component_t *local_component, component_t *foreign_component, 
       case PROTO_DMP:
         acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_disconnect : channel %" PRIu16 ", protocol: %" PRIu32, foreign_component->tx_channel->number, protocol);
         if (local_component->callback)
-          (*local_component->callback)(SDT_EVENT_DISCONNECT, foreign_component, local_component);
+          (*local_component->callback)(SDT_EVENT_DISCONNECT, foreign_component, local_component, false, NULL, 0, NULL);
 
         sdt_tx_disconnecting(local_component, foreign_component, PROTO_DMP, SDT_REASON_ASKED_TO_LEAVE);
         local_member->state = msJOINED;
@@ -4240,7 +4236,7 @@ sdt_rx_disconnecting(component_t *local_component, component_t *foreign_componen
       #if CONFIG_DMP
       case PROTO_DMP:
         if (local_component->callback)
-          (*local_component->callback)(SDT_EVENT_DISCONNECT, local_component, foreign_component);
+          (*local_component->callback)(SDT_EVENT_DISCONNECT, local_component, foreign_component, false, NULL, 0, NULL);
 
         acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_disconnecting : channel %" PRIu16 ", protocol: %" PRIu32 ", reason %" PRIu8, local_component->tx_channel->number, protocol, reason);
         foreign_member->state = msJOINED;

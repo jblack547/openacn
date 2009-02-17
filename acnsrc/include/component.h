@@ -30,7 +30,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	$Id: component.h$
+  $Id: component.h$
 
 */
 /*--------------------------------------------------------------------*/
@@ -84,10 +84,16 @@ typedef enum
   SDT_EVENT_DATA
 } component_event_t;
 
+typedef struct component_s component_t;
+
 typedef void component_callback_t (
-  component_event_t state,
-  void *param1,  /* does not seem to be used but might hold the addr of the callback routine */
-  void *param2
+  component_event_t   state,
+  struct component_s *local_component,
+  struct component_s *foreign_component,
+  bool                is_reliable,
+  const uint8_t      *datap,
+  uint32_t            data_size,
+  void               *ref
 );
 #endif
 
@@ -110,13 +116,13 @@ typedef struct component_s
   access_t   access;  /* if I am device or controller */
   bool       is_local;
   #if CONFIG_EPI10
-	  uint16_t dyn_mcast;
+    uint16_t dyn_mcast;
   #endif
   #if CONFIG_SDT
     netx_addr_t    adhoc_addr;
-	  int            adhoc_expires_at;
+    int            adhoc_expires_at;
     created_by_t   created_by;
-	  struct component_s   *next;  /* pointer to next component in linked list */
+    struct component_s   *next;  /* pointer to next component in linked list */
     struct sdt_channel_s *tx_channel;
     component_callback_t *callback; 
     bool           dirty;       /* used for discovery to tell if a component is no longer valid */
