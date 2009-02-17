@@ -247,7 +247,13 @@ sdtm_free_resends(void)
 void
 sdtm_init(void)
 {
+  static bool initialized_state = 0;
 
+  if (initialized_state) {
+    acnlog(LOG_INFO | LOG_SDTM,"sdtm_init: already initialized");
+    return;
+  }
+  initialized_state = 1;
 }
 
 /*****************************************************************************/
