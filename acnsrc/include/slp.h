@@ -41,15 +41,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opt.h"
 #include "acnstdtypes.h"
 #include "netxface.h"
+#include "acnip.h"
 
 /*=========================================================================*/
 /* defines */
 /*=========================================================================*/
 #define SLP_RESERVED_PORT       427
-#define SLP_MCAST_ADDRESS       0xeffffffd  /* 239.255.255.253 */
+#define SLP_MCAST_ADDRESS       DD2HIP( 239,255,255,253 )
 
 #define SLP_VERSION             2
-#define SLP_TTL                  16
+#define SLP_TTL                 16
 
 /* #define SLP_THREAD_PRIO         3   */
 /* #define SLP_THREAD_STACK        600 */ /* FIXME What should this be? */
