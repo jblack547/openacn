@@ -84,6 +84,8 @@ typedef enum
   SDT_EVENT_DATA
 } component_event_t;
 
+struct component_s;
+
 typedef void component_callback_t (
   component_event_t   state,
   struct component_s *local_component,
