@@ -32,12 +32,13 @@ url="http://subversion.tigris.org/"
 ><title
 >Checking out the source</title
 ><programlisting
->~ $ cd acn_develop<co
+>$ cd acn_develop<co
 id="homedir-co"
 linkends="homedir"
 ></co
 >
-~/acn_develop $ svn co https://openacn.svn.sourceforge.net/svnroot/openacn/trunk<co
+~/acn_develop
+$ svn co https://openacn.svn.sourceforge.net/svnroot/openacn/trunk<co
 id="trunk-co"
 linkends="trunk"
 ></co
