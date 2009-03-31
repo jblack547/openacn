@@ -41,9 +41,9 @@
 #
 ##########################################################################
 # ACNROOT is the route to the OpenACN top level directory (corresponding
-# to openacn/trunk or whatever tag you have downloaded).
+# to openacn\trunk or whatever tag you have downloaded).
 
-ACNROOT=../acnsrc
+ACNROOT=..\acnsrc
 
 ##########################################################################
 # PLATFORMNAME is the name of your platform.
@@ -63,10 +63,8 @@ ARCH:=i386
 # If you are corss compiling, you need to define yourC compiler here.
 # If compiling is native, then it is usually best to leave this to Make.
 #
-VISUALCDIR:=C:\Program Files\Microsoft Visual Studio 9.0\VC\bin
-CC="${VISUALCDIR}\cl.exe"
-COMPILER:=visualc
-CCOUTPUT:=-Fo
+VISUALCDIR:=C:\Program Files\Microsoft Visual Studio 9.0\VC
+CC="${VISUALCDIR}\bin\cl.exe"
 
 ##########################################################################
 # You may need to define the C preprocessor as well - not usually
@@ -74,12 +72,12 @@ CCOUTPUT:=-Fo
 # compilers are different.
 #
 CPP=${CC} /TC /E
-CPPOUTPUT:=/P ${CCOUTPUT}
 
 ##########################################################################
 # CFLAGS are the compiler option flags
 # Note include directories belong in CPPFLAGS not here
-CFLAGS+=/O2 /Wall
+CFLAGS:=/O2
+CFLAGS+=/Wall
 
 ##########################################################################
 # Include any more build specific configuration or rules here
@@ -88,4 +86,167 @@ CFLAGS+=/O2 /Wall
 ##########################################################################
 # Now include rules common to all builds
 #
-include ${ACNROOT}/builddir.mk
+# include ${ACNROOT}/builddir.mk
+
+
+##########################################################################
+# Include configuration stuff
+# This is generated from the user configuration - see below
+#
+include .opts.mk
+
+##########################################################################
+# PLATFORM is normally in the platform directory
+#
+ifeq "${PLATFORM}" ""
+PLATFORM=platform\${PLATFORMNAME}
+endif
+
+##########################################################################
+#
+# Find or create an object code directory and a library directory
+#
+MKDIR=mkdir
+
+ifeq "${OBJDIR}" ""
+OBJDIR:=obj
+endif
+ifneq "${wildcard ${OBJDIR}}" "${OBJDIR}"
+${shell ${MKDIR} ${OBJDIR}}
+endif
+
+ifeq "${LIBDIR}" ""
+LIBDIR:=lib
+endif
+ifneq "${wildcard ${LIBDIR}}" "${LIBDIR}"
+${shell ${MKDIR} ${LIBDIR}}
+endif
+
+ifeq "${DEPDIR}" ""
+DEPDIR:=deps
+endif
+ifneq "${wildcard ${DEPDIR}}" "${DEPDIR}"
+${shell ${MKDIR} ${DEPDIR}}
+endif
+
+ifeq "${LOGDIR}" ""
+LOGDIR:=log
+endif
+ifneq "${wildcard ${LOGDIR}}" "${LOGDIR}"
+${shell ${MKDIR} ${LOGDIR}}
+endif
+
+##########################################################################
+# Define include search for building - first build specifics, then general
+# includes.
+INCLUDEDIRS+=include
+INCLUDEDIRS+=${ACNROOT}\include\arch-${ARCH}
+INCLUDEDIRS+=${ACNROOT}\${PLATFORM}
+INCLUDEDIRS+=${ACNROOT}\include
+
+CPPFLAGS+=${addprefix -I,${INCLUDEDIRS}}
+
+##########################################################################
+# Cancel all built in make rules axcept the ones we are likely to use
+#
+#.SUFFIXES: .o .ln .s .c .h .a .ln .cc .i
+.SUFFIXES:
+
+DEPFILE=${DEPDIR}\${notdir ${basename $@}}.d
+LOGFILE=${LOGDIR}\${notdir ${basename $@}}.log
+# Genric C build rule
+${OBJDIR}\\%.obj : %.c
+	${CC} ${CFLAGS} ${CPPFLAGS} ${TARGET_ARCH} -showIncludes -c -Fo$@ $< > ${LOGFILE}
+	sed -n -e "/[Pp]rogram [Ff]iles\\[Mm]icrosoft/d" -e "s,Note: including file:  *,${subst \,\\,$@}: ,p" ${LOGFILE} > ${DEPFILE}
+
+##########################################################################
+# SUBDIRS defines all the sub-directories which are normally built
+#
+SUBDIRS:=${PLATFORM} common ${ACNPARTS}
+
+SUBDIRPATHS:=${addprefix ${ACNROOT}\,${SUBDIRS}}
+C_VPATH:=${SUBDIRPATHS} ${ACNROOT}
+vpath %.c ${C_VPATH}
+
+
+##########################################################################
+# For each subdir, we define a separate set of object files e.g. sdt_OBJS
+# and also add them to the all_OBJS list
+#
+define OBJSFORDIR
+${DIR}_SRC:=$${notdir $${wildcard ${ACNROOT}/${DIR}/*.c}}
+${DIR}_OBJS:=$${patsubst %.c,${OBJDIR}\\%.obj,$${${DIR}_SRC}}
+all_OBJS+=$${${DIR}_OBJS}
+endef
+
+${foreach DIR, ${SUBDIRS}, ${eval ${OBJSFORDIR}}}
+##########################################################################
+# Build rules
+#
+#Get the default rule in early
+
+LIBRARY=${LIBDIR}\libacn.a
+
+.PHONY : all
+
+all : ${LIBRARY}
+
+##########################################################################
+# Define a target for each subdir, allowing "make sdt" and the like
+#
+
+.PHONY: ${SUBDIRS}
+
+define SUBDIRRULE
+${DIR}: $${${DIR}_OBJS}
+
+endef
+
+${foreach DIR, ${SUBDIRS}, ${eval ${SUBDIRRULE}}}
+
+##########################################################################
+# Put all objects into a library
+#
+
+${LIBRARY}: ${all_OBJS}
+	@echo $^
+
+##########################################################################
+# Housekeeping
+#
+.PHONY : clean
+
+clean :
+ifneq "${PLATFORMNAME}" "win32"
+	rm -f *.defs .opts.mk ${OBJDIR}\*.obj ${LIBRARY} ${DEPDIR}\*.d
+else
+	del /a .opts.mk opts.mk.i ${OBJDIR}\*.obj ${LIBRARY} ${DEPDIR}\*.d
+endif
+
+##########################################################################
+# ts is a target for miscellaneous debug and doesn't do much
+#
+.PHONY : ts
+ts:
+	@echo ${C_VPATH} ${rlp_OBJS}
+
+##########################################################################
+# .opts.mk contains Make relevant options extracted from the
+# configuration headers opt.h and user_opt.h using dummy C file opts.mk.c
+#
+ifneq "${PLATFORMNAME}" "win32"
+
+.opts.mk: ${ACNROOT}\opts.mk.c ${ACNROOT}\include\opt.h include\user_opt.h
+	${CPP} ${CPPFLAGS} $< | sed -e "/^[ \t]*$$/d" -e "/^[ \t]*#/d" > $@
+
+else
+
+%.i: ${ACNROOT}\%.c ${ACNROOT}\include\opt.h include\user_opt.h
+	${CPP} ${CPPFLAGS} $< /P -Fo$@
+
+.opts.mk: opts.mk.i
+	sed -e "/^Borland/d" -e "/^[ \t]*#/d" -e "s@^/\*.*\*/@@" -e "/^ *$$/d" opts.mk.i > $@
+
+endif
+
+-include ${DEPDIR}/*.d
