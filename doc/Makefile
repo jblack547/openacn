@@ -49,35 +49,35 @@ SRCROOT:=.
 endif
 
 ifeq "${HTMLDIR}" ""
-HTMLDIR:=./html
+HTMLDIR:=html
 endif
 
 ifeq "${FODIR}" ""
-FODIR:=./fo
+FODIR:=fo
 endif
 
 ifeq "${PDFDIR}" ""
-PDFDIR:=./pdf
+PDFDIR:=pdf
 endif
 
 ifeq "${TXTDIR}" ""
-TXTDIR:=./txt
+TXTDIR:=txt
 endif
 
 ifeq "${PSDIR}" ""
-PSDIR:=./ps
+PSDIR:=ps
 endif
 
 ifeq "${RTFDIR}" ""
-RTFDIR:=./rtf
+RTFDIR:=rtf
 endif
 
 ifeq "${WMLDIR}" ""
-WMLDIR:=./wml
+WMLDIR:=wml
 endif
 
 ifeq "${DEPDIR}" ""
-DEPDIR:=./.deps
+DEPDIR:=.deps
 endif
 
 ##########################################################################
@@ -128,6 +128,11 @@ singlepage: ${HTMLDIR}/openacndoc.css ${HTMLDIR}/openacn.html
 
 pdf: ${PDFDIR}/openacn.pdf
 
+ps: ${PSDIR}/openacn.ps
+
+##########################################################################
+# Make openacn.docbook depend on all the other sources
+#
 ${DOCDIR}/openacn.docbook: ${filter-out ${DOCDIR}/openacn.docbook,${SOURCES}}
 	touch $@
 
@@ -139,20 +144,24 @@ ${DOCDIR}/openacn.docbook: ${filter-out ${DOCDIR}/openacn.docbook,${SOURCES}}
 # Chunked HTML output
 #
 ${HTMLDIR}/index.html : ${DOCDIR}/openacn.docbook ${XSLDIR}/html.*.xsl ${XSLDIR}/common.*.xsl
+ifneq "${wildcard ${HTMLDIR}}" "${HTMLDIR}"
+	mkdir -p ${HTMLDIR}
+endif
 	@echo XSL generating $@
 	@xsltproc --xinclude ${XSLPARAMS} --output $@ ${XSLDIR}/html.chunk.xsl $<
-	@mkdir -p ${DEPDIR}
-	@echo -n $@: > ${DEPFILE}
+	@mkdir -p ${DEPDIR}; echo -n $@: > ${DEPFILE}
 	@xsltproc --stringparam rootfile $< ${XSLDIR}/xdep.xsl $< >> ${DEPFILE}
 
 #
 # Single-page HTML output will work with any chapter
 #
 ${HTMLDIR}/%.html : ${DOCDIR}/%.docbook ${XSLDIR}/html.*.xsl ${XSLDIR}/common.*.xsl
+ifneq "${wildcard ${HTMLDIR}}" "${HTMLDIR}"
+	mkdir -p ${HTMLDIR}
+endif
 	@echo XSL generating $@
 	@xsltproc --xinclude ${XSLPARAMS} --output $@ ${XSLDIR}/html.monolithic.xsl $<
-	@mkdir -p ${DEPDIR}
-	@echo -n $@: > ${DEPFILE}
+	@mkdir -p ${DEPDIR}; echo -n $@: > ${DEPFILE}
 	@xsltproc --stringparam rootfile $< ${XSLDIR}/xdep.xsl $< >> ${DEPFILE}
 
 ##########################################################################
@@ -161,7 +170,12 @@ ${HTMLDIR}/%.html : ${DOCDIR}/%.docbook ${XSLDIR}/html.*.xsl ${XSLDIR}/common.*.
 .PRECIOUS : ${FODIR}/%.fo
 
 ${FODIR}/%.fo : ${DOCDIR}/%.docbook ${XSLDIR}/fo.*.xsl ${XSLDIR}/common.*.xsl
+ifneq "${wildcard ${FODIR}}" "${FODIR}"
+	mkdir -p ${FODIR}
+endif
 	xsltproc --xinclude ${XSLPARAMS} --output $@ ${XSLDIR}/fo.book.xsl $<
+	@mkdir -p ${DEPDIR}; echo -n $@: > ${DEPFILE}
+	@xsltproc --stringparam rootfile $< ${XSLDIR}/xdep.xsl $< >> ${DEPFILE}
 
 # 
 # Make various formats from FO source
@@ -173,15 +187,27 @@ endif
 	${FOPCMD} -fo $^ -pdf $@
 
 ${TXTDIR}/%.txt : ${FODIR}/%.fo
+ifneq "${wildcard ${TXTDIR}}" "${TXTDIR}"
+	mkdir -p ${TXTDIR}
+endif
 	${FOPCMD} -fo $^ -txt $@
 
 ${PSDIR}/%.ps : ${FODIR}/%.fo
+ifneq "${wildcard ${PSDIR}}" "${PSDIR}"
+	mkdir -p ${PSDIR}
+endif
 	${FOPCMD} -fo $^ -ps $@
 
 ${RTFDIR}/%.rtf : ${FODIR}/%.fo
+ifneq "${wildcard ${RTFDIR}}" "${RTFDIR}"
+	mkdir -p ${RTFDIR}
+endif
 	fo2rtf $< $@
 
 ${WMLDIR}/%.wml : ${FODIR}/%.fo
+ifneq "${wildcard ${WMLDIR}}" "${WMLDIR}"
+	mkdir -p ${WMLDIR}
+endif
 	fo2wml $< $@
 
 
@@ -189,6 +215,9 @@ ${WMLDIR}/%.wml : ${FODIR}/%.fo
 # Put the CSS stylesheet in place
 #
 ${HTMLDIR}/%.css : ${CSSDIR}/%.css
+ifneq "${wildcard ${HTMLDIR}}" "${HTMLDIR}"
+	mkdir -p ${HTMLDIR}
+endif
 	@echo Copying $@
 	@cp $< $@
 
