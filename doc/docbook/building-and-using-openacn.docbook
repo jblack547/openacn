@@ -1,226 +1,268 @@
 <?xml version="1.0" encoding="US-ASCII"?>
 <!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
 "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
-<chapter id="building">
-  <title>Building and Using openACN</title>
-  <section>
-    <title>Setting Up A Build Directory</title>
-    <para>You should build your OpenACN code in a build directory, which may be
-    either inside or outside the main source tree. All build specific details
-    including options and makefile configuration should be confined within this
-    build directory. This leaves the source tree untouched and allows you to set
-    up builds for multiple targets alongside each other without them
-    conflicting. There are several example build configurations in the source
-    tree and copying one of these is a good way to start. By convention the
-    build directory is called something like
-    <quote>build-&lt;processor&gt;-&lt;system&gt;</quote> where
-    &lt;<emphasis>processor</emphasis>&gt; is the processor you are cross
-    compiling for, and &lt;<emphasis>system</emphasis>&gt; is the operating
-    system and TCP/IP stack combination. e.g build-coldfire-uclinux or
-    build-arm9-lwip. For builds which use a native compiler the processor should
-    be given as <quote>native</quote> e.g. build-native-freebsd.</para>
-    <para>In the following, the root directory of your downloaded openacn
-    sources (corresponding to SVN's <emphasis>trunk</emphasis> directory is
-    called <emphasis>ACNROOT</emphasis> (if you followed the directions in the
-    previous chapter, this will be actually be <quote>openacn</quote>) whilst
-    the build directory you have created is called
-    <emphasis>MYBUILD</emphasis>.</para>
-  </section>
-  <section>
-    <title>Other Target Specific Directories</title>
-    <para>There are a number of directories within the tree which contain target
-    specific code. C code routines specific to a particular stack and OS are
-    subdirectories within the <emphasis>ACNROOT/platform</emphasis> directory.
-    Whilst these routines may be used for specific builds, they are generally
-    applicable across a range of builds which use the same OS and/or
-    stack.</para>
-    <para>Similarly there are subdirectories within the main include directory
-    for headers specific to individual processor or processor family
-    architectures. If building using Make, the appropriate directories are
-    incorporated into the header file search path when compiling.</para>
-  </section>
-  <section id="quickstart.config">
-    <title>Configuring OpenACN for your System and Application</title>
-    <para>Before you can build OpenACN you need to do some basic configuration.
-    This generally means creating and/or editing these files:</para>
-    <section>
-      <title>user_opt.h</title>
-      <para>Most options are set within a file called
-      <emphasis>MYBUILD/include/user_opt.h</emphasis>. Copying one of the
-      examples is a good way to start. For a full list of configuration options
-      and documentation on what they do, look at
-      <emphasis>ACNROOT/include/opt.h</emphasis>. You should not however edit
-      <emphasis>ACNROOT/include/opt.h</emphasis> directly (unless you are adding
-      new options in source code you plan to feed back into openACN).</para>
-    </section>
-    <section>
-      <title>Building Using Make</title>
-      <para>Make is a generic command line build system which works with any
-      compiler and many other processing systems (e.g. for transforming this
-      documentation from Docbook into HTML, PDF or other formats).</para>
-      <para>OpenACN is set up to be built with <ulink
-      url="http://www.gnu.org/software/make/">Gnu make</ulink>. This open-source
-      program is available on most common operating systems including Windows
-      (both <ulink url="http://gnuwin32.sourceforge.net/">fully native</ulink>
-      or using the <ulink url="http://www.sourceware.org/cygwin/">Cygwin</ulink>
-      environment), Macintosh, Linux and Unix. Other versions of Make vary
-      wildly in their operation and syntax and may not work.</para>
-      <para>The configuration for your own build should go into
-      <emphasis>MYBUILD/Makefile</emphasis>. This file is where you put
-      build-specific configuration. It then includes
-      <emphasis>ACNROOT/builddir.mk</emphasis> which provides defaults and rules
-      applicable to all builds.</para>
-      <para>Items which you <emphasis>must</emphasis> define in
-      <emphasis>MYBUILD/Makefile</emphasis> are:</para>
-      <variablelist>
-        <varlistentry>
-          <term>ACNROOT</term>
-          <listitem>
-            <para>This is the path from your build directory to the openacn
-            source directory. For example, if your build directory and the
-            openacn directory are both within a common parent this would
-            be:</para>
-            <programlisting>ACNROOT:=../openacn</programlisting>
-          </listitem>
-        </varlistentry>
-        <varlistentry>
-          <term>PLATFORMNAME</term>
-          <listitem>
-            <para>The Make variable PLATFORMNAME must be the same as the name of
-            the subdirectory of ACNROOT/platform which includes platform
-            dependent code for your operating system (if any) and stack
-            e.g.</para>
-            <programlisting>PLATFORMNAME:=linux    # Assume Linux's standard stack</programlisting>
-          </listitem>
-        </varlistentry>
-        <varlistentry>
-          <term>COMPILER</term>
-          <listitem>
-            <para>This is a simple name identifying your compiler type which
-            allows parts of the Makefiles defining compiler flags and mechanisms
-            to work. Currently defined options are <simplelist>
-                <member>visualc</member>
-                <member>gcc</member>
-                <member>bcc32</member>
-              </simplelist>For example:</para>
-            <programlisting>COMPILER:=visualc</programlisting>
-          </listitem>
-        </varlistentry>
-      </variablelist>
-      <para>Other optional definitions include your compiler command (compulsory
-      if you are cross compiling, or if your compiler is not found by the
-      default commands), the C preprocessor command (which is used by Make), and
-      various other flags and options. Look at the makefiles in the sample build
-      directories provided with the source for documentation.</para>
-      <variablelist>
-        <varlistentry>
-          <term>C Compiler</term>
-          <listitem>
-            <para>Make will use the native C compiler by default (usually
-            <quote>cc</quote>) If you are cross compiling, this is not what you
-            want and you need to define the Make variable
-            <emphasis>CC</emphasis> to be the command to start your compiler.
-            e.g.</para>
-            <programlisting>CC=/usr/bin/h8300-elf-gcc -ms</programlisting>
-          </listitem>
-        </varlistentry>
-        <varlistentry>
-          <term>INCLUDEDIRS</term>
-          <listitem>
-            <para>Make variable INCLUDEDIRS is a space separated list of
-            directories to search for header files. You can add directories to
-            this list if necessary, for example to search for stack-specific
-            headers. e.g.prog</para>
-            <programlisting>INCLUDEDIRS:=../../lwip/src/include</programlisting>
-          </listitem>
-        </varlistentry>
-        <varlistentry>
-          <term>CFLAGS</term>
-          <listitem>
-            <para>The Make variable contains flags and options for the C
-            compiler. There is a default set defined in ACNROOT/builddir.mk but
-            you can override them in your Makefile if desired. e.g. (for Borland
-            bcc)</para>
-            <programlisting>CFLAGS:=-6                    # Pentium pro level processor
-CFLAGS+=-A                    # ANSI C
-CFLAGS+=-b- -O2 -Oc -Ov -pm   # Some optimization options</programlisting>
-          </listitem>
-        </varlistentry>
-      </variablelist>
-    </section>
-    <section>
-      <title>Building Using Integrated Development Environments</title>
-      <para>The use of IDEs is beyond the scope of this documentation at
-      present. However, any good IDE will allow you to build within the
-      directory structure given above. It should ensure that the following
-      include directories are in the compiler's search path:</para>
-      <simplelist>
-        <member>ACNROOT/include</member>
-        <member>ACNROOT/include/arch-&lt;processor&gt;</member>
-        <member>MYBUILD/include</member>
-        <member>ACNROOT/platform/&lt;your-platform&gt;</member>
-      </simplelist>
-    </section>
-  </section>
-  <section id="quickstart.building">
-    <title>Building openACN</title>
-    <para>Assuming you are building with Make, once you have configured openACN
-    you build it by simply typing <command><userinput>make</userinput></command>
-    in a shell (in cmd.exe on Windows) from your build directory. For example if
-    your build directory is bendilite/openacn/build-avr-uip:</para>
-    <example>
-      <title>Building the code</title>
-      <programlisting>~ $ cd bendilite/openacn/build-avr-uip
-~/bendilite/openacn/build-avr-uip $ make</programlisting>
-    </example>
-    <para>If you type make in the ACNROOT directory. Make will attempt to make
-    all the builds within this directory which may not be what you want!</para>
-  </section>
-  <section id="building.configuration">
-    <title>Configuration and Customization</title>
-    <section>
-      <title>Compile Time Options</title>
-      <para>OpenACN has a wide variety of configuration options and is unlikely
-      to fit a particular application without setting up some of these. The
-      majority (all?) of configuration is done using compile time switches of
-      the form:</para>
-      <programlisting>#define CONFIG_SOME_OPTION 1
+<chapter
+id="building"
+><title
+>Building and Using openACN</title
+><section
+><title
+>Setting Up A Build Directory</title
+><para
+>You should build your OpenACN code in a build directory, which may be either inside or outside the main source tree. All build specific details including options and makefile configuration should be confined within this build directory. This leaves the source tree untouched and allows you to set up builds for multiple targets alongside each other without them conflicting. There are several example build configurations in the source tree and copying one of these is a good way to start. By convention the build directory is called something like <quote
+>build-&lt;processor&gt;-&lt;system&gt;</quote
+> where &lt;<emphasis
+>processor</emphasis
+>&gt; is the processor you are cross compiling for, and &lt;<emphasis
+>system</emphasis
+>&gt; is the operating system and TCP/IP stack combination. e.g build-coldfire-uclinux or build-arm9-lwip. For builds which use a native compiler the processor should be given as <quote
+>native</quote
+> e.g. build-native-freebsd.</para
+><para
+>In the following, the root directory of your downloaded openacn sources (corresponding to SVN's <emphasis
+>trunk</emphasis
+> directory is called <emphasis
+>ACNROOT</emphasis
+> (if you followed the directions in the previous chapter, this will be actually be <quote
+>openacn</quote
+>) whilst the build directory you have created is called <emphasis
+>MYBUILD</emphasis
+>.</para
+></section
+><section
+><title
+>Other Target Specific Directories</title
+><para
+>There are a number of directories within the tree which contain target specific code. C code routines specific to a particular stack and OS are subdirectories within the <emphasis
+>ACNROOT/platform</emphasis
+> directory. Whilst these routines may be used for specific builds, they are generally applicable across a range of builds which use the same OS and/or stack.</para
+><para
+>Similarly there are subdirectories within the main include directory for headers specific to individual processor or processor family architectures. If building using Make, the appropriate directories are incorporated into the header file search path when compiling.</para
+></section
+><section
+id="quickstart.config"
+><title
+>Configuring OpenACN for your System and Application</title
+><para
+>Before you can build OpenACN you need to do some basic configuration. This generally means creating and/or editing these files:</para
+><section
+><title
+>user_opt.h</title
+><para
+>Most options are set within a file called <emphasis
+>MYBUILD/include/user_opt.h</emphasis
+>. Copying one of the examples is a good way to start. For a full list of configuration options and documentation on what they do, look at <emphasis
+>ACNROOT/include/opt.h</emphasis
+>. You should not however edit <emphasis
+>ACNROOT/include/opt.h</emphasis
+> directly (unless you are adding new options in source code you plan to feed back into openACN).</para
+></section
+><section
+><title
+>Building Using Make</title
+><para
+>Make is a generic command line build system which works with any compiler and many other processing systems (e.g. for transforming this documentation from Docbook into HTML, PDF or other formats).</para
+><para
+>OpenACN is set up to be built with <ulink
+url="http://www.gnu.org/software/make/"
+>Gnu make</ulink
+>. This open-source program is available on most common operating systems including Windows (both <ulink
+url="http://gnuwin32.sourceforge.net/"
+>fully native</ulink
+> or using the <ulink
+url="http://www.sourceware.org/cygwin/"
+>Cygwin</ulink
+> environment), Macintosh, Linux and Unix. Other versions of Make vary wildly in their operation and syntax and may not work.</para
+><para
+>The configuration for your own build should go into <emphasis
+>MYBUILD/Makefile</emphasis
+>. This file is where you put build-specific configuration. It then includes <emphasis
+>ACNROOT/builddir.mk</emphasis
+> which provides defaults and rules applicable to all builds.</para
+><para
+>Items which you <emphasis
+>must</emphasis
+> define in <emphasis
+>MYBUILD/Makefile</emphasis
+> are:</para
+><variablelist
+><varlistentry
+><term
+>ACNROOT</term
+><listitem
+><para
+>This is the path from your build directory to the openacn source directory. For example, if your build directory and the openacn directory are both within a common parent this would be:</para
+><programlisting
+>ACNROOT:=../openacn</programlisting
+></listitem
+></varlistentry
+><varlistentry
+><term
+>PLATFORMNAME</term
+><listitem
+><para
+>The Make variable PLATFORMNAME must be the same as the name of the subdirectory of ACNROOT/platform which includes platform dependent code for your operating system (if any) and stack e.g.</para
+><programlisting
+>PLATFORMNAME:=linux    # Assume Linux's standard stack</programlisting
+></listitem
+></varlistentry
+><varlistentry
+><term
+>COMPILER</term
+><listitem
+><para
+>This is a simple name identifying your compiler type which allows parts of the Makefiles defining compiler flags and mechanisms to work. Currently defined options are <simplelist
+><member
+>visualc</member
+><member
+>gcc</member
+><member
+>bcc32</member
+></simplelist
+>For example:</para
+><programlisting
+>COMPILER:=visualc</programlisting
+></listitem
+></varlistentry
+></variablelist
+><para
+>Other optional definitions include your compiler command (compulsory if you are cross compiling, or if your compiler is not found by the default commands), the C preprocessor command (which is used by Make), and various other flags and options. Look at the makefiles in the sample build directories provided with the source for documentation.</para
+><variablelist
+><varlistentry
+><term
+>C Compiler</term
+><listitem
+><para
+>Make will use the native C compiler by default (usually <quote
+>cc</quote
+>) If you are cross compiling, this is not what you want and you need to define the Make variable <emphasis
+>CC</emphasis
+> to be the command to start your compiler. e.g.</para
+><programlisting
+>CC=/usr/bin/h8300-elf-gcc -ms</programlisting
+></listitem
+></varlistentry
+><varlistentry
+><term
+>INCLUDEDIRS</term
+><listitem
+><para
+>Make variable INCLUDEDIRS is a space separated list of directories to search for header files. You can add directories to this list if necessary, for example to search for stack-specific headers. e.g.prog</para
+><programlisting
+>INCLUDEDIRS:=../../lwip/src/include</programlisting
+></listitem
+></varlistentry
+><varlistentry
+><term
+>CFLAGS</term
+><listitem
+><para
+>The Make variable contains flags and options for the C compiler. There is a default set defined in ACNROOT/builddir.mk but you can override them in your Makefile if desired. e.g. (for Borland bcc)</para
+><programlisting
+>CFLAGS:=-6                  # Pentium pro level processor
+CFLAGS+=-A                  # ANSI C
+CFLAGS+=-b- -O2 -Oc -Ov -pm # Some optimization options</programlisting
+></listitem
+></varlistentry
+></variablelist
+></section
+><section
+><title
+>Building Using Integrated Development Environments</title
+><para
+>The use of IDEs is beyond the scope of this documentation at present. However, any good IDE will allow you to build within the directory structure given above. It should ensure that the following include directories are in the compiler's search path:</para
+><simplelist
+><member
+>ACNROOT/include</member
+><member
+>ACNROOT/include/arch-&lt;processor&gt;</member
+><member
+>MYBUILD/include</member
+><member
+>ACNROOT/platform/&lt;your-platform&gt;</member
+></simplelist
+></section
+></section
+><section
+id="quickstart.building"
+><title
+>Building openACN</title
+><para
+>Assuming you are building with Make, once you have configured openACN you build it by simply typing <command
+><userinput
+>make</userinput
+></command
+> in a shell (in cmd.exe on Windows) from your build directory. For example if your build directory is bendilite/openacn/build-avr-uip:</para
+><example
+><title
+>Building the code</title
+><programlisting
+>$ cd bendilite/openacn/build-avr-uip
+~/bendilite/openacn/build-avr-uip
+$ make</programlisting
+></example
+><para
+>If you type make in the ACNROOT directory. Make will attempt to make all the builds within this directory which may not be what you want!</para
+></section
+><section
+id="building.configuration"
+><title
+>Configuration and Customization</title
+><section
+><title
+>Compile Time Options</title
+><para
+>OpenACN has a wide variety of configuration options and is unlikely to fit a particular application without setting up some of these. The majority (all?) of configuration is done using compile time switches of the form:</para
+><programlisting
+>#define CONFIG_SOME_OPTION 1
 #define CONFIG_ANOTHER_OPTION 0
-// etc.</programlisting>
-      <para>These are all documented and default values provided in the include
-      file <emphasis role="strong">opt.h</emphasis>. (<emphasis>do not edit
-      opt.h</emphasis>).</para>
-      <section>
-        <title>Setting Options for Your Build</title>
-        <para><emphasis role="strong">Do not edit opt.h</emphasis> in order to
-        configure your implementation - <emphasis>opt.h</emphasis> provides a
-        default value for each option and performs sanity checks such as
-        ensuring you have not selected two operating systems in the same build.
-        In order to build your own customized implementation you must create
-        your own header file
-        <emphasis>MYBUILD/include/user_opt.h</emphasis>.</para>
-        <para>opt.h only provides default values for options which have not been
-        defined in user_opt.h so you need only define in user_opt.h, those
-        options for which you do not want the default value. This means that
-        throughout the rest of the source, every option has a defined value and
-        for Boolean options, you must explicitly set them to FALSE (or 0) if
-        that is what you want, rather than leaving them undefined.</para>
-        <example>
-          <title>Defining config options in user_opt.h</title>
-          <programlisting>#define CONFIG_SOME_OPTION FALSE   /* correct way to exclude a boolean option */
- 
-#undef CONFIG_OTHER_OPTION     /* WRONG! opt.h will substitute a default value */</programlisting>
-        </example>
-      </section>
-      <section>
-        <title>Testing options in code</title>
-        <para>If you are writing or extending you code which needs to test
-        configuration options, bear in mind that as seen above, every option has
-        a defined value and an <literal>#ifdef</literal> test will always pass.
-        Use a simple <literal>#if</literal> test instead.</para>
-        <example>
-          <title>Testing options in C code</title>
-          <programlisting>#if CONFIG_SOME_OPTION    /* Correct way to test a boolean option */
+// etc.</programlisting
+><para
+>These are all documented and default values provided in the include file <emphasis
+role="strong"
+>opt.h</emphasis
+>. (<emphasis
+>do not edit opt.h</emphasis
+>).</para
+><section
+><title
+>Setting Options for Your Build</title
+><para
+><emphasis
+role="strong"
+>Do not edit opt.h</emphasis
+> in order to configure your implementation - <emphasis
+>opt.h</emphasis
+> provides a default value for each option and performs sanity checks such as ensuring you have not selected two operating systems in the same build. In order to build your own customized implementation you must create your own header file <emphasis
+>MYBUILD/include/user_opt.h</emphasis
+>.</para
+><para
+>opt.h only provides default values for options which have not been defined in user_opt.h so you need only define in user_opt.h, those options for which you do not want the default value. This means that throughout the rest of the source, every option has a defined value and for Boolean options, you must explicitly set them to FALSE (or 0) if that is what you want, rather than leaving them undefined.</para
+><example
+><title
+>Defining config options in user_opt.h</title
+><programlisting
+>/* correct way to exclude a boolean option */
+#define CONFIG_SOME_OPTION FALSE
+
+/* WRONG! opt.h will substitute a default value */
+#undef CONFIG_OTHER_OPTION</programlisting
+></example
+></section
+><section
+><title
+>Testing options in code</title
+><para
+>If you are writing or extending you code which needs to test configuration options, bear in mind that as seen above, every option has a defined value and an <literal
+>#ifdef</literal
+> test will always pass. Use a simple <literal
+>#if</literal
+> test instead.</para
+><example
+><title
+>Testing options in C code</title
+><programlisting
+>#if CONFIG_SOME_OPTION    /* Correct way to test a boolean option */
 ...
 #endif
  
@@ -230,26 +272,32 @@ CFLAGS+=-b- -O2 -Oc -Ov -pm   # Some optimization options</programlisting>
  
 #if defined(CONFIG_THIRD_OPTION)   /* WRONG! Test always passes */
 ...
-#endif</programlisting>
-        </example>
-      </section>
-      <section>
-        <title>Summary of Compile Time Configuration Mechanism</title>
-        <itemizedlist>
-          <listitem>
-            <para>Options are documented with default values in
-            <emphasis>opt.h</emphasis></para>
-          </listitem>
-          <listitem>
-            <para>Local customization is done in <emphasis>user_opt.h</emphasis>
-            which must be created for each build</para>
-          </listitem>
-          <listitem>
-            <para>Each option always has a defined value - booleans are TRUE or
-            FALSE (never undefined)</para>
-          </listitem>
-        </itemizedlist>
-      </section>
-    </section>
-  </section>
-</chapter>
+#endif</programlisting
+></example
+></section
+><section
+><title
+>Summary of Compile Time Configuration Mechanism</title
+><itemizedlist
+><listitem
+><para
+>Options are documented with default values in <emphasis
+>opt.h</emphasis
+></para
+></listitem
+><listitem
+><para
+>Local customization is done in <emphasis
+>user_opt.h</emphasis
+> which must be created for each build</para
+></listitem
+><listitem
+><para
+>Each option always has a defined value - booleans are TRUE or FALSE (never undefined)</para
+></listitem
+></itemizedlist
+></section
+></section
+></section
+></chapter
+>
