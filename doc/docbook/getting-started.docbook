@@ -1,91 +1,123 @@
 <?xml version="1.0" encoding="US-ASCII"?>
 <!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
 "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
-<chapter id="quickstart">
-  <title>Getting Started</title>
-  <section id="quickstart.intro">
-    <title>Introduction</title>
-    <para>OpenACN is designed to be customized for a wide range of platforms and
-    uses. At present, there are no pre-built binaries, and no releases of
-    source. There is just source code maintained in a version controlled
-    repository using <ulink url="???">Subversion</ulink>, a popular open source
-    version control application. To build ACN for your application you must
-    check-out the source code, configure it for your particular application,
-    then compile and install it.</para>
-  </section>
-  <section id="quickstart.downloading">
-    <title>Downloading Sources</title>
-    <para>First you need a Subversion client (see <ulink
-    url="http://subversion.tigris.org/">Subversion</ulink>). Once this is
-    intalled OK you should navigate in a suitable command line shell to the
-    place you want to built openACN. You then <emphasis>checkout</emphasis> the
-    source code using the subversion command - <quote>svn</quote>. If all works
-    properly, Subversion will download all sources and install them into a new
-    openacn directory.</para>
-    <example>
-      <title>Checking out the source</title>
-      <programlisting>~ $ cd acn_develop<co id="homedir-co" linkends="homedir"/>
-~/acn_develop $ svn checkout https://openacn.svn.sourceforge.net/svnroot/openacn/trunk<co
-          id="trunk-co" linkends="trunk"/> openacn<co id="builddir-co"
-          linkends="builddir"/>
+<chapter
+id="quickstart"
+><title
+>Getting Started</title
+><section
+id="quickstart.intro"
+><title
+>Introduction</title
+><para
+>OpenACN is designed to be customized for a wide range of platforms and uses. At present, there are no pre-built binaries, and no releases of source. There is just source code maintained in a version controlled repository using <ulink
+url="???"
+>Subversion</ulink
+>, a popular open source version control application. To build ACN for your application you must check-out the source code, configure it for your particular application, then compile and install it.</para
+></section
+><section
+id="quickstart.downloading"
+><title
+>Downloading Sources</title
+><para
+>First you need a Subversion client (see <ulink
+url="http://subversion.tigris.org/"
+>Subversion</ulink
+>). Once this is intalled OK you should navigate in a suitable command line shell to the place you want to built openACN. You then <emphasis
+>checkout</emphasis
+> the source code using the subversion command - <quote
+>svn</quote
+>. If all works properly, Subversion will download all sources and install them into a new openacn directory.</para
+><example
+><title
+>Checking out the source</title
+><programlisting
+>~ $ cd acn_develop<co
+id="homedir-co"
+linkends="homedir"
+></co
+>
+~/acn_develop $ svn co https://openacn.svn.sourceforge.net/svnroot/openacn/trunk<co
+id="trunk-co"
+linkends="trunk"
+></co
+> openacn<co
+id="builddir-co"
+linkends="builddir"
+></co
+>
 A    openacn/test
 A    openacn/test/main.c
  ...
 
 A    openacn/slp/slp.c
 Checked out revision 118.
-~/acn_develop $ </programlisting>
-      <calloutlist>
-        <callout arearefs="homedir-co" id="homedir">
-          <para>This can be any place where you want to do your
-          development.</para>
-        </callout>
-        <callout arearefs="trunk-co" id="trunk">
-          <para>The main openacn code is called <emphasis>trunk</emphasis> in
-          the repository. There may be other development branches in
-          https://openacn.svn.sourceforge.net/svnroot/openacn/branches/</para>
-        </callout>
-        <callout arearefs="builddir-co" id="builddir">
-          <para>This is the name of the directory that the source will be
-          installed into. If you omit it, it will simply be called
-          <emphasis>trunk</emphasis> which is probably not what you want. In
-          other places in this documentation the symbolic name ACNROOT is used
-          to indicate this direcory (it is not a good idea to use the literal
-          name ACNROOT in practice).</para>
-        </callout>
-      </calloutlist>
-    </example>
-    <para>If openACN is subsequently updated to fix bugs or introduce features,
-    you can update your source.</para>
-    <example>
-      <title>Updating your source</title>
-      <programlisting>~ $ cd acn_develop/openacn
-~/acn_develop/openacn $ svn update</programlisting>
-    </example>
-    <para>Do this with extreme caution since there may be incomplete fixes in
-    development, new bugs or changes to APIs you are using. To check on these
-    you can use Subversion's <emphasis>status</emphasis>,
-    <emphasis>log</emphasis> and <emphasis>diff</emphasis> commands. For more
-    information refer to the excellent and definitive book <ulink
-    url="http://svnbook.red-bean.com/">Version Control with
-    Subversion</ulink>.</para>
-  </section>
-  <section>
-    <title>Configuring, Adapting and Building OpenACN</title>
-    <para>This is covered more fully in <xref linkend="building"/>.</para>
-  </section>
-  <section id="quickstart.feedback">
-    <title>Feed Back your Fixes and Improvements</title>
-    <para>The openACN licence places no obligation on you to make public any
-    changes you make at all, however, if you find something which needs fixing
-    and work out how to fix it, then it builds the strength and reliability, not
-    just of your own products, but of those yours will connect to if you report
-    back what you have done. ACN is an interoperability standard and if the
-    equipment you connect to has bugs, there is no guarantee that the service
-    calls will go to them and not to you!</para>
-    <para>The best way to report your changes, is to submit a patch generated
-    using the <emphasis>diff</emphasis> command. If you cannot do this, then
-    please send a simple report of what you have found to the development
-    mailing list.</para>
-  </section>
-</chapter>
+~/acn_develop $ </programlisting
+><calloutlist
+><callout
+arearefs="homedir-co"
+id="homedir"
+><para
+>This can be any place where you want to do your development.</para
+></callout
+><callout
+arearefs="trunk-co"
+id="trunk"
+><para
+>The main openacn code is called <emphasis
+>trunk</emphasis
+> in the repository. There may be other development branches in https://openacn.svn.sourceforge.net/svnroot/openacn/branches/</para
+></callout
+><callout
+arearefs="builddir-co"
+id="builddir"
+><para
+>This is the name of the directory that the source will be installed into. If you omit it, it will simply be called <emphasis
+>trunk</emphasis
+> which is probably not what you want. In other places in this documentation the symbolic name ACNROOT is used to indicate this direcory (it is not a good idea to use the literal name ACNROOT in practice).</para
+></callout
+></calloutlist
+></example
+><para
+>If openACN is subsequently updated to fix bugs or introduce features, you can update your source.</para
+><example
+><title
+>Updating your source</title
+><programlisting
+>~ $ cd acn_develop/openacn
+~/acn_develop/openacn $ svn update</programlisting
+></example
+><para
+>Do this with extreme caution since there may be incomplete fixes in development, new bugs or changes to APIs you are using. To check on these you can use Subversion's <emphasis
+>status</emphasis
+>, <emphasis
+>log</emphasis
+> and <emphasis
+>diff</emphasis
+> commands. For more information refer to the excellent and definitive book <ulink
+url="http://svnbook.red-bean.com/"
+>Version Control with Subversion</ulink
+>.</para
+></section
+><section
+><title
+>Configuring, Adapting and Building OpenACN</title
+><para
+>This is covered more fully in <xref
+linkend="building"
+></xref
+>.</para
+></section
+><section
+id="quickstart.feedback"
+><title
+>Feed Back your Fixes and Improvements</title
+><para
+>The openACN licence places no obligation on you to make public any changes you make at all, however, if you find something which needs fixing and work out how to fix it, then it builds the strength and reliability, not just of your own products, but of those yours will connect to if you report back what you have done. ACN is an interoperability standard and if the equipment you connect to has bugs, there is no guarantee that the service calls will go to them and not to you!</para
+><para
+>The best way to report your changes, is to submit a patch generated using the <emphasis
+>diff</emphasis
+> command. If you cannot do this, then please send a simple report of what you have found to the development mailing list.</para
+></section
+></chapter
+>

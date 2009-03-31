@@ -37,7 +37,6 @@
 #
 # Some default variables - override on command line if desired
 #
-FOP:=fop9x
 SVNVERSION:=${shell svnversion}
 
 ##########################################################################
@@ -53,20 +52,48 @@ ifeq "${HTMLDIR}" ""
 HTMLDIR:=./html
 endif
 
+ifeq "${FODIR}" ""
+FODIR:=./fo
+endif
+
+ifeq "${PDFDIR}" ""
+PDFDIR:=./pdf
+endif
+
+ifeq "${TXTDIR}" ""
+TXTDIR:=./txt
+endif
+
+ifeq "${PSDIR}" ""
+PSDIR:=./ps
+endif
+
+ifeq "${RTFDIR}" ""
+RTFDIR:=./rtf
+endif
+
+ifeq "${WMLDIR}" ""
+WMLDIR:=./wml
+endif
+
 ifeq "${DEPDIR}" ""
 DEPDIR:=./.deps
 endif
 
 ##########################################################################
-# Main targets
+# Source files
 #
-.PHONY : all chunks singlepage
+# Assume all docbook files are sources
+SOURCES=${wildcard ${DOCDIR}/*.docbook}
 
-all : singlepage chunks
-
-chunks: ${HTMLDIR}/openacndoc.css ${HTMLDIR}/index.html
-
-singlepage: ${HTMLDIR}/openacndoc.css ${HTMLDIR}/openacn.html
+##########################################################################
+# Sort out some fop commands
+FOPCMD = fop
+#FOPCMD += -c ${CONF}/fop0.9x.conf.xml
+#
+# Set general FOPCMD options
+#
+XSLPARAMS:=--stringparam fop1.extensions 1
 
 ##########################################################################
 # Subdirectories
@@ -89,11 +116,27 @@ XSLPARAMS+=--stringparam vcs.version "${SVNVERSION}"
 DEPFILE=${DEPDIR}/${basename ${notdir $@}}.d
 
 ##########################################################################
+# Main targets
+#
+.PHONY : all chunks singlepage
+
+all : singlepage chunks
+
+chunks: ${HTMLDIR}/openacndoc.css ${HTMLDIR}/index.html
+
+singlepage: ${HTMLDIR}/openacndoc.css ${HTMLDIR}/openacn.html
+
+pdf: ${PDFDIR}/openacn.pdf
+
+${DOCDIR}/openacn.docbook: ${filter-out ${DOCDIR}/openacn.docbook,${SOURCES}}
+	touch $@
+
+##########################################################################
 # XSLT rules
 #
 
 #
-# Chunked output
+# Chunked HTML output
 #
 ${HTMLDIR}/index.html : ${DOCDIR}/openacn.docbook ${XSLDIR}/html.*.xsl ${XSLDIR}/common.*.xsl
 	@echo XSL generating $@
@@ -103,14 +146,44 @@ ${HTMLDIR}/index.html : ${DOCDIR}/openacn.docbook ${XSLDIR}/html.*.xsl ${XSLDIR}
 	@xsltproc --stringparam rootfile $< ${XSLDIR}/xdep.xsl $< >> ${DEPFILE}
 
 #
-# Single-page output will work with any chapter
+# Single-page HTML output will work with any chapter
 #
-${HTMLDIR}/%.html : ${DOCDIR}/%.docbook  ${XSLDIR}/html.*.xsl ${XSLDIR}/common.*.xsl
+${HTMLDIR}/%.html : ${DOCDIR}/%.docbook ${XSLDIR}/html.*.xsl ${XSLDIR}/common.*.xsl
 	@echo XSL generating $@
 	@xsltproc --xinclude ${XSLPARAMS} --output $@ ${XSLDIR}/html.monolithic.xsl $<
 	@mkdir -p ${DEPDIR}
 	@echo -n $@: > ${DEPFILE}
 	@xsltproc --stringparam rootfile $< ${XSLDIR}/xdep.xsl $< >> ${DEPFILE}
+
+##########################################################################
+# FO output
+#
+.PRECIOUS : ${FODIR}/%.fo
+
+${FODIR}/%.fo : ${DOCDIR}/%.docbook ${XSLDIR}/fo.*.xsl ${XSLDIR}/common.*.xsl
+	xsltproc --xinclude ${XSLPARAMS} --output $@ ${XSLDIR}/fo.book.xsl $<
+
+# 
+# Make various formats from FO source
+#
+${PDFDIR}/%.pdf : ${FODIR}/%.fo
+ifneq "${wildcard ${PDFDIR}}" "${PDFDIR}"
+	mkdir -p ${PDFDIR}
+endif
+	${FOPCMD} -fo $^ -pdf $@
+
+${TXTDIR}/%.txt : ${FODIR}/%.fo
+	${FOPCMD} -fo $^ -txt $@
+
+${PSDIR}/%.ps : ${FODIR}/%.fo
+	${FOPCMD} -fo $^ -ps $@
+
+${RTFDIR}/%.rtf : ${FODIR}/%.fo
+	fo2rtf $< $@
+
+${WMLDIR}/%.wml : ${FODIR}/%.fo
+	fo2wml $< $@
+
 
 ##########################################################################
 # Put the CSS stylesheet in place
