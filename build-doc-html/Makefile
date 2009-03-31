@@ -38,6 +38,5 @@
 # Directories
 #
 SRCROOT:=../doc
-HTMLDIR:=.
 
 include ${SRCROOT}/Makefile
