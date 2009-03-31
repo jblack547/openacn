@@ -118,13 +118,15 @@ DEPFILE=${DEPDIR}/${basename ${notdir $@}}.d
 ##########################################################################
 # Main targets
 #
-.PHONY : all chunks singlepage
+.PHONY : all chunks singlepage pdf ps html
 
-all : singlepage chunks
+all : html pdf
 
 chunks: ${HTMLDIR}/openacndoc.css ${HTMLDIR}/index.html
 
 singlepage: ${HTMLDIR}/openacndoc.css ${HTMLDIR}/openacn.html
+
+html: singlepage
 
 pdf: ${PDFDIR}/openacn.pdf
 
@@ -232,7 +234,7 @@ ts :
 # Cleanup
 #
 clean :
-	rm -f ${HTMLDIR}/*.html ${HTMLDIR}/*.css
+	rm -rf ${HTMLDIR} ${PDFDIR} ${PSDIR} ${TXTDIR} ${FODIR} ${DEPDIR}/*.d
 
 ##########################################################################
 # Include any dependencies
