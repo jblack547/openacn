@@ -230,8 +230,9 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 */
 void netx_udp_close(netxsocket_t *netsock)
 {
-  LOG_FSTART();
   netx_nativeSocket_t hold;
+
+  LOG_FSTART();
 
   /* if it's already closed */
   if (!netsock->nativesock) {
@@ -588,10 +589,9 @@ TODO: Should find the local IP address which would be used to send to
 */
 ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
 {
-  UNUSED_ARG(destaddr);
-
   int fd;
   struct ifreq ifr;
+  UNUSED_ARG(destaddr);
 
   fd = socket(AF_INET, SOCK_DGRAM, 0);
   ifr.ifr_addr.sa_family = AF_INET;

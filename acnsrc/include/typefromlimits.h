@@ -51,7 +51,7 @@ First try 8-bit char, 16-bit int, 32-bit long
 */
 #if (SCHAR_MAX == 127) && (INT_MAX == 32767) && (LONG_MAX == 2147483647L)
 #if !((UCHAR_MAX == 255) && (UINT_MAX == 65535) && (ULONG_MAX == 4294967295UL))
-#error Can't resolve discrepancy between signed and unsigned sizes
+#error Cannot resolve discrepancy between signed and unsigned sizes
 #endif
 
 #define __int8_t_defined
@@ -85,7 +85,7 @@ Now try 8-bit char, 16-bit short, 32-bit int
 */
 #elif (SCHAR_MAX == 127) && (SHRT_MAX == 32767) && (INT_MAX == 2147483647)
 #if !((UCHAR_MAX == 255) && (USHRT_MAX == 65535) && (UINT_MAX == 4294967295U))
-#error Can't resolve discrepancy between signed and unsigned sizes
+#error Cannot resolve discrepancy between signed and unsigned sizes
 #endif
 
 #define __int8_t_defined

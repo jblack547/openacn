@@ -106,6 +106,15 @@ CFLAGS+=${CCSTD}
 CFLAGS+=-D_XOPEN_SOURCE=600 -D_BSD_SOURCE=1
 
 ##########################################################################
+# Allow quiet make to be turned off using quiet=no on command line
+#
+ifeq "${filter ${quiet},no No NO n N}" ""
+Q:=@
+else
+Q:=
+endif
+
+##########################################################################
 # Define include search for building - first build specifics, then general
 # includes.
 INCLUDEDIRS+=include
@@ -113,7 +122,7 @@ INCLUDEDIRS+=${ACNROOT}/include/arch-${ARCH}
 INCLUDEDIRS+=${ACNROOT}/${PLATFORM}
 INCLUDEDIRS+=${ACNROOT}/include
 
-CPPFLAGS+=${addprefix -I,${INCLUDEDIRS}}
+CPPFLAGS:=${addprefix -I,${INCLUDEDIRS}} ${CPPFLAGS}
 
 ##########################################################################
 # Cancel all built in make rules axcept the ones we are likely to use
@@ -123,11 +132,14 @@ CPPFLAGS+=${addprefix -I,${INCLUDEDIRS}}
 ##########################################################################
 # Genric C build rule - recalculate dependencies immediately after rebuild
 #
+ifeq "${MAKEDEP}" ""
+MAKEDEP=${CC} ${CFLAGS} ${CPPFLAGS} ${TARGET_ARCH} -MM -MG -MP $< | sed 's,^$*.o:,${OBJDIR}/&,' > ${DEPDIR}/$*.d
+endif
+
 ${OBJDIR}/%.o: %.c
 	@echo Compiling $*.c
-	@${CC} ${CFLAGS} ${CPPFLAGS} ${TARGET_ARCH} -c -o$@ $<
-	@${CC} ${CFLAGS} ${CPPFLAGS} ${TARGET_ARCH} -MM -MG -MP $< \
-	| sed 's,^$*.o:,${OBJDIR}/&,' > ${DEPDIR}/$*.d
+	${Q}${CC} ${CFLAGS} ${CPPFLAGS} ${TARGET_ARCH} -c -o$@ $<
+	${Q}${MAKEDEP}
 
 ##########################################################################
 # SUBDIRS defines all the sub-directories which are normally built
@@ -193,15 +205,15 @@ clean :
 #
 .PHONY : ts
 ts:
-	@echo ${common_SRC}
+	${Q}echo ${common_SRC}
 
 ##########################################################################
 # .opts.mk contains Make relevant options extracted from the
 # configuration headers opt.h and user_opt.h using dummy C file opts.mk.c
 #
 .opts.mk: ${ACNROOT}/opts.mk.c ${ACNROOT}/include/opt.h include/user_opt.h
-	@echo Parsing options
-	@${CPP} ${CPPFLAGS} ${TARGET_ARCH} $< > $@
+	${Q}echo Parsing options
+	${Q}${CPP} ${CPPFLAGS} ${TARGET_ARCH} $< > $@
 
 ##########################################################################
 # .defs produces a complete preprocessor dump of the symbols defined in a
