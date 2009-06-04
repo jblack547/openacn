@@ -195,10 +195,13 @@ ${LIBRARY}: ${all_OBJS}
 ##########################################################################
 # Housekeeping
 #
-.PHONY : clean
+.PHONY : clean distclean
 
 clean :
 	rm -f .opts.mk ${OBJDIR}/*.o ${LIBRARY} ${DEPDIR}/*.d
+
+distclean : clean
+	rm -rf ${OBJDIR} ${LIBDIR} ${DEPDIR}
 
 ##########################################################################
 # ts is a target for miscellaneous debug and doesn't do much
