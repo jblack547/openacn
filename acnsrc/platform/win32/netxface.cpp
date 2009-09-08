@@ -598,13 +598,16 @@ ULONG ulOutBufLen;
 UNUSED_ARG(destaddr);
 
 FixedInfo = (IP_ADAPTER_INFO *) malloc( sizeof( IP_ADAPTER_INFO ) );
+if (FixedInfo == NULL) return 0;
+
 ulOutBufLen = sizeof( IP_ADAPTER_INFO );
 
 /* FIXME: this will fail if there is more than one adaptor or if adaptor has more than on IP */
 /* if this fails, the ulOutBufLen will be filled with the size of the buffer needed...
    and then we can retry */
 if ( ERROR_SUCCESS != GetAdaptersInfo( FixedInfo, &ulOutBufLen ) ) {
-  return 0;
+	free(FixedInfo);
+	return 0;
 }
 
 result = inet_addr( FixedInfo->IpAddressList.IpAddress.String );
