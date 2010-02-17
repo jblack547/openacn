@@ -64,6 +64,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acnstdtypes.h"
 #include "acn_port.h"
 #include "acn_arch.h"
+#include "acn_sdt.h"
 
 #include "dmp.h"
 #include "dmpmem.h"
@@ -695,7 +696,11 @@ dmp_tx_pdu(component_t *local_component, component_t *foreign_component, bool is
   marshalU16(wrapper, (pdup-wrapper) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add our PDU (sets its length there)*/
-  rlp_add_pdu(tx_buffer, wrapper, pdup-wrapper, NULL);
+#if CONFIG_RLP_SINGLE_CLIENT
+  rlp_add_pdu(tx_buffer, wrapper, pdup - wrapper, NULL);
+#else
+  rlp_add_pdu(tx_buffer, wrapper, pdup - wrapper, PROTO_SDT, NULL);
+#endif
 
   /* and send it on */
   rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
