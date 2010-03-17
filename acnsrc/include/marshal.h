@@ -76,6 +76,19 @@ static __inline uint8_t *marshalU32(uint8_t *data, uint32_t u32)
 	return data + 4;
 }
 
+static __inline uint8_t *marshalU64(uint8_t *data, uint64_t u64)
+{
+	data[0] = u64 >> 56;
+	data[1] = (uint8_t)(u64 >> 48);
+	data[2] = (uint8_t)(u64 >> 40);
+	data[3] = (uint8_t)(u64 >> 32);
+	data[4] = (uint8_t)(u64 >> 24);
+	data[5] = (uint8_t)(u64 >> 16);
+	data[6] = (uint8_t)(u64 >> 8);
+	data[7] = (uint8_t)(u64);
+	return data + 8;
+}
+
 static __inline uint8_t *marshalCID(uint8_t *data, const uint8_t *cid)
 {
 	return (uint8_t *)memcpy(data, cid, sizeof(cid_t)) + sizeof(cid_t);
@@ -100,6 +113,11 @@ static __inline uint16_t unmarshalU16(const uint8_t *data)
 static __inline uint32_t unmarshalU32(const uint8_t *data)
 {
 	return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) | (data[2] << 8) | data[3];
+}
+
+static __inline uint64_t unmarshalU64(const uint8_t *data)
+{
+	return ((uint64_t)data[0] << 56) | ((uint64_t)data[1] << 48) | ((uint64_t)data[2] << 40) | ((uint64_t)data[3] << 32) | ((uint64_t)data[4] << 24) | ((uint64_t)data[5] << 16) | (data[6] << 8) | data[7];
 }
 
 static __inline uint8_t *unmarshalCID(const uint8_t *data, uint8_t *cid)
