@@ -51,7 +51,7 @@ extern "C" {
 For most purposes a CID is simply an array of 16 octets
 */
 #define CIDSIZE 16
-#define CID_STR_SIZE 37  /* includeing null termination */
+#define CID_STR_SIZE 37  /* including null termination */
 
 /* generic cid as array */
 typedef uint8_t cid_t[CIDSIZE];
