@@ -456,13 +456,23 @@ Default all except E1.31
 #define  CONFIG_SINGLE_COMPONENT   1
 #endif
 
-/* See EIP 19, standard allows these to be bigger but to keep memory usage and avoid malloc */
-/* we are making them static. Default of 64 should work (see EPI 19, section 3.2) */
+/*
+  Component name strings
+  Fixed Component Type Name (FCTN) and User Assigned Component Name (UACN)
+  Defined in EPI19, these are transmitted in UTF-8 encoding
+
+  The standard does not specify a size for FCTN so we arbirarily assign
+  storage.
+
+  The standard specifies a minimum storage of 63 characters for UACN
+  which requires 189 bytes if stored as UTF-8. Storing as UTF-16 would
+  require less storage but more processing.
+*/
 #ifndef ACN_FCTN_SIZE
-#define ACN_FCTN_SIZE 64  /* be sure to include one for a null terminator */
+#define ACN_FCTN_SIZE 128  /* arbitrary */
 #endif
 #ifndef ACN_UACN_SIZE
-#define ACN_UACN_SIZE 64  /* be sure to include one for a null terminator */
+#define ACN_UACN_SIZE 190  /* allow for null terminator */
 #endif
 
 /************************************************************************/
