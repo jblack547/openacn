@@ -110,7 +110,7 @@ typedef enum
 typedef struct component_s
 {
   cid_t cid;  /* component ID */
-  cid_t dcid; /* discoverer CID? */
+  cid_t dcid; /* Device Class Identifier */
   char  fctn[ACN_FCTN_SIZE];  
   char  uacn[ACN_UACN_SIZE];
   access_t   access;  /* if I am device or controller */
