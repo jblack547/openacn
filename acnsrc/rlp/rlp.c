@@ -474,6 +474,7 @@ rlp_open_netsocket(localaddr_t *localaddr)
 
   /* see if a netsocket already exists for the given port */
   if (LCLAD_PORT(*localaddr) != netx_PORT_EPHEM && (netsock = nsk_find_netsock(localaddr))) {
+    LOG_FEND();
     return netsock;  /* found existing matching socket */
   }
 
