@@ -1,4 +1,4 @@
-/*--------------------------------------------------------------------*/
+/**************************************************************************/
 /*
 
 Copyright (c) 2007, Engineering Arts (UK)
@@ -32,8 +32,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   $Id$
 
+#tabs=2s
 */
-/************************************************************************/
+/**************************************************************************/
 
 #ifndef __opt_h__
 #define __opt_h__ 1
@@ -52,9 +53,79 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   default values if options have not been defined there.
 
   You can refer to this header to see which options are available and
-  what  they do.
+  what  they do. Note that options may not be implemented, may  only
+  work for certain builds or may only work in specific combinations.
 */
 /**************************************************************************/
+
+/**************************************************************************/
+/*
+  ACN Protocols
+  Define which protocols and EPIs to build or conform to
+  
+  NSK layer is not an ACN protocol but has a switch here as it is the
+  lowest layer in openacn.
+
+  Default all on except:
+    E1.31 - not complete yet
+*/
+/************************************************************************/
+
+#ifndef CONFIG_NSK
+#define CONFIG_NSK     1
+#endif
+/*
+  Core protocols
+*/
+#ifndef CONFIG_RLP
+#define CONFIG_RLP     1
+#endif
+#ifndef CONFIG_SDT
+#define CONFIG_SDT     1
+#endif
+#ifndef CONFIG_DMP
+#define CONFIG_DMP     1
+#endif
+#ifndef CONFIG_E131
+#define CONFIG_E131    0
+#endif
+#ifndef CONFIG_SLP
+#define CONFIG_SLP     1
+#endif
+
+/*
+  EPI conformance
+*/
+#ifndef CONFIG_EPI10
+#define  CONFIG_EPI10   1
+#endif
+#ifndef CONFIG_EPI11
+#define  CONFIG_EPI11   1
+#endif
+#ifndef CONFIG_EPI12
+#define  CONFIG_EPI12   1
+#endif
+#ifndef CONFIG_EPI13
+#define  CONFIG_EPI13   1
+#endif
+#ifndef CONFIG_EPI15
+#define  CONFIG_EPI15   1
+#endif
+#ifndef CONFIG_EPI16
+#define  CONFIG_EPI16   1
+#endif
+#ifndef CONFIG_EPI17
+#define  CONFIG_EPI17   1
+#endif
+#ifndef CONFIG_EPI18
+#define  CONFIG_EPI18   1
+#endif
+#ifndef CONFIG_EPI19
+#define  CONFIG_EPI19   1
+#endif
+#ifndef CONFIG_EPI20
+#define  CONFIG_EPI20   1
+#endif
 
 /**************************************************************************/
 /*
@@ -66,6 +137,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   but these vary from system to system so use our own macro
   names and allow user override in user_opt.h
 */
+/************************************************************************/
 
 /* Best to use GCC if available */
 #ifndef CONFIG_GNUCC
@@ -85,7 +157,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
-/************************************************************************/
+/**************************************************************************/
 /*
   Basic CPU Architecture
 
@@ -93,6 +165,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   but these vary from system to system so use our own macro
   names and allow user override in user_opt.h
 */
+/************************************************************************/
 
 #ifndef ARCH_x86_64
 #if defined(__x86_64__) || defined(_M_X64)
@@ -158,34 +231,35 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
-/*************************************************************************
-  Memory management
+/**************************************************************************/
+/*
+Standard type names (e.g. uint16_t etc.)
 
-  Low level routines can allocate memory either using malloc system
-  calls which is flexible but less predictable and depending on the
-  underlying system, may be slower, or from pre-assigned buffers which
-  is inflexible and can be wasteful but is deterministic and can be
-  faster.
+These are standard names in ISO C99 defined in inttypes.h. For archaic
+ISO C89 compilers (Windows et al) these can be automatically derived in
+typefromlimits.h from C89 standard header limits.h.
 
-  Normally you just need to define CONFIG_MEM to either MEM_STATIC or
-  MEM_MALLOC. For fine tuning of different protocols, the macros
-  CONFIG_RLPMEM, CONFIG_SDTMEM etc. can be assigned separately.
-
-*************************************************************************/
-#define MEM_STATIC 1
-#define MEM_MALLOC 2
-
-#ifndef CONFIG_MEM
-#define CONFIG_MEM MEM_STATIC
+Leaving USER_DEFINE_INTTYPES false is likely to be far more portable.
+You only need to define this if for some reason your build wants to
+define them itself. If this is set, the build just looks for your own
+user_types.h header. See acnstdtypes.h for more info.
+*/
+/************************************************************************/
+#ifndef USER_DEFINE_INTTYPES
+#define USER_DEFINE_INTTYPES 0
 #endif
 
-/************************************************************************/
+/**************************************************************************/
 /*
   Networking
+*/
+/************************************************************************/
 
+/*
   Underlying transport selection
   picking more than one makes code more complex
 */
+
 /* Internet Protocol v4 */
 #ifndef CONFIG_NET_IPV4
 #define  CONFIG_NET_IPV4  1
@@ -224,29 +298,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define  CONFIG_STACK_CYGWIN    0
 #endif
 
-/************************************************************************/
 /*
-Standard type names (e.g. uint16_t etc.)
+  Filter by incoming address
 
-These are standard names in ISO C99 defined in inttypes.h. For archaic
-ISO C89 compilers (Windows et al) these can be automatically derived in
-typefromlimits.h from C89 standard header limits.h.
-
-Leaving USER_DEFINE_INTTYPES false is likely to be far more portable.
-You only need to define this if for some reason your build wants to
-define them itself. If this is set, the build just looks for your own
-user_types.h header. See acnstdtypes.h for more info.
-*/
-#ifndef USER_DEFINE_INTTYPES
-#define USER_DEFINE_INTTYPES 0
-#endif
-
-/*
   If the stack has the option of return the (multicast) destination address then RLP
   will make sure that callback to STD are filtered by the desired multicast address.
   Otherwise, the filtering in only done by socket callbacks to the same socket will get
   all socket messages reguardless of the mulitcast address registered.
-  */
+*/
+
 #if (CONFIG_STACK_WIN32 || CONFIG_STACK_BSD || CONFIG_STACK_NETBURNER)
 #define STACK_RETURNS_DEST_ADDR 1
 #else
@@ -254,22 +314,25 @@ user_types.h header. See acnstdtypes.h for more info.
 #endif
 
 /*
-In hosts with multiple interfaces (including the loopback interface) it
-is normal to accept incoming packets for any interface (local address)
-and to leave it to the stack to select the interface for outgoing
-packets (in BSD this is done by binding sockets to INADDR_ANY).
+  Allow code to specify network interface
 
-If CONFIG_LOCALIP_ANY is set, RLP and SDT rely
-entirely on the stack to handle IP addresses and interfaces and the API
-does not allow local addresses to be specified (except for multicast) and
-only stores port information. This saves using resources tracking
-addresses which are always unspecified.
+  In hosts with multiple interfaces (including the loopback interface) it
+  is normal to accept incoming packets for any interface (local address)
+  and to leave it to the stack to select the interface for outgoing
+  packets (in BSD this is done by binding sockets to INADDR_ANY).
 
-If CONFIG_LOCALIP_ANY is false then the API allows higher layers to
-specify individual interfaces at the expense of slightly more code and
-memory. This setting still allows the value NETI_INADDR_ANY to be used
-as required.
+  If CONFIG_LOCALIP_ANY is set, RLP and SDT rely
+  entirely on the stack to handle IP addresses and interfaces and the API
+  does not allow local addresses to be specified (except for multicast) and
+  only stores port information. This saves using resources tracking
+  addresses which are always unspecified.
+
+  If CONFIG_LOCALIP_ANY is false then the API allows higher layers to
+  specify individual interfaces at the expense of slightly more code and
+  memory. This setting still allows the value NETI_INADDR_ANY to be used
+  as required.
 */
+
 #ifndef CONFIG_LOCALIP_ANY
 #define  CONFIG_LOCALIP_ANY       1
 #endif
@@ -278,32 +341,26 @@ as required.
 /*
   Memory management
 
-  RLP memory management - default to global model
+  Low level routines can allocate memory either using malloc system
+  calls which is flexible but less predictable and depending on the
+  underlying system, may be slower, or from pre-assigned buffers which
+  is inflexible and can be wasteful but is deterministic and can be
+  faster.
+
+  Normally you just need to define CONFIG_MEM to either MEM_STATIC or
+  MEM_MALLOC. For fine tuning of different protocols, the macros
+  CONFIG_RLPMEM, CONFIG_SDTMEM etc. can be assigned separately.
 */
-#ifndef CONFIG_RLPMEM
-#define CONFIG_RLPMEM CONFIG_MEM
-#endif
-
-#if (CONFIG_RLPMEM == MEM_STATIC)
-  #ifndef MAX_RLP_SOCKETS
-  #define MAX_RLP_SOCKETS 50
-  #endif
-  #ifndef MAX_LISTENERS
-  #define MAX_LISTENERS 50
-  #endif
-  #ifndef MAX_RXGROUPS
-  #define MAX_RXGROUPS 50
-  #endif
-  #ifndef MAX_TXBUFS
-  #define MAX_TXBUFS 10
-  #endif
-#endif
-
-#ifndef MAX_NSK_SOCKETS
-#define MAX_NSK_SOCKETS 50
-#endif
-
 /************************************************************************/
+
+#define MEM_STATIC 1
+#define MEM_MALLOC 2
+
+#ifndef CONFIG_MEM
+#define CONFIG_MEM MEM_STATIC
+#endif
+
+/**************************************************************************/
 /*
   Logging
 
@@ -353,6 +410,8 @@ as required.
     acn_log(RLP_LOG | LOG_INFO, "I do not like errors");
   and would only print if CONFIG_LOGLEVEL was LOG_INFO or higher.
 */
+/************************************************************************/
+
 #ifndef CONFIG_ACNLOG
 #define CONFIG_ACNLOG ACNLOG_STDOUT
 #endif
@@ -402,73 +461,16 @@ as required.
   #define LOG_ASSERT LOG_NONE
 #endif
 
-/************************************************************************/
-/*
-  ACN Protocols
-*/
-/*
-Protocols to build
-Default all except E1.31
-*/
-#ifndef CONFIG_RLP
-#define CONFIG_RLP     1
-#endif
-#ifndef CONFIG_SDT
-#define CONFIG_SDT     1
-#endif
-#ifndef CONFIG_DMP
-#define CONFIG_DMP     1
-#endif
-#ifndef CONFIG_E131
-#define CONFIG_E131    0
-#endif
-#ifndef CONFIG_SLP
-#define CONFIG_SLP     1
-#endif
-#ifndef CONFIG_NSK
-#define CONFIG_NSK     1
-#endif
-
-/*
-  EPI conformance
-*/
-#ifndef CONFIG_EPI10
-#define  CONFIG_EPI10   1
-#endif
-#ifndef CONFIG_EPI11
-#define  CONFIG_EPI11   1
-#endif
-#ifndef CONFIG_EPI12
-#define  CONFIG_EPI12   1
-#endif
-#ifndef CONFIG_EPI13
-#define  CONFIG_EPI13   1
-#endif
-#ifndef CONFIG_EPI15
-#define  CONFIG_EPI15   1
-#endif
-#ifndef CONFIG_EPI16
-#define  CONFIG_EPI16   1
-#endif
-#ifndef CONFIG_EPI17
-#define  CONFIG_EPI17   1
-#endif
-#ifndef CONFIG_EPI18
-#define  CONFIG_EPI18   1
-#endif
-#ifndef CONFIG_EPI19
-#define  CONFIG_EPI19   1
-#endif
-#ifndef CONFIG_EPI20
-#define  CONFIG_EPI20   1
-#endif
-
-/************************************************************************/
+/**************************************************************************/
 /*
   Component Model
+*/
+/************************************************************************/
+/*
+  Multiple components
 
   If there is only ever one component in the host using openACN things
-  get simpler.
+  can be simplified.
 */
 #ifndef CONFIG_SINGLE_COMPONENT
 #define  CONFIG_SINGLE_COMPONENT   1
@@ -476,6 +478,7 @@ Default all except E1.31
 
 /*
   Component name strings
+
   Fixed Component Type Name (FCTN) and User Assigned Component Name (UACN)
   Defined in EPI19, these are transmitted in UTF-8 encoding
 
@@ -486,6 +489,7 @@ Default all except E1.31
   which requires 189 bytes if stored as UTF-8. Storing as UTF-16 would
   require less storage but more processing.
 */
+
 #ifndef ACN_FCTN_SIZE
 #define ACN_FCTN_SIZE 128  /* arbitrary */
 #endif
@@ -493,8 +497,10 @@ Default all except E1.31
 #define ACN_UACN_SIZE 190  /* allow for null terminator */
 #endif
 
-/************************************************************************/
+/**************************************************************************/
 /*
+  Data Marshalling
+
   Inline functions for marshaling data are efficient and typecheck
   the code. If the compiler supports inline code then they are
   preferable.
@@ -503,23 +509,72 @@ Default all except E1.31
   uses macros instead, but these eveluate their arguments multiple times
   and do not check their types so beware.
 */
+/************************************************************************/
+
 #ifndef CONFIG_MARSHAL_INLINE
 #define CONFIG_MARSHAL_INLINE 1
 #endif
 
 /************************************************************************/
 /*
+  Network socket layer
 
+  this is a layer to splice RLP to your stack and OS. it is highly
+  platform specific and these parameters may not be used at all.
+*/
+/************************************************************************/
+
+#ifndef MAX_NSK_SOCKETS
+#define MAX_NSK_SOCKETS 50
+#endif
+
+/**************************************************************************/
+/*
   Root Layer Protocol
+*/
+/**************************************************************************/
+/*
+  Client protocols
 
   The default is to build a generic RLP for multiple client protocols.
-  However, efficiency gains can be made if RLP is built for only one,
-  in this case set CONFIG_RLP_SINGLE_CLIENT to the protocol ID
-  of that client (in user_opt.h) e.g.
-  #define CONFIG_RLP_SINGLE_CLIENT PROTO_SDT
+  However, efficiency gains can be made if RLP is built for only one
+  client protocol (probably SDT or E1.31 - defaults to SDT), in this case set
+  CONFIG_RLP_SINGLE_CLIENT to 1 and define the the protocol ID of that
+  client (in user_opt.h) as CONFIG_RLP_CLIENTPROTO
+  
+  e.g. For E1.31 only support
+
+  #define CONFIG_RLP_SINGLE_CLIENT 1
+  #define CONFIG_RLP_CLIENTPROTO PROTO_E131
 */
 #ifndef CONFIG_RLP_SINGLE_CLIENT
 #define CONFIG_RLP_SINGLE_CLIENT 0
+#endif
+
+#if CONFIG_RLP_SINGLE_CLIENT && !defined(CONFIG_RLP_CLIENTPROTO)
+#define CONFIG_RLP_CLIENTPROTO PROTO_SDT
+#endif
+
+/*
+  RLP memory management - default to global model
+*/
+#ifndef CONFIG_RLPMEM
+#define CONFIG_RLPMEM CONFIG_MEM
+#endif
+
+#if (CONFIG_RLPMEM == MEM_STATIC)
+  #ifndef MAX_RLP_SOCKETS
+  #define MAX_RLP_SOCKETS 50
+  #endif
+  #ifndef MAX_LISTENERS
+  #define MAX_LISTENERS 50
+  #endif
+  #ifndef MAX_RXGROUPS
+  #define MAX_RXGROUPS 50
+  #endif
+  #ifndef MAX_TXBUFS
+  #define MAX_TXBUFS 10
+  #endif
 #endif
 
 /*
@@ -530,29 +585,43 @@ Default all except E1.31
 #define CONFIG_RLP_OPTIMIZE_PACK 0
 #endif
 
+/**************************************************************************/
+/*
+  SDT
+*/
 /************************************************************************/
 /*
+  Client protocols
 
-  SDT
+  The default is to build a generic SDT for multiple client protocols.
+  However, efficiency gains can be made if SDT is built for only one
+  client protocol (probably DMP), in this case set
+  CONFIG_SDT_SINGLE_CLIENT to 1 and define the the protocol ID of that
+  client (in user_opt.h) as CONFIG_SDT_CLIENTPROTO
+  
+  e.g.
 
-  Set to zero for generic SDT. However, efficiency gains can
-  be made if SDT is built for only one client protocol.
-  In this case set CONFIG_SDT_SINGLE_CLIENT to the protocol ID
-  of that client e.g:
-  #ifndef CONFIG_SDT_SINGLE_CLIENT
-#define  CONFIG_SDT_SINGLE_CLIENT PROTO_DMP
-#endif
+  #define CONFIG_SDT_SINGLE_CLIENT 1
+  #define CONFIG_SDT_CLIENTPROTO PROTO_DMP
 */
 #ifndef CONFIG_SDT_SINGLE_CLIENT
 #define CONFIG_SDT_SINGLE_CLIENT 0
 #endif
 
-//Default SDT Mem management to follow global option
+#if CONFIG_SDT_SINGLE_CLIENT && !defined(CONFIG_SDT_CLIENTPROTO)
+#define CONFIG_SDT_CLIENTPROTO PROTO_DMP
+#endif
+
+/* Default SDT Mem management to follow global option */
 #ifndef CONFIG_SDTMEM
 #define CONFIG_SDTMEM CONFIG_MEM
 #endif
 
-/* Configures the limit to for SDT  */
+/*
+  Configure some limits for SDT 
+
+  Figures here are bare minimum. You will probably want to override them.
+*/
 #ifndef SDT_MAX_COMPONENTS
 #define SDT_MAX_COMPONENTS          4
 #endif
@@ -582,24 +651,26 @@ Default all except E1.31
 #define SDT_RESEND_TIMEOUT_ms      5000
 #endif
 
-/************************************************************************/
+/**************************************************************************/
 /*
-
   DMP
 */
+/************************************************************************/
 #ifndef DMP_MAX_SUBSCRIPTIONS
 #define DMP_MAX_SUBSCRIPTIONS       100
 #endif
 
-/************************************************************************/
+/**************************************************************************/
 /*
+  Sanity checks
+
   The following are sanity checks on preceding options and some
   derivative configuration values. They are not user options
 */
-/************************************************************************/
-
-/************************************************************************/
-/* check on transport selection */
+/**************************************************************************/
+/*
+  check on transport selection
+*/
 #if (CONFIG_NET_IPV4 + CONFIG_NET_IPV6) <= 0
 #error Need to select at least one transport
 #elif (CONFIG_NET_IPV4 + CONFIG_NET_IPV6) == 1
@@ -608,8 +679,9 @@ Default all except E1.31
 #define CONFIG_MULTI_NET 1
 #endif
 
-/************************************************************************/
-/* checks on network stack */
+/*
+  checks on network stack
+*/
 #if (CONFIG_STACK_BSD + CONFIG_STACK_WIN32 + CONFIG_STACK_PATHWAY + CONFIG_STACK_LWIP + CONFIG_STACK_NETBURNER + CONFIG_STACK_CYGWIN) != 1
 #error Need to select exactly one network stack
 #endif
@@ -618,8 +690,9 @@ Default all except E1.31
 #error Pathway stack only supports IPv4
 #endif
 
-/************************************************************************/
-/* Sanity check for CONFIG_RLP_SINGLE_CLIENT */
+/*
+  checks for CONFIG_RLP_SINGLE_CLIENT
+*/
 #if ((CONFIG_SDT + CONFIG_E131) > 1 && (CONFIG_RLP_SINGLE_CLIENT) != 0)
 #error Cannot support both SDT and E1.31 if CONFIG_RLP_SINGLE_CLIENT is set
 #endif

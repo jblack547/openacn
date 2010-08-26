@@ -410,7 +410,7 @@ rlp_add_pdu(
 
   if ((flags & VECTOR_FLAG))  {
 #if CONFIG_RLP_SINGLE_CLIENT
-    marshalU32(pdup, CONFIG_RLP_SINGLE_CLIENT);
+    marshalU32(pdup, CONFIG_RLP_CLIENTPROTO);
 #else
     marshalU32(pdup, protocol);
     buf->protocol = protocol;
