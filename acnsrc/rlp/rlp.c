@@ -60,9 +60,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define NUM_PACKET_BUFFERS  16
 #define BUFFER_ROLLOVER_MASK  (NUM_PACKET_BUFFERS - 1)
 
-/* some handy macros */
-#define LOG_FSTART() acnlog(LOG_DEBUG | LOG_RLP, "%s :...", __func__)
-
+/*
+macros for deep debugging - log entry and exit to each function
+redefine these to empty macros (uncomment the ones below) to disable
+*/
+#define LOG_FSTART() acnlog(LOG_DEBUG | LOG_RLP, "%s [", __func__)
+#define LOG_FEND() acnlog(LOG_DEBUG | LOG_RLP, "%s ]", __func__)
+/*
+#define LOG_FSTART()
+#define LOG_FEND()
+*/
 
 #if CONFIG_EPI17
 
@@ -202,6 +209,7 @@ rlp_init(void)
   netx_init();
   rlpm_init();
 
+  LOG_FEND();
   return OK;
 }
 
@@ -280,6 +288,7 @@ rlp_init_block(struct rlp_txbuf_s *buf, uint8_t *datap)
 
   buf->blockend = NULL;
   buf->blockstart = blockstart;
+  LOG_FEND();
   return datap;
 }
 
@@ -418,6 +427,7 @@ rlp_add_pdu(
   }
 
   buf->blockend = pduend;
+  LOG_FEND();
 #if CONFIG_RLP_SINGLE_CLIENT || CONFIG_RLP_OPTIMIZE_PACK
   return pduend + 2;  /* guess next PDU will repeat protocol */
 #else
@@ -437,11 +447,14 @@ rlp_send_block(
   const netx_addr_t *destaddr
 )
 {
+  int rslt;
   LOG_FSTART();
 
   assert(netsock);
 
-  return netx_send_to(netsock, destaddr, buf->netbuf, buf->blockend - buf->blockstart);
+  rslt = netx_send_to(netsock, destaddr, buf->netbuf, buf->blockend - buf->blockstart);
+  LOG_FEND();
+  return rslt;
 
 }
 
@@ -483,6 +496,7 @@ rlp_open_netsocket(localaddr_t *localaddr)
 
   acnlog(LOG_DEBUG|LOG_RLP, "rlp_open_netsocket: port=%d", ntohs(NSK_PORT(netsock)));
 
+  LOG_FEND();
   return netsock;
 }
 
@@ -506,6 +520,7 @@ rlp_close_netsocket(netxsocket_t *netsock)
   netx_udp_close(netsock);
   nsk_free_netsock(netsock);
   acnlog(LOG_DEBUG|LOG_RLP,"rlp_close_netsocket: port=%d", port);
+  LOG_FEND();
 }
 
 /************************************************************************/
@@ -556,6 +571,7 @@ rlp_open_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr)
       return NULL;
     }
   }
+  LOG_FEND();
   return rxgroup;
 }
 
@@ -578,6 +594,7 @@ rlp_close_rxgroup(netxsocket_t *netsock, struct rlp_rxgroup_s *rxgroup)
     netx_change_group(netsock, rxgroup->groupaddr, netx_LEAVEGROUP);
   }
   rlpm_free_rxgroup(netsock, rxgroup);
+  LOG_FEND();
 }
 
 /************************************************************************/
@@ -612,6 +629,7 @@ rlp_add_listener(netxsocket_t *netsock, groupaddr_t groupaddr, protocolID_t prot
   listener->callback = callback;
   listener->ref = ref;
 
+  LOG_FEND();
   return listener;
 }
 
@@ -632,6 +650,7 @@ rlp_del_listener(netxsocket_t *netsock, struct rlp_listener_s *listener)
 
   /* close and free the group if now empty */
   rlp_close_rxgroup(netsock, rxgroup);
+  LOG_FEND();
 }
 
 /************************************************************************/
@@ -746,6 +765,7 @@ rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_a
     }
 #endif
   }
+  LOG_FEND();
 }
 
 #endif /* CONFIG_RLP */
