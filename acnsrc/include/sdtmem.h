@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern "C" {
 #endif
 
+#if CONFIG_SDTMEM == MEM_STATIC
 extern void sdtm_init(void);
 
 extern sdt_channel_t *sdtm_new_channel(void);
@@ -60,6 +61,26 @@ extern sdt_resend_t  *sdtm_new_resend(void);
 extern void           sdtm_free_resend(sdt_resend_t *resend);
 extern void           sdtm_free_resends(void);
 
+#elif CONFIG_SDTMEM == MEM_MALLOC
+#include <stdlib.h>
+
+#define sdtm_init()
+
+#define sdtm_allocblank(type) ((type *)calloc(1, sizeof(type)))
+
+#define sdtm_new_channel()      sdtm_allocblank(sdt_channel_t)
+#define sdtm_new_member()       sdtm_allocblank(sdt_member_t)
+#define sdtm_new_component()    sdtm_allocblank(component_t)
+#define sdtm_new_resend()       sdtm_allocblank(sdt_resend_t)
+
+#define sdtm_free_channel(x) free(x)
+#define sdtm_free_member(x) free(x)
+#define sdtm_free_component(x) free(x)
+#define sdtm_free_resend(x) free(x)
+
+extern void sdtm_free_resends(void);
+
+#endif /* CONFIG_SDTMEM == MEM_MALLOC */
 
 #ifdef __cplusplus
 }

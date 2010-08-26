@@ -239,118 +239,23 @@ sdtm_free_resends(void)
   }
 }
 
-#endif /* CONFIG_SDTMEM == MEM_STATIC */
-
-
-#if CONFIG_SDTMEM == MEM_MALLOC
+#elif CONFIG_SDTMEM == MEM_MALLOC
 /*****************************************************************************/
-void
-sdtm_init(void)
-{
-  static bool initialized_state = 0;
+/*
+  Free all resends
+*/
+extern sdt_resend_t *resends;
 
-  if (initialized_state) {
-    acnlog(LOG_INFO | LOG_SDTM,"sdtm_init: already initialized");
-    return;
+void sdtm_free_resends(void)
+{
+  sdt_resend_t *resend, *next;
+
+  acnlog(LOG_DEBUG | LOG_SDTM,"void_free_resends...");
+
+  for (resend = resends; resend != NULL; resend = next) {
+    next = resend->next;
+    free(resend);
   }
-  initialized_state = 1;
-}
-
-/*****************************************************************************/
-/*
-  Create a new channel
-*/
-sdt_channel_t *
-sdtm_new_channel(void)
-{
-  sdt_channel_t *channel;
-
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_channel");
-
-  channel = malloc(sizeof(sdt_channel_t));
-  if(!channel){
-    acnlog(LOG_ERR | LOG_SDTM,"sdtm_new_channel: Out of Memory");
-    return NULL;
-  }
-  memset(channel,0,sizeof(sdt_channel_t));
-  return channel;
-}
-
-/*****************************************************************************/
-/*
-  Free an unused channel
-*/
-void
-sdtm_free_channel(sdt_channel_t *channel)
-{
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_channel");
-
-  /* mark channel as unused */
-  free(channel);
-  return;
-}
-
-/*****************************************************************************/
-/*
-  Create a new member
-*/
-sdt_member_t *
-sdtm_new_member(void)
-{
-  sdt_member_t *member;
-
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_member");
-
-  member = malloc(sizeof(sdt_member_t));
-
-  if(!member){
-    acnlog(LOG_ERR | LOG_SDTM,"sdtm_new_member: Out of memory.");
-    return NULL;
-  }
-  memset(member,0,sizeof(sdt_member_t));
-  return member;
-}
-
-
-/*****************************************************************************/
-/*
-  Free an unused member
-*/
-void
-sdtm_free_member(sdt_member_t *member)
-{
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_member");
-  free(member);
-}
-
-/*****************************************************************************/
-/*
-  Create a new component
-*/
-component_t *
-sdtm_new_component(void)
-{
-
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_component");
-
-  component = malloc(sizeof(component_t));
-  if(!component){
-    acnlog(LOG_ERR | LOG_SDTM,"sdtm_new_component: Out of memory.");
-    return NULL;
-  }
-  memset(component, 0, sizeof(component_t));
-  return component;
-}
-
-/*****************************************************************************/
-/*
-  Free an unused component
-*/
-void
-sdtm_free_component(component_t *component)
-{
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_component");
-  free(component);
 }
 
 #endif /* CONFIG_SDTMEM == MEM_MALLOC */
