@@ -219,7 +219,7 @@ sdt_member_t  *sdt_del_member(sdt_channel_t *channel, sdt_member_t *member);
 
 /* misc */
 component_t   *sdt_first_component(void);
-component_t   *sdt_find_component(const cid_t cid);
+component_t   *sdt_find_comp_by_cid(const cid_t cid);
 
 /* may go away, used for testing */
 int  sdt_get_adhoc_port(void);

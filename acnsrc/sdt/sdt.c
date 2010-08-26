@@ -509,7 +509,7 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t acc
 
   protect = ACN_PORT_PROTECT();
   /* See if we have this already */
-  component = sdt_find_component(cid);
+  component = sdt_find_comp_by_cid(cid);
   if (component) {
     ACN_PORT_UNPROTECT(protect);
     acnlog(LOG_WARNING | LOG_SDT,"sdt_add_component: component already exists");
@@ -874,7 +874,7 @@ sdt_find_member_by_component(sdt_channel_t *channel, component_t *component)
   Find component by it's CID
 */
 component_t *
-sdt_find_component(const cid_t cid)
+sdt_find_comp_by_cid(const cid_t cid)
 {
   component_t *component;
 
@@ -2052,7 +2052,7 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
   joinp += CIDSIZE;
 
   /* see if this the dest CID matches one of our local components */
-  local_component = sdt_find_component(local_cid);
+  local_component = sdt_find_comp_by_cid(local_cid);
   if (!local_component) {
     acnlog(LOG_NOTICE | LOG_SDT, "sdt_rx_join: Not addressed to me");
     return; /* not addressed to any local component */
@@ -2114,7 +2114,7 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
   }
 
   /*  Are we already tracking the src component, if not add it */
-  foreign_component = sdt_find_component(foreign_cid);
+  foreign_component = sdt_find_comp_by_cid(foreign_cid);
   if (!foreign_component) {
     foreign_component = sdt_add_component(foreign_cid, NULL, false, accUNKNOWN);
     if (!foreign_component) { /* allocation failure */
@@ -2296,7 +2296,7 @@ sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_accept, uint32_t
   }
 
   /* verify we are tracking this component */
-  foreign_component = sdt_find_component(foreign_cid);
+  foreign_component = sdt_find_comp_by_cid(foreign_cid);
   if (!foreign_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_join_accept: foreign_component not found");
     return;
@@ -2305,7 +2305,7 @@ sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_accept, uint32_t
   /* verify leader CID */
   unmarshalCID(join_accept, local_cid);
   join_accept += CIDSIZE;
-  local_component = sdt_find_component(local_cid);
+  local_component = sdt_find_comp_by_cid(local_cid);
   if (!local_component) {
     acnlog(LOG_NOTICE | LOG_SDT, "sdt_rx_join_accept: not for me");
     return;
@@ -2413,7 +2413,7 @@ sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t
   }
 
   /* verify we are tracking this component */
-  foreign_component = sdt_find_component(foreign_cid);
+  foreign_component = sdt_find_comp_by_cid(foreign_cid);
   if (!foreign_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_join_refuse: foreign_component not found");
     return;
@@ -2422,7 +2422,7 @@ sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t
   /* get leader */
   unmarshalCID(join_refuse, local_cid);
   join_refuse += CIDSIZE;
-  local_component = sdt_find_component(local_cid);
+  local_component = sdt_find_comp_by_cid(local_cid);
   if (!local_component) {
     acnlog(LOG_NOTICE | LOG_SDT, "sdt_rx_join_refuse: Not for me");
     return;
@@ -2490,7 +2490,7 @@ sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_le
   }
 
   /* verify we are tracking this component */
-  foreign_component = sdt_find_component(foreign_cid);
+  foreign_component = sdt_find_comp_by_cid(foreign_cid);
   if (!foreign_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_leaving: foreign_component not found");
     return;
@@ -2499,7 +2499,7 @@ sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_le
   /* get leader cid */
   unmarshalCID(leaving, local_cid);
   leaving += CIDSIZE;
-  local_component = sdt_find_component(local_cid);
+  local_component = sdt_find_comp_by_cid(local_cid);
   if (!local_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_leaving: local_component not found");
     return;
@@ -2568,7 +2568,7 @@ sdt_rx_nak(const cid_t foreign_cid, const uint8_t *nak, uint32_t data_len)
   }
 
   /* verify we are tracking this component */
-  foreign_component = sdt_find_component(foreign_cid);
+  foreign_component = sdt_find_comp_by_cid(foreign_cid);
   if (!foreign_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_nak: foreign_component not found");
     return;
@@ -2577,7 +2577,7 @@ sdt_rx_nak(const cid_t foreign_cid, const uint8_t *nak, uint32_t data_len)
   /* get Leader CID */
   unmarshalCID(nak, local_cid);
   nak += CIDSIZE;
-  local_component = sdt_find_component(local_cid);
+  local_component = sdt_find_comp_by_cid(local_cid);
   if (!local_component) {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_nak: local_component not found");
     return;
@@ -2756,7 +2756,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
 
 #if 0
   /* verify we are tracking this component */
-  foreign_component = sdt_find_component(foreign_cid);
+  foreign_component = sdt_find_comp_by_cid(foreign_cid);
   if (!foreign_component)  {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper: Not tracking this component");
     return;

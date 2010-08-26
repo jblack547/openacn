@@ -318,7 +318,7 @@ static void attrrqst_callback(int error, char *attr_list, int count)
       return;
     }
     /* see if we already have this one */
-    comp = sdt_find_component(cid);
+    comp = sdt_find_comp_by_cid(cid);
     /* if it was found */
     if (comp) {
       acnlog(LOG_DEBUG | LOG_DISC , "attrrqst callback: component already exists");
