@@ -682,7 +682,7 @@ dmp_tx_pdu(component_t *local_component, component_t *foreign_component, bool is
   client_block = sdt_format_wrapper(wrapper, is_reliable, local_channel, 0xffff, 0xffff, 0); /* no acks, 0 threshold */
 
   /* create client block and get pointer to opaque datagram */
-  pdup = sdt_format_client_block(client_block, foreign_member->mid, PROTO_DMP, foreign_channel->number);
+  pdup = sdt_format_client_block(client_block, foreign_member->mid, DMP_PROTOCOL_ID, foreign_channel->number);
 
   /* copy data to it starting with the flags byte */
   for (x=0; x<data_len; x++) {
@@ -699,7 +699,7 @@ dmp_tx_pdu(component_t *local_component, component_t *foreign_component, bool is
 #if CONFIG_RLP_SINGLE_CLIENT
   rlp_add_pdu(tx_buffer, wrapper, pdup - wrapper, NULL);
 #else
-  rlp_add_pdu(tx_buffer, wrapper, pdup - wrapper, PROTO_SDT, NULL);
+  rlp_add_pdu(tx_buffer, wrapper, pdup - wrapper, SDT_PROTOCOL_ID, NULL);
 #endif
 
   /* and send it on */

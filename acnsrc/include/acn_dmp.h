@@ -45,11 +45,7 @@ Code which sits on top of DMP should not really have to use this header
 
 #include "opt.h"
 #include "acnstdtypes.h"
-
-/* ESTA registered protocol code */
-#define DMP_PROTOCOL_ID     2
-#define PROTO_DMP           DMP_PROTOCOL_ID
-
-
+/* get the protocol identifiers */
+#include "acn_protocols.h"
 
 #endif

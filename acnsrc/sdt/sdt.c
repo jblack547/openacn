@@ -96,7 +96,7 @@ Notes:
 if your compiler does not conform to ANSI macro expansions it may
 recurse infinitely on this definition.
 */
-#define rlp_add_pdu(buf, pdudata, size, packetdatap) rlp_add_pdu(buf, pdudata, size, PROTO_SDT, packetdatap)
+#define rlp_add_pdu(buf, pdudata, size, packetdatap) rlp_add_pdu(buf, pdudata, size, SDT_PROTOCOL_ID, packetdatap)
 #endif
 
 /* some handy macros */
@@ -373,7 +373,7 @@ sdt_startup(bool acceptAdHoc)
       sdt_adhoc_socket = rlp_open_netsocket(&localaddr);
       /* sdt_adhoc_socket = rlp_open_netsocket(netx_PORT_EPHEM); */
       if (sdt_adhoc_socket) {
-        sdt_adhoc_listener = rlp_add_listener(sdt_adhoc_socket, netx_GROUP_UNICAST, PROTO_SDT, sdt_rx_handler, NULL);
+        sdt_adhoc_listener = rlp_add_listener(sdt_adhoc_socket, netx_GROUP_UNICAST, SDT_PROTOCOL_ID, sdt_rx_handler, NULL);
         acnlog(LOG_DEBUG | LOG_SDT, "sdt_startup: adhoc port: %d", ntohs(NSK_PORT(sdt_adhoc_socket)));
       } else {
         acnlog(LOG_ERR | LOG_SDT, "sdt_startup: unable to open adhoc port");
@@ -426,7 +426,7 @@ sdt_shutdown(void)
             if (member->component->callback)
               (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component, false, NULL, 0, NULL);
               #if CONFIG_DMP
-              sdt_tx_disconnect(component, member->component, PROTO_DMP);
+              sdt_tx_disconnect(component, member->component, DMP_PROTOCOL_ID);
               #endif
           }
           sdt_tx_leave(component, member->component, member);
@@ -440,7 +440,7 @@ sdt_shutdown(void)
             if (member->component->callback)
               (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component, false, NULL, 0, NULL);
             #if CONFIG_DMP
-            sdt_tx_disconnecting(component, member->component, PROTO_DMP, SDT_REASON_NONSPEC);
+            sdt_tx_disconnecting(component, member->component, DMP_PROTOCOL_ID, SDT_REASON_NONSPEC);
             #endif
           }
           sdt_tx_leaving(component, member->component, member, SDT_REASON_NONSPEC);
@@ -2168,7 +2168,7 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
   if (address_type == SDT_ADDR_IPV4) {
     groupaddr = netx_INADDR(&foreign_channel->destination_addr);
     if (is_multicast(groupaddr)) {
-      foreign_channel->listener = rlp_add_listener(sdt_multicast_socket, groupaddr, PROTO_SDT, sdt_rx_handler, foreign_component);
+      foreign_channel->listener = rlp_add_listener(sdt_multicast_socket, groupaddr, SDT_PROTOCOL_ID, sdt_rx_handler, foreign_component);
       if (!foreign_channel->listener) {
         acnlog(LOG_ERR | LOG_SDT, "sdt_rx_join: failed to add multicast listener");
         sdt_tx_join_refuse(foreign_cid, local_component, source_addr, foreign_channel_number, local_mid, foreign_reliable_seq, SDT_REASON_RESOURCES);
@@ -2954,12 +2954,12 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
         /* we have data on this channel from our leader so reset the expiry timeout */
         /* local_member->expires_ms = local_member->expiry_time_s * 1000; */
         switch (protocol) {
-          case PROTO_SDT:
+          case SDT_PROTOCOL_ID:
             sdt_client_rx_handler(local_member->component, foreign_component, datap, data_size);
             break;
           #if CONFIG_DMP
-          case PROTO_DMP:
-            acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper: PROTO_DMP");
+          case DMP_PROTOCOL_ID:
+            acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper: DMP_PROTOCOL_ID");
             if (local_member->component->callback)
                (*local_member->component->callback)(SDT_EVENT_DATA, local_member->component, foreign_component, is_reliable, datap, data_size, ref);
 
@@ -3054,7 +3054,7 @@ sdt_tx_ack(component_t *local_component, component_t *foreign_component)
   client_block = sdt_format_wrapper(wrapper, SDT_UNRELIABLE, local_channel, 0xffff, 0xffff, 0); /* no acks, 0 threshold */
 
   /* create client block and get pointer to opaque datagram */
-  datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, foreign_channel->number);
+  datagram = sdt_format_client_block(client_block, foreign_member->mid, SDT_PROTOCOL_ID, foreign_channel->number);
 
   /* add datagram (ACK message) */
   datagram = marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
@@ -3136,7 +3136,7 @@ sdt_tx_leave(component_t *local_component, component_t *foreign_component, sdt_m
   client_block = sdt_format_wrapper(wrapper, SDT_RELIABLE, local_channel, 0xffff, 0xffff, 0); /* no acks, 0 threshold */
 
   /* create client block and get pointer to opaque datagram */
-  datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, CHANNEL_OUTBOUND_TRAFFIC);
+  datagram = sdt_format_client_block(client_block, foreign_member->mid, SDT_PROTOCOL_ID, CHANNEL_OUTBOUND_TRAFFIC);
 
   /* add datagram (LEAVE message) */
   datagram = marshalU16(datagram, 3 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
@@ -3232,7 +3232,7 @@ sdt_tx_connect(component_t *local_component, component_t *foreign_component, uin
   client_block = sdt_format_wrapper(wrapper, SDT_RELIABLE, local_channel, 0xffff, 0xffff, 0); /* no acks, 0 threshold */
 
   /* create client block and get pointer to opaque datagram */
-  datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, CHANNEL_OUTBOUND_TRAFFIC);
+  datagram = sdt_format_client_block(client_block, foreign_member->mid, SDT_PROTOCOL_ID, CHANNEL_OUTBOUND_TRAFFIC);
 
   /* add datagram CONNECT message) */
   datagram = marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
@@ -3327,7 +3327,7 @@ sdt_tx_connect_accept(component_t *local_component, component_t *foreign_compone
   client_block = sdt_format_wrapper(wrapper, SDT_RELIABLE, local_channel, 0xffff, 0xffff, 0); /* no acks, 0 threshold */
 
   /* create client block and get pointer to opaque datagram */
-  datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, foreign_channel->number);
+  datagram = sdt_format_client_block(client_block, foreign_member->mid, SDT_PROTOCOL_ID, foreign_channel->number);
 
   /* add datagram (CONNECT_ACCEPT message) */
   datagram = marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
@@ -3423,7 +3423,7 @@ sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, 
   client_block = sdt_format_wrapper(wrapper, SDT_RELIABLE, local_channel, 0xffff, 0xffff, 0); /* no acks, 0 threshold */
 
   /* create client block and get pointer to opaque datagram */
-  datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, CHANNEL_OUTBOUND_TRAFFIC);
+  datagram = sdt_format_client_block(client_block, foreign_member->mid, SDT_PROTOCOL_ID, CHANNEL_OUTBOUND_TRAFFIC);
 
   /* add datagram (DISCONNECT message) */
   datagram = marshalU16(datagram, 7 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
@@ -3517,7 +3517,7 @@ sdt_tx_disconnecting(component_t *local_component, component_t *foreign_componen
   client_block = sdt_format_wrapper(wrapper, SDT_RELIABLE, local_channel, 0xffff, 0xffff, 0); /* no acks, 0 threshold */
 
   /* create client block and get pointer to opaque datagram */
-  datagram = sdt_format_client_block(client_block, foreign_member->mid, PROTO_SDT, CHANNEL_OUTBOUND_TRAFFIC);
+  datagram = sdt_format_client_block(client_block, foreign_member->mid, SDT_PROTOCOL_ID, CHANNEL_OUTBOUND_TRAFFIC);
 
   /* add datagram (DISCONNECT message) */
   datagram = marshalU16(datagram, 8 | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
@@ -3875,7 +3875,7 @@ sdt_rx_ack(component_t *local_component, component_t *foreign_component, const u
   if (local_member->state == msJOINED && foreign_member->state == msJOINED) {
     /* TODO: if we don't connect this will keep trying, not a good idea.... */
     #if CONFIG_DMP
-    sdt_tx_connect(local_component, foreign_component, PROTO_DMP);
+    sdt_tx_connect(local_component, foreign_component, DMP_PROTOCOL_ID);
     #endif
   }
 
@@ -4001,7 +4001,7 @@ sdt_rx_connect(component_t *local_component, component_t *foreign_component, con
 
   switch (protocol) {
     #if CONFIG_DMP
-    case PROTO_DMP:
+    case DMP_PROTOCOL_ID:
       if (sdt_tx_connect_accept(local_component, foreign_component, protocol) == OK) {
         local_member->state = msCONNECTED;
         acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_connect: session established");
@@ -4061,7 +4061,7 @@ sdt_rx_connect_accept(component_t *local_component, component_t *foreign_compone
   if (foreign_member) {
     switch (protocol) {
       #if CONFIG_DMP
-      case PROTO_DMP:
+      case DMP_PROTOCOL_ID:
         foreign_member->state = msCONNECTED;
         acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_connect_accept: session established");
         /* let our app know */
@@ -4122,7 +4122,7 @@ sdt_rx_connect_refuse(component_t *local_component, component_t *foreign_compone
   if (foreign_member) {
     switch (protocol) {
       #if CONFIG_DMP
-      case PROTO_DMP:
+      case DMP_PROTOCOL_ID:
         acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_connect_refuse : channel %" PRIu16 ", protocol: %" PRIu32 ", reason %" PRIu8, local_component->tx_channel->number, protocol, reason);
         /* TODO: Callback to DMP/APPLICATION */
         break;
@@ -4174,12 +4174,12 @@ sdt_rx_disconnect(component_t *local_component, component_t *foreign_component, 
   if (local_member) {
     switch (protocol) {
       #if CONFIG_DMP
-      case PROTO_DMP:
+      case DMP_PROTOCOL_ID:
         acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_disconnect : channel %" PRIu16 ", protocol: %" PRIu32, foreign_component->tx_channel->number, protocol);
         if (local_component->callback)
           (*local_component->callback)(SDT_EVENT_DISCONNECT, foreign_component, local_component, false, NULL, 0, NULL);
 
-        sdt_tx_disconnecting(local_component, foreign_component, PROTO_DMP, SDT_REASON_ASKED_TO_LEAVE);
+        sdt_tx_disconnecting(local_component, foreign_component, DMP_PROTOCOL_ID, SDT_REASON_ASKED_TO_LEAVE);
         local_member->state = msJOINED;
         break;
       #endif
@@ -4234,7 +4234,7 @@ sdt_rx_disconnecting(component_t *local_component, component_t *foreign_componen
   if (foreign_member) {
     switch (protocol) {
       #if CONFIG_DMP
-      case PROTO_DMP:
+      case DMP_PROTOCOL_ID:
         if (local_component->callback)
           (*local_component->callback)(SDT_EVENT_DISCONNECT, local_component, foreign_component, false, NULL, 0, NULL);
 

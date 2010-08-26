@@ -545,14 +545,14 @@ user_types.h header. See acnstdtypes.h for more info.
   e.g. For E1.31 only support
 
   #define CONFIG_RLP_SINGLE_CLIENT 1
-  #define CONFIG_RLP_CLIENTPROTO PROTO_E131
+  #define CONFIG_RLP_CLIENTPROTO E131_PROTOCOL_ID
 */
 #ifndef CONFIG_RLP_SINGLE_CLIENT
 #define CONFIG_RLP_SINGLE_CLIENT 0
 #endif
 
 #if CONFIG_RLP_SINGLE_CLIENT && !defined(CONFIG_RLP_CLIENTPROTO)
-#define CONFIG_RLP_CLIENTPROTO PROTO_SDT
+#define CONFIG_RLP_CLIENTPROTO SDT_PROTOCOL_ID
 #endif
 
 /*
@@ -602,14 +602,14 @@ user_types.h header. See acnstdtypes.h for more info.
   e.g.
 
   #define CONFIG_SDT_SINGLE_CLIENT 1
-  #define CONFIG_SDT_CLIENTPROTO PROTO_DMP
+  #define CONFIG_SDT_CLIENTPROTO DMP_PROTOCOL_ID
 */
 #ifndef CONFIG_SDT_SINGLE_CLIENT
 #define CONFIG_SDT_SINGLE_CLIENT 0
 #endif
 
 #if CONFIG_SDT_SINGLE_CLIENT && !defined(CONFIG_SDT_CLIENTPROTO)
-#define CONFIG_SDT_CLIENTPROTO PROTO_DMP
+#define CONFIG_SDT_CLIENTPROTO DMP_PROTOCOL_ID
 #endif
 
 /* Default SDT Mem management to follow global option */

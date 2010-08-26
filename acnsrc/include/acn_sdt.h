@@ -49,9 +49,8 @@ Code which sits on top of SDT should not really have to use this header
 #include "epi18.h"
 #endif
 
-/* ESTA registered protocol code - belongs here as part of SDT specifcation */
-#define SDT_PROTOCOL_ID     1
-#define PROTO_SDT           SDT_PROTOCOL_ID
+/* get the protocol identifiers */
+#include "acn_protocols.h"
 
 #define RECIPROCAL_TIMEOUT_ms AD_HOC_TIMEOUT_ms * 2
 

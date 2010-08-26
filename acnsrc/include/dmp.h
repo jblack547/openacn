@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acn_arch.h"
 #include "acnstdtypes.h"
 #include "component.h"
+#include "acn_dmp.h"
 /* #include "sdt.h" */
 
 #ifdef __cplusplus
@@ -57,9 +58,6 @@ extern "C" {
 #define DMP_VECTOR_LEN 1
 #define DMP_HEADER_LEN 1
 
-/* ESTA registered protocol code */
-#define DMP_PROTOCOL_ID     2
-#define PROTO_DMP           DMP_PROTOCOL_ID
 /* DMP reliable flag */
 enum
 {
