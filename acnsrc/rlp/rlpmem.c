@@ -54,7 +54,7 @@ handling. See rlp.c for description of 3-level structure.
 #include "rlp.h"
 #include "rlpmem.h"
 
-#if CONFIG_RLPMEM_MALLOC
+#if CONFIG_RLPMEM == MEM_MALLOC
 #include <stdlib.h>
 #endif
 
@@ -89,7 +89,7 @@ void            rlpm_init(void)
 /* static rlp_listener_t *listeners = NULL; */ /* not used a this time*/
 static rlp_rxgroup_t  *rxgroups  = NULL;
 
-#if CONFIG_RLPMEM_STATIC
+#if CONFIG_RLPMEM == MEM_STATIC
 static rlp_txbuf_t     txbufs_m[MAX_TXBUFS];
 static rlp_listener_t  listeners_m[MAX_LISTENERS];
 static rlp_rxgroup_t   rxgroups_m[MAX_RXGROUPS];
@@ -99,7 +99,7 @@ static rlp_rxgroup_t   rxgroups_m[MAX_RXGROUPS];
  *
  * The following routines are alternate memory management routines for static or malloc desires!
  */
-#if CONFIG_RLPMEM_STATIC
+#if CONFIG_RLPMEM == MEM_STATIC
 /***********************************************************************************************/
 void __init_txbufs(void)
 {
@@ -202,7 +202,7 @@ void __free_listener(rlp_listener_t *listener)
   listener->protocol = PROTO_NONE;
 }
 
-#elif CONFIG_RLPMEM_MALLOC
+#elif CONFIG_RLPMEM == MEM_MALLOC
 
 /***********************************************************************************************/
 #define __init_txbufs()
@@ -248,7 +248,7 @@ void __free_listener(rlp_listener_t *listener)
 {
   free((void*)listener);
 }
-#endif /* #elif CONFIG_RLPMEM_MALLOC */
+#endif /* #elif CONFIG_RLPMEM == MEM_MALLOC */
 
 
 /***********************************************************************************************/

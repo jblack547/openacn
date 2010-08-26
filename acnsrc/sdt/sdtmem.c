@@ -50,14 +50,14 @@ handling.
 #include "sdt.h"
 #include "sdtmem.h"
 
-#if CONFIG_SDTMEM_STATIC
+#if CONFIG_SDTMEM == MEM_STATIC
 static sdt_channel_t    channels_m[SDT_MAX_CHANNELS];
 static sdt_member_t     members_m[SDT_MAX_MEMBERS];
 static component_t      components_m[SDT_MAX_COMPONENTS];
 static sdt_resend_t     resends_m[SDT_MAX_RESENDS];  /* list of buffers */
 #endif
 
-#if CONFIG_SDTMEM_STATIC
+#if CONFIG_SDTMEM == MEM_STATIC
 /*****************************************************************************/
 void
 sdtm_init(void)
@@ -239,10 +239,10 @@ sdtm_free_resends(void)
   }
 }
 
-#endif /* of CONFIG_SDTMEM_STATIC */
+#endif /* CONFIG_SDTMEM == MEM_STATIC */
 
 
-#if CONFIG_SDTMEM_MALLOC
+#if CONFIG_SDTMEM == MEM_MALLOC
 /*****************************************************************************/
 void
 sdtm_init(void)
@@ -353,6 +353,6 @@ sdtm_free_component(component_t *component)
   free(component);
 }
 
-#endif /* CONFIG_SDTMEM_MALLOC */
+#endif /* CONFIG_SDTMEM == MEM_MALLOC */
 
 #endif /* #if CONFIG_SDT */

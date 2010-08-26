@@ -158,6 +158,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+/*************************************************************************
+  Memory management
+
+  Low level routines can allocate memory either using malloc system
+  calls which is flexible but less predictable and depending on the
+  underlying system, may be slower, or from pre-assigned buffers which
+  is inflexible and can be wasteful but is deterministic and can be
+  faster.
+
+  Normally you just need to define CONFIG_MEM to either MEM_STATIC or
+  MEM_MALLOC. For fine tuning of different protocols, the macros
+  CONFIG_RLPMEM, CONFIG_SDTMEM etc. can be assigned separately.
+
+*************************************************************************/
+#define MEM_STATIC 1
+#define MEM_MALLOC 2
+
+#ifndef CONFIG_MEM
+#define CONFIG_MEM MEM_STATIC
+#endif
+
 /************************************************************************/
 /*
   Networking
@@ -257,16 +278,13 @@ as required.
 /*
   Memory management
 
-  RLP models - pick one
+  RLP memory management - default to global model
 */
-#ifndef CONFIG_RLPMEM_MALLOC
-#define CONFIG_RLPMEM_MALLOC  0
-#endif
-#ifndef CONFIG_RLPMEM_STATIC
-#define  CONFIG_RLPMEM_STATIC   1
+#ifndef CONFIG_RLPMEM
+#define CONFIG_RLPMEM CONFIG_MEM
 #endif
 
-#if CONFIG_RLPMEM_STATIC
+#if (CONFIG_RLPMEM == MEM_STATIC)
   #ifndef MAX_RLP_SOCKETS
   #define MAX_RLP_SOCKETS 50
   #endif
@@ -529,12 +547,9 @@ Default all except E1.31
 #define CONFIG_SDT_SINGLE_CLIENT 0
 #endif
 
-#ifndef CONFIG_SDTMEM_MALLOC
-#define CONFIG_SDTMEM_MALLOC  0
-#endif
-
-#ifndef CONFIG_SDTMEM_STATIC
-#define  CONFIG_SDTMEM_STATIC   1
+//Default SDT Mem management to follow global option
+#ifndef CONFIG_SDTMEM
+#define CONFIG_SDTMEM CONFIG_MEM
 #endif
 
 /* Configures the limit to for SDT  */
@@ -608,17 +623,5 @@ Default all except E1.31
 #if ((CONFIG_SDT + CONFIG_E131) > 1 && (CONFIG_RLP_SINGLE_CLIENT) != 0)
 #error Cannot support both SDT and E1.31 if CONFIG_RLP_SINGLE_CLIENT is set
 #endif
-
-/************************************************************************/
-/* TODO: wrf combine these into one define? */
-/* Sanity check for memory RLP managment */
-#if (CONFIG_RLPMEM_MALLOC + CONFIG_RLPMEM_STATIC) != 1
-#error Need to select one RLP memory managment model
-#endif
-/* Sanity check for memory SDT managment */
-#if (CONFIG_SDTMEM_MALLOC + CONFIG_SDTMEM_STATIC) != 1
-#error Need to select one SDT memory managment model
-#endif
-
 
 #endif

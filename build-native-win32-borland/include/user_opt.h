@@ -63,8 +63,7 @@ bytes each
 #define CONFIG_SDT   1
 #define CONFIG_DMP   1
 
-#define CONFIG_RLPMEM_MALLOC 0
-#define CONFIG_RLPMEM_STATIC 1
+#define CONFIG_MEM MEM_STATIC
 
 /* see everything */
 #define CONFIG_LOGLEVEL LOG_DEBUG
