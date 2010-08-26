@@ -47,6 +47,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* FIXME: this macro may evaluate its args multiple times - redefine dependent on byteorder */
 #define DD2NIP(B3, B2, B1, B0) htonl(DD2HIP(B3, B2, B1, B0)) /* in Network order */
 
+/*
+port_t ip4addr_t and groupaddr_t variables are generally kept and stored
+in network byte order to speed moving them into and out of packets
+*/
+
 #ifndef HAVE_port_t
   typedef uint16_t port_t;  /* net endpoint is a port */
   #define HAVE_port_t

@@ -64,7 +64,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _MSC_VER is still defined when VisualC is not in ISO mode
 (and limits.h still works).
 */
-#else  /* defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L */
+#else  /* assume C89 */
 #include "typefromlimits.h"
 
 /*
@@ -95,7 +95,7 @@ _MSC_VER is still defined when VisualC is not in ISO mode
 #endif
 
 #ifndef HAVE_ip4addr_t
-  typedef uint32_t ip4addr_t; /* ip address as a long */
+  typedef uint32_t ip4addr_t; /* ip address as a uint32_t */
   #define HAVE_ip4addr_t
 #endif
 
