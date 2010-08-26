@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   $Id$
 
+#tabs=2s
 */
 /*--------------------------------------------------------------------*/
 /*
@@ -214,9 +215,9 @@ rlp_txbuf_t * __new_txbuf(void)
 }
 
 /***********************************************************************************************/
-void __free_txbuf(rlp_txbuf_t *txbuf)
+static void __free_txbuf(rlp_txbuf_t *txbuf)
 {
-  free((void*)txbuf);
+  free((void *)txbuf);
 }
 
 /***********************************************************************************************/
@@ -248,6 +249,7 @@ void __free_listener(rlp_listener_t *listener)
 {
   free((void*)listener);
 }
+
 #endif /* #elif CONFIG_RLPMEM == MEM_MALLOC */
 
 
@@ -298,6 +300,7 @@ rlpm_free_rxgroup(netxsocket_t *netsock, rlp_rxgroup_t *rxgroup)
   rlp_listener_t *next_listener;
   UNUSED_ARG(netsock);
 
+#if 0
   /* if, for some reason, we have listeners, free them */
   /* since we are nuking all of them in the chain, this is faster than calling rlpm_free_listener() */
   listener = rxgroup->listeners;
@@ -306,7 +309,9 @@ rlpm_free_rxgroup(netxsocket_t *netsock, rlp_rxgroup_t *rxgroup)
     __free_listener(listener);
     listener = next_listener;
   }
-
+#else
+  assert(rxgroup->listeners == NULL);
+#endif
   /* see if its the first one */
   if (rxgroup == rxgroups) {
     rxgroups = rxgroup->next;
@@ -355,6 +360,7 @@ rlpm_new_rxgroup(netxsocket_t *netsock, groupaddr_t groupaddr)
   /* put it at the head or our list */
   rxgroup->next = rxgroups;
   rxgroups = rxgroup;
+  rxgroup->listeners = NULL;
 
   /* return pointer to new listeners[] entry */
   return rxgroup;
@@ -535,7 +541,7 @@ rlpm_init(void)
 Transmit network buffer API
 (note receive buffers may be the same thing internally but are not externally treated the same)
 Actual Network buffers are platform dependent are referenced as void pointers here
-Client protocols obtain network buffers using rlpm_newtxbuf(), rlpm_freetxbuf() and rlpm_releasetxbuf()
+Client protocols obtain network buffers using rlpm_new_txbuf() and rlpm_release_txbuf()
 A pointer to the data inside the network buffer in maintained in the "datap" member.
 
 When calling RLP to transmit data, they pass both the pointer to the buffer and a pointer to the
@@ -590,71 +596,14 @@ rlpm_new_txbuf(int size, component_t *owner)
 }
 
 /***********************************************************************************************/
-/* called if data is not sent and we need to free the network memory */
-void
-rlpm_free_txbuf(rlp_txbuf_t *txbuf)
-{
-  /* release memory back to stack */
-  netx_free_txbuf(txbuf->netbuf);
-  /*free our memory */
-  __free_txbuf(txbuf);
-}
-
-/***********************************************************************************************/
-/* called after data is sent. network memory release is dealt with at the platform level*/
+/* called after data is sent */
 void
 rlpm_release_txbuf(rlp_txbuf_t *txbuf)
 {
-  rlp_decuse(txbuf);
-  /*free network buffer if no longer used */
-  if (txbuf->usage == 0) {
+  if (rlp_decuse(txbuf) == 0) {
+    netx_free_txbuf(txbuf->netbuf);
     __free_txbuf(txbuf);
   }
 }
-
-
-#ifdef NEVER /* (save, may need for static implemention of netx) */
-/***********************************************************************************************/
-struct
-rlp_txbuf_s *rlpm_new_txbuf(int size, component_t *owner)
-{
-  uint8_t *buf;
-
-  buf = malloc(
-      sizeof(struct rlp_txbuf_s)
-      + RLP_PREAMBLE_LENGTH
-      + sizeof(protocolID_t)
-      + sizeof(cid_t)
-      + size
-      + RLP_POSTAMBLE_LENGTH
-    );
-  if (buf != NULL)
-  {
-    rlp_getuse(buf) = 0;
-    ((struct rlp_txbuf_s *)buf)->datasize = RLP_PREAMBLE_LENGTH
-        + sizeof(protocolID_t)
-        + sizeof(cid_t)
-        + size
-        + RLP_POSTAMBLE_LENGTH;
-    ((struct rlp_txbuf_s *)buf)->owner = owner;
-  }
-
-  return buf;
-}
-
-/***********************************************************************************************/
-void rlpm_free_txbuf(struct rlp_txbuf_s *buf)
-{
-  rlp_decuse(buf);
-  if (!rlp_getuse(buf)) free(buf);
-}
-
-#define rlpItsData(buf) ((uint8_t *)(buf) \
-      + sizeof(struct rlpTxbufhdr_s) \
-      + RLP_PREAMBLE_LENGTH \
-      + sizeof(protocolID_t) \
-      + sizeof(cid_t))
-
-#endif
 
 #endif /* CONFIG_RLP */

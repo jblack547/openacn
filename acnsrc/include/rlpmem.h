@@ -80,6 +80,10 @@ struct rlp_txbuf_s {
   component_t        *owner;         /* component that registered the callback */
   void               *netbuf;        /* pointer to network buffer */
   uint8_t            *datap;         /* pointer to data inside of network buffer*/
+#if CONFIG_RLP_OPTIMIZE_PACK
+  int                 curdatalen;
+  uint8_t            *curdata;
+#endif
 };
 
 extern void rlpm_init(void);
@@ -108,7 +112,6 @@ extern rlp_rxgroup_t *rlpm_get_rxgroup(rlp_listener_t *listener);
 extern netxsocket_t  *rlpm_get_netsock(rlp_rxgroup_t *rxgroup);
 
 extern rlp_txbuf_t   *rlpm_new_txbuf(int size, component_t *owner);
-extern void           rlpm_free_txbuf(rlp_txbuf_t *txbuf);
 extern void           rlpm_release_txbuf(rlp_txbuf_t *txbuf);
 
 #ifdef __cplusplus
