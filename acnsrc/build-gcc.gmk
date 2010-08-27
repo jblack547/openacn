@@ -90,6 +90,10 @@ ifneq "${wildcard ${DEPDIR}}" "${DEPDIR}"
 ${shell ${MKDIR} ${DEPDIR}}
 endif
 
+ifeq "${wildcard include/platform}" ""
+${shell ln -s ${abspath ${ACNROOT}/platform/${PLATFORMNAME}} include/platform}
+endif
+
 ##########################################################################
 # Set up some C compiler options
 #
@@ -216,7 +220,7 @@ ts:
 #
 .opts.mk: ${ACNROOT}/opts.mk.c ${ACNROOT}/include/opt.h include/user_opt.h
 	${Q}echo Parsing options
-	${Q}${CPP} ${CPPFLAGS} ${TARGET_ARCH} $< > $@
+	${Q}${CPP} ${CPPFLAGS} ${TARGET_ARCH} $< | sed -e '/^[ \t]*$$/d' > $@
 
 ##########################################################################
 # .defs produces a complete preprocessor dump of the symbols defined in a
