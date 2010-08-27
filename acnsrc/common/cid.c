@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   $Id$
 
+#tabs=2s
 */
 /*--------------------------------------------------------------------*/
 #include "opt.h"
@@ -49,6 +50,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef isxdigit
   #define isxdigit(c)  (isdigit((c)) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
 #endif
+
+const cid_t  null_cid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 /******************************************************************************/
 /* Convert text based CID to uuit_t
@@ -82,21 +85,23 @@ int textToCid(const char *cidText, cid_t cidp)
   return OK;
 }
 
-static const char hexdig[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-#define tohex(nibble) hexdig[nibble]
-
 /******************************************************************************/
 /*
 Make a string from a CID
-Returns pointer to end of string
+Returns pointer to start of string
+String is fixed length CID_STR_SIZE (including Nul terminator)
 */
 char *cidToText(const uint8_t *cidp, char *cidText)
 {
   int octet;
+  char *cp;
 
-  for (octet = 0; octet < 16; octet++) {
-    *cidText++ = tohex(*cidp >> 4);
-    *cidText++ = tohex(*cidp & 0x0f);
+  static const char hexdig[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+#define tohex(nibble) hexdig[nibble]
+
+  for (cp = cidText, octet = 0; octet < 16; octet++) {
+    *cp++ = tohex(*cidp >> 4);
+    *cp++ = tohex(*cidp & 0x0f);
     ++cidp;
 
     switch(octet) {
@@ -104,13 +109,14 @@ char *cidToText(const uint8_t *cidp, char *cidText)
       case 5 :
       case 7 :
       case 9 :
-        *cidText++ = '-';
+        *cp++ = '-';
       default :
         break;
     }
   }
-  *cidText = '\0';  /* terminate the string */
+  *cp = '\0';  /* terminate the string */
   return cidText;
+#undef tohex
 }
 
 /* Also see MACROS defined in header */

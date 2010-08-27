@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 	$Id$
 
+#tabs=3s
 */
 /*--------------------------------------------------------------------*/
 /* Universally Unique Identifier (UUID). RFC 4122 */
@@ -52,11 +53,12 @@ For most purposes a CID is simply an array of 16 octets
 */
 #define CIDSIZE 16
 #define CID_STR_SIZE 37  /* including null termination */
+#define PRICIDstr "36"	/* printing width for string format */
 
 /* generic cid as array */
 typedef uint8_t cid_t[CIDSIZE];
 
-static const cid_t  null_cid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+extern const cid_t  null_cid;
 
 /*
   Macros to access the internal structure
@@ -75,8 +77,16 @@ char *cidToText(const cid_t cidp, char *cidText);
 /* Macro version of functions */
 #define cidIsEqual(cid1, cid2) (memcmp(cid1, cid2, sizeof(cid_t)) == 0)
 #define cidNull(cid) (memset(cid, 0, sizeof(cid_t)))
-#define cidIsNull(cid) (memcmp(cid, &null_cid, sizeof(cid_t)) == 0)
-#define cidCopy(cid1, cid2) (memcpy(cid1, cid2, sizeof(cid_t)))
+#define cidIsNull(cid) cidIsNull(cid)
+#define cidCopy(dst, src) (memcpy(dst, src, sizeof(cid_t)))
+
+static inline int cidIsNull(cid_t cid)
+{
+   int i = CIDSIZE;
+
+   while (i--) if (*cid++) return 0;
+   return 1;
+}
 
 #if !defined(cidIsEqual)
 int cidIsEqual(const cid_t cid1, const cid_t cid2);
@@ -84,9 +94,11 @@ int cidIsEqual(const cid_t cid1, const cid_t cid2);
 #if !defined(cidNull)
 void cidNull(cid_t cid);
 #endif
+/*
 #if !defined(cidIsNull)
 int  cidIsNull(const cid_t cid);
 #endif
+*/
 #if !defined(cidCopy)
 void cidCopy(cid_t cid1, const cid_t cid2);
 #endif

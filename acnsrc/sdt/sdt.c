@@ -51,8 +51,7 @@ Notes:
 
   Threading: see notes at sdt_tick();
 
-
-
+#tabs=2s
 */
 /*--------------------------------------------------------------------*/
 /* static const char *rcsid __attribute__ ((unused)) = */
@@ -499,13 +498,11 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t acc
 {
   component_t *component;
   acn_protect_t  protect;
+#if acntestlog(LOG_DEBUG | LOG_SDT)
+  char  cid_text[CID_STR_SIZE];
+#endif
 
-  #if LOG_DEBUG | LOG_SDT
-  char  cid_text[37];
-  cidToText(cid, cid_text);
-  #endif
-
-  acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_component: %s", cid_text);
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_component: %s", cidToText(cid, cid_text));
 
   protect = ACN_PORT_PROTECT();
   /* See if we have this already */
@@ -560,16 +557,13 @@ sdt_del_component(component_t *component)
   component_t   *cur;
   acn_protect_t  protect;
   sdt_member_t  *member;
-
-
-  #if LOG_DEBUG | LOG_SDT
-  char  cid_text[37];
-  cidToText(component->cid, cid_text);
-  #endif
+#if acntestlog(LOG_DEBUG | LOG_SDT)
+  char  cid_text[CID_STR_SIZE];
+#endif
 
   assert(component);
 
-  acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_component: %s", cid_text);
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_component: %s", cidToText(component->cid, cid_text));
 
   protect = ACN_PORT_PROTECT();
 
@@ -4321,7 +4315,9 @@ void sdt_stats(void)
 {
   component_t    *component;
   uint32_t          x = 1;
-  char  cid_text[37];
+#if acntestlog(LOG_INFO | LOG_STAT)
+  char  cid_text[CID_STR_SIZE];
+#endif
   uint32_t  addr;
   uint16_t  port;
   sdt_channel_t *channel;
@@ -4331,10 +4327,8 @@ void sdt_stats(void)
   while(component) {
     acnlog(LOG_INFO | LOG_STAT, "------------------------");
     acnlog(LOG_INFO | LOG_STAT, "Component: %" PRIu32, x);
-    cidToText(component->cid, cid_text);
-    acnlog(LOG_INFO | LOG_STAT, "CID: %s", cid_text);
-    cidToText(component->dcid, cid_text);
-    acnlog(LOG_INFO | LOG_STAT, "DCID: %s", cid_text);
+    acnlog(LOG_INFO | LOG_STAT, "CID: %s", cidToText(component->cid, cid_text));
+    acnlog(LOG_INFO | LOG_STAT, "DCID: %s", cidToText(component->cid, cid_text));
     acnlog(LOG_INFO | LOG_STAT, "fctn: %s", component->fctn);
     acnlog(LOG_INFO | LOG_STAT, "uacn: %s", component->uacn);
     switch (component->access) {
