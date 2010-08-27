@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   $Id$
 
+tabs=2s
 */
 /*--------------------------------------------------------------------*/
 #include "opt.h"
@@ -45,14 +46,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <netinet/in.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
+#include <errno.h>
+#include <string.h>
 
 #include "netxface.h"
 #include "netsock.h"
 #include "ntoa.h"
+#include <sys/select.h>
 
 /************************************************************************/
 #define INPACKETSIZE DEFAULT_MTU
-#define LOG_FSTART() acnlog(LOG_DEBUG | LOG_NETX, "%s :...", __func__)
+#define LOG_FSTART() acnlog(LOG_DEBUG | LOG_NETX, "%s [", __func__)
+#define LOG_FEND() acnlog(LOG_DEBUG | LOG_NETX, "%s ]", __func__)
 
 /************************************************************************/
 /* local memory */
@@ -76,12 +81,10 @@ void netx_init(void)
     acnlog(LOG_INFO | LOG_NETX,"netx_init: already initialized");
     return;
   }
-  /* don't process twice */
-  initialized_state = 1;
-
   /* init required sub modules */
   nsk_netsocks_init();
   /* don't process twice */
+  initialized_state = 1;
   return;
 }
 
@@ -218,6 +221,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 
   acnlog(LOG_DEBUG | LOG_NETX, "netx_udp_open : port:%d", ntohs(NSK_PORT(netsock)));
 
+  LOG_FEND();
   /* Note: A separate thread will call netx_poll() to look for received messages */
   return OK;
 }
@@ -246,6 +250,7 @@ void netx_udp_close(netxsocket_t *netsock)
   netsock->nativesock = 0;
   /* close socket */
   close(hold);
+  LOG_FEND();
 }
 
 
@@ -315,6 +320,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
     setsockopt(netsock->nativesock, IPPROTO_IP, IP_DROP_MEMBERSHIP,  (void *)&mreq, sizeof(mreq));
     acnlog(LOG_DEBUG | LOG_NETX, "netx_change_group: dropped");
   }
+  LOG_FEND();
   return 0; /* OK */
 }
 
@@ -326,7 +332,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
 */
 int netx_send_to(
   netxsocket_t      *netsock,    /* contains a flag if port is open and the local port number */
-  const netx_addr_t *destaddr,   /* contians dest port and ip numbers */
+  const netx_addr_t *destaddr,   /* contains dest port and ip numbers */
   void              *pkt,        /* pointer data packet if type UPDPacket (return from netx_new_txbuf()) */
   size_t             datalen     /* length of data */
 )
@@ -364,13 +370,13 @@ int netx_send_to(
    * memcpy(UdpBuffer, data, datalen);
    */
 
-  sendto(netsock->nativesock, (char *)pkt, datalen, 0, (SOCKADDR *)&dest_addr, sizeof(dest_addr));
+  if ((ssize_t)(datalen = sendto(netsock->nativesock, (char *)pkt, datalen, 0, (SOCKADDR *)&dest_addr, sizeof(dest_addr))) < 0) {
+    acnlog(LOG_ERR | LOG_NETX , "netx_send_to: sendto: %s", strerror(errno));
+  }
 
-  /* we will assume it all went! */
-  /*acnlog(LOG_DEBUG | LOG_NETX , "netx_send_to: sent"); */
+  LOG_FEND();
   return datalen;
 }
-
 
 /************************************************************************/
 /*
@@ -513,12 +519,12 @@ netx_poll(void)
     Socket call back
     This is the routine that gets called when a new UDP message is available.
 */
-void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest)
+void netx_handler(uint8_t *data, int length, netx_addr_t *source, netx_addr_t *dest)
 {
   netxsocket_t *socket;
   localaddr_t   host;
 
-  acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: ...");
+  LOG_FSTART();
 
   /* save get destination address */
 #if CONFIG_LOCALIP_ANY
@@ -533,6 +539,7 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
   if (socket) {
     if (socket->data_callback) {
       (*socket->data_callback)(socket, (uint8_t *)data, length, dest, source, NULL);
+      LOG_FEND();
       return;
     }
   }
@@ -603,7 +610,5 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr)
 }
 
 #endif  /* CONFIG_NET_IPV4 */
-
 #endif /* CONFIG_STACK_BSD */
 #endif /* CONFIG_NSK */
-
