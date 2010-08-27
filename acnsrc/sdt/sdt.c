@@ -43,12 +43,6 @@ TODO: - REMOVE DMP dependancy if DMP is not enabled.
 
 
 Notes:
-  Use of Assert() and acnlog: Assert and acnlog() are macros designed to be compiled out. In other words if you don't define them,
-  they will add no code.
-
-  At the start of each function. Asserts are added for testing each pointer passed dirctly in. Pointers inside a
-  structure are tested as needed (not asserted)
-
   Threading: see notes at sdt_tick();
 
 #tabs=2s
@@ -98,11 +92,16 @@ recurse infinitely on this definition.
 #define rlp_add_pdu(buf, pdudata, size, packetdatap) rlp_add_pdu(buf, pdudata, size, SDT_PROTOCOL_ID, packetdatap)
 #endif
 
-/* some handy macros */
-#define LOG_FSTART() acnlog(LOG_DEBUG | LOG_SDT, "%s :...", __func__)
-/* #define LOG_FEND() acnlog(LOG_DEBUG | LOG_SDT, "%s :...", __func__) */
-/* #define LOG_FSTART() */
+/*
+macros for deep debugging - log entry and exit to each function
+redefine these to empty macros (uncomment the ones below) to disable
+*/
+#define LOG_FSTART() acnlog(LOG_DEBUG | LOG_SDT, "%s [", __func__)
+#define LOG_FEND() acnlog(LOG_DEBUG | LOG_SDT, "%s ]", __func__)
+/*
+#define LOG_FSTART()
 #define LOG_FEND()
+*/
 
 /* keeps track of things we have allocated in case we need to abort, we can deallocate them */
 enum
@@ -184,36 +183,6 @@ static int sdt_save_buffer(rlp_txbuf_t *tx_buffer, uint8_t *pdup, uint32_t size,
 static int sdt_tx_resend(sdt_resend_t *resend);
 static int sdt_flag_for_resend(sdt_channel_t *channel, uint32_t reliable_seq);
 
-#if 0
-/*****************************************************************************/
-/* wrf - not used at this time */
-static void
-sdt_local_init(void)
-{
-  my_component = sdt_add_component(my_xcid, my_xdcid, true, accUNKNOWN);
-  if (!my_component) {
-    acnlog(LOG_ERR | LOG_SDT, "sdt_local_init : failed to get new component");
-    return;
-  }
-}
-
-/*****************************************************************************/
-/* wrf - not used at this time */
-struct localComponent_s {
-  cid_t cid;
-  acnProtocol_t protocols[MAXPROTOCOLS];
-  int (*connectfilter)(cid_t, struct session_s sessionInfo, acnProtocol_t protocol);
-};
-
-/*****************************************************************************/
-/* wrf - not used at this time */
-int
-sdt_register(struct localComponent_s comp)
-{
-  sdt_add_component(comp, NULL, what?, x);
-}
-#endif
-
 /*****************************************************************************/
 /* may go away, used for testing */
 int
@@ -243,6 +212,7 @@ sdt_init(void)
   rlp_init();
   sdtm_init();
 
+  LOG_FEND();
   return OK;
 }
 
@@ -385,6 +355,7 @@ sdt_startup(bool acceptAdHoc)
   }
   sdt_state = ssSTARTED;
 
+  LOG_FEND();
   return OK;
 }
 
@@ -408,11 +379,12 @@ sdt_shutdown(void)
     acnlog(LOG_WARNING | LOG_SDT,"sdt_shutdown: not started");
     return OK;
   }
-  /* do this write away to prevent timer from hacking at these*/
+  /* do this right away to prevent timer from hacking at these*/
   protect = ACN_PORT_PROTECT();
   sdt_state = ssCLOSING;
 
   /* if we have a local component with members in the channel, tell them  to get out of town */
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_shutdown: leaving sessions");
   component = components;
   while(component) {
     if (component->tx_channel) {
@@ -424,9 +396,9 @@ sdt_shutdown(void)
           if (member->state == msCONNECTED) {
             if (member->component->callback)
               (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component, false, NULL, 0, NULL);
-              #if CONFIG_DMP
-              sdt_tx_disconnect(component, member->component, DMP_PROTOCOL_ID);
-              #endif
+            #if CONFIG_DMP
+            sdt_tx_disconnect(component, member->component, DMP_PROTOCOL_ID);
+            #endif
           }
           sdt_tx_leave(component, member->component, member);
           member = member->next;
@@ -451,6 +423,7 @@ sdt_shutdown(void)
   }
 
   /*  get first component and rip thru all of them (cleaning up resources along the way) */
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_shutdown: forgetting components");
   component = components;
   while(component) {
     /* returns the next component after delete */
@@ -458,6 +431,7 @@ sdt_shutdown(void)
   }
 
   /* adhoc clean up */
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_shutdown: adhoc cleanup");
   if (sdt_adhoc_listener && sdt_adhoc_socket) {
     rlp_del_listener(sdt_adhoc_socket, sdt_adhoc_listener);
   }
@@ -469,22 +443,26 @@ sdt_shutdown(void)
   sdt_adhoc_socket = NULL;
 
   /* multicast clean up.  listeners for multicast are cleaned up with the associated channel */
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_shutdown: multicast cleanup");
   if (sdt_multicast_socket) {
     rlp_close_netsocket(sdt_multicast_socket);
   }
   sdt_multicast_socket = NULL;
 
   /* free any memory used by resends and the resends */
+  acnlog(LOG_DEBUG | LOG_SDT,"sdt_shutdown: free resend memory");
   resend = resends;
   while (resend) {
     if (resend->tx_buffer) {
       rlpm_release_txbuf(resend->tx_buffer);
     }
+    resend = resend->next;
   }
   sdtm_free_resends();
 
   sdt_state = ssCLOSED;
   ACN_PORT_UNPROTECT(protect);
+  LOG_FEND();
   return OK;
 }
 
@@ -502,49 +480,34 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t acc
   char  cid_text[CID_STR_SIZE];
 #endif
 
-  acnlog(LOG_DEBUG | LOG_SDT,"sdt_add_component: %s", cidToText(cid, cid_text));
+  acnlog(LOG_DEBUG | LOG_SDT, "sdt_add_component: %s", cidToText(cid, cid_text));
 
   protect = ACN_PORT_PROTECT();
-  /* See if we have this already */
-  component = sdt_find_comp_by_cid(cid);
-  if (component) {
+  /* See if we have this already, otherwise get a new one */
+  if ((component = sdt_find_comp_by_cid(cid)) != NULL) {
     ACN_PORT_UNPROTECT(protect);
     acnlog(LOG_WARNING | LOG_SDT,"sdt_add_component: component already exists");
-    return component;
-  }
-
-  /* find and empty one */
-  component = sdtm_new_component();
-  if (component) {
-    component->next = components;
-    components = component;
-    /* assign values */
-    if (cid)
-      cidCopy(component->cid, cid);
-    if (dcid)
-      cidCopy(component->dcid, dcid);
-    /* component->fctn[0] = 0; */ /* default 0 */
-    /* component->uacn[0] = 0; */ /* default 0 */
-      component->access = access;
-      component->is_local = is_local;
-    /* component->adhoc_expires_at = */   /* default 0 */
-    /* component->created_by = cbNONE; */ /* default cbNONE */
-    /* component->dirty = false; */       /* default false */
-
-    /* tx_channel = 0 */ /* default */
-    if (is_local) {
+  } else if ((component = sdtm_new_component()) == NULL) {
+    ACN_PORT_UNPROTECT(protect);
+    acnlog(LOG_ERR | LOG_SDT,"sdt_add_component: new component allocation failed");
+  } else {
+    /* initialise it */
+    if (cid) cidCopy(component->cid, cid);
+    if (dcid) cidCopy(component->dcid, dcid);
+    component->access = access;
+    component->is_local = is_local;
+    if (component->is_local) {
       mcast_alloc_init(0, 0, component);
     }
-    /* is_receprocal     */ /* default 0 (false) */
+
+    /* add it to our list */
+    component->next = components;
+    components = component;
     ACN_PORT_UNPROTECT(protect);
-    return component;
   }
-  ACN_PORT_UNPROTECT(protect);
-  acnlog(LOG_ERR | LOG_SDT,"sdt_add_component: failed to add new component");
 
-  return NULL; /* none left */
+  return component;
 }
-
 
 /*****************************************************************************/
 /*
@@ -566,7 +529,6 @@ sdt_del_component(component_t *component)
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_component: %s", cidToText(component->cid, cid_text));
 
   protect = ACN_PORT_PROTECT();
-
   /* remove this component from other components member list */
   cur = components;
   while (cur) {
@@ -585,28 +547,24 @@ sdt_del_component(component_t *component)
     sdt_del_channel(component);
   }
 
+  /* unlink the component */
   /* if it is at top, then we just move leader */
   if (component == components) {
-    components = component->next;
-    sdtm_free_component(component);
-    ACN_PORT_UNPROTECT(protect);
-    return components;
+    cur = components = component->next;
+  } else {
+    for (cur = components; cur != NULL; cur = cur->next)
+      if (cur->next == component) {
+        cur->next = component->next;
+        cur = cur->next;
+        break;
+      }
   }
 
-  /* else run through list in order, finding previous one */
-  cur = components;
-  while (cur) {
-    if (cur->next == component) {
-      /* jump around it */
-      cur->next = component->next;
-      sdtm_free_component(component);
-      ACN_PORT_UNPROTECT(protect);
-      return (cur->next);
-    }
-    cur = cur->next;
-  }
+  /* now free it */
+  sdtm_free_component(component);
+
   ACN_PORT_UNPROTECT(protect);
-  return NULL;
+  return cur;
 }
 
 /*****************************************************************************/
@@ -872,17 +830,12 @@ sdt_find_comp_by_cid(const cid_t cid)
 {
   component_t *component;
 
-  component = components;
-
-  while(component) {
-    if (cidIsEqual(component->cid, cid)) {
+  for (component = components; component != NULL; component = component->next)
+    if (cidIsEqual(component->cid, cid))
       return (component);
-    }
-    component = component->next;
-  }
+
   return NULL;  /* oops */
 }
-
 
 /*****************************************************************************/
 /*
@@ -1022,8 +975,6 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const netx_addr_t *
   giving up control.  This avoids more complex locking schemes. It also assumes that these
   tasks do not yield control back while in the middle of processing on the common memory.
 */
-/* TODO: this should be in opt.h as it is implementation dependent; */
-#define MS_PER_TICK 100
 void
 sdt_tick(void *arg)
 {
@@ -1340,6 +1291,7 @@ sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_chan
   wrapper = marshalU16(wrapper, mak_threshold);
 
   /* return pointer to client block */
+  LOG_FEND();
   return wrapper;
 }
 
@@ -1547,6 +1499,8 @@ sdt_format_client_block(uint8_t *client_block, uint16_t foreign_mid, uint32_t pr
   client_block = marshalU32(client_block, protocol);      /* Header, Client protocol */
   client_block = marshalU16(client_block, association);   /* Header, Association */
 
+  /* LOG_FEND(); */
+
   /* returns pointer to opaque datagram */
   return client_block;
 }
@@ -1740,6 +1694,7 @@ sdt_tx_join(component_t *local_component, component_t *foreign_component, bool i
     rlp_send_block(tx_buffer, local_channel->sock, &foreign_component->adhoc_addr);
   }
   rlpm_release_txbuf(tx_buffer);
+  LOG_FEND();
   return OK;
 }
 
@@ -1797,6 +1752,7 @@ sdt_tx_join_accept(sdt_member_t *local_member, component_t *local_component, com
   acnlog(LOG_DEBUG | LOG_SDT, "sdt_tx_join_accept : channel %d", foreign_component->tx_channel->number);
   rlp_send_block(tx_buffer, sdt_adhoc_socket, &foreign_component->tx_channel->source_addr);
   rlpm_release_txbuf(tx_buffer);
+  LOG_FEND();
   return OK;
 }
 
@@ -1850,6 +1806,7 @@ sdt_tx_join_refuse(const cid_t foreign_cid, component_t *local_component, const 
   acnlog(LOG_DEBUG | LOG_SDT, "sdt_tx_join_refuse : channel %d", foreign_channel_num);
   rlp_send_block(tx_buffer, sdt_adhoc_socket, source_addr);
   rlpm_release_txbuf(tx_buffer);
+  LOG_FEND();
   return OK;
 }
 
@@ -1906,6 +1863,7 @@ sdt_tx_leaving(component_t *foreign_component, component_t *local_component, sdt
   /* send via channel */
   rlp_send_block(tx_buffer, sdt_adhoc_socket, &foreign_channel->source_addr);
   rlpm_release_txbuf(tx_buffer);
+  LOG_FEND();
   return OK;
 }
 
@@ -1975,6 +1933,7 @@ sdt_tx_nak(component_t *foreign_component, component_t *local_component, uint32_
     rlp_send_block(tx_buffer, sdt_adhoc_socket, &foreign_channel->source_addr);
   }
   rlpm_release_txbuf(tx_buffer);
+  LOG_FEND();
   return OK;
 }
 
@@ -2221,7 +2180,7 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
 
   foreign_channel->number = foreign_channel_number;
 
-  /* send the join */
+  /* send the join accept */
   if (sdt_tx_join_accept(local_member, local_component, foreign_component) == FAIL) {
     remove_allocations();
     return;
@@ -2255,6 +2214,7 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
   }
   acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_join : channel %d, mid %d", foreign_channel->number, local_mid);
 
+  LOG_FEND();
   return;
 }
 
@@ -2376,6 +2336,7 @@ sdt_rx_join_accept(const cid_t foreign_cid, const uint8_t *join_accept, uint32_t
 
   acnlog(LOG_DEBUG | LOG_SDT, "sdt_rx_join_accept : channel %d, mid %d", local_channel_number, foreign_mid);
 
+  LOG_FEND();
   return;
 }
 
@@ -2455,6 +2416,7 @@ sdt_rx_join_refuse(const cid_t foreign_cid, const uint8_t *join_refuse, uint32_t
   } else {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_join_refuse: foreign member not found");
   }
+  LOG_FEND();
   return;
 }
 
@@ -2532,6 +2494,7 @@ sdt_rx_leaving(const cid_t foreign_cid, const uint8_t *leaving, uint32_t data_le
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_leaving: foreign member not found");
   }
 
+  LOG_FEND();
   return;
 }
 
@@ -2620,6 +2583,7 @@ sdt_rx_nak(const cid_t foreign_cid, const uint8_t *nak, uint32_t data_len)
     }
     first_missed++;
   }
+  LOG_FEND();
 }
 
 /*****************************************************************************/
@@ -2648,6 +2612,7 @@ sdt_flag_for_resend(sdt_channel_t *channel, uint32_t reliable_seq)
       if ((resend->reliable_seq == reliable_seq) & (tx_channel == channel)) {
         /* set timer to trigger resending */
         resend->blanktime_ms = NAK_BLANKTIME_ms;
+        LOG_FEND();
         return OK;
       }
     }
@@ -2688,6 +2653,7 @@ sdt_tx_resend(sdt_resend_t *resend)
   rlp_send_block(tx_buffer, tx_channel->sock, &tx_channel->destination_addr);
   rlpm_release_txbuf(tx_buffer);
   acnlog(LOG_DEBUG | LOG_SDT, "sdt_resend : resent");
+  LOG_FEND();
   return OK;
 }
 
@@ -2973,6 +2939,7 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
     }
   }
 
+  LOG_FEND();
   return;
 }
 
@@ -3059,10 +3026,10 @@ sdt_tx_ack(component_t *local_component, component_t *foreign_component)
   marshalU16(client_block, (10+7) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add length to wrapper pdu */
-  marshalU16(wrapper, (datagram-wrapper) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  marshalU16(wrapper, (datagram - wrapper) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add our PDU (sets its length there)*/
-  rlp_add_pdu(tx_buffer, wrapper, datagram-wrapper, NULL);
+  rlp_add_pdu(tx_buffer, wrapper, datagram - wrapper, NULL);
 
   acnlog(LOG_DEBUG | LOG_SDT, "sdt_tx_ack : channel %d", foreign_channel->number);
 
@@ -3070,6 +3037,7 @@ sdt_tx_ack(component_t *local_component, component_t *foreign_component)
   rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
   rlpm_release_txbuf(tx_buffer);
 
+  LOG_FEND();
   return OK;
 }
 
@@ -3140,8 +3108,8 @@ sdt_tx_leave(component_t *local_component, component_t *foreign_component, sdt_m
   marshalU16(client_block, (10+3) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add length to wrapper pdu */
-  pdu_size = datagram-wrapper;
-  marshalU16(wrapper, (datagram-wrapper) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
+  pdu_size = datagram - wrapper;
+  marshalU16(wrapper, (datagram - wrapper) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add our PDU (sets its length there)*/
   rlp_add_pdu(tx_buffer, wrapper, pdu_size, &pdup);
@@ -3155,6 +3123,7 @@ sdt_tx_leave(component_t *local_component, component_t *foreign_component, sdt_m
   rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
   rlpm_release_txbuf(tx_buffer);
 
+  LOG_FEND();
   return OK;
 }
 
@@ -3237,7 +3206,7 @@ sdt_tx_connect(component_t *local_component, component_t *foreign_component, uin
   marshalU16(client_block, (10+7) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add length to wrapper pdu */
-  pdu_size = datagram-wrapper;
+  pdu_size = datagram - wrapper;
   marshalU16(wrapper, (pdu_size) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add our PDU (sets its length there)*/
@@ -3249,7 +3218,9 @@ sdt_tx_connect(component_t *local_component, component_t *foreign_component, uin
   /* and send it on */
   rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
   rlpm_release_txbuf(tx_buffer);
+  acnlog(LOG_INFO | LOG_SDT, "sdt_tx_connect : released txbuf");
 
+  LOG_FEND();
   return OK;
 }
 
@@ -3332,7 +3303,7 @@ sdt_tx_connect_accept(component_t *local_component, component_t *foreign_compone
   marshalU16(client_block, (10+7) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add length to wrapper pdu */
-  pdu_size = datagram-wrapper;
+  pdu_size = datagram - wrapper;
   marshalU16(wrapper, (pdu_size) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add our PDU (sets its length there)*/
@@ -3345,6 +3316,7 @@ sdt_tx_connect_accept(component_t *local_component, component_t *foreign_compone
   rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
   rlpm_release_txbuf(tx_buffer);
 
+  LOG_FEND();
   return OK;
 }
 
@@ -3428,7 +3400,7 @@ sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, 
   marshalU16(client_block, (10+7) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add length to wrapper pdu */
-  pdu_size = datagram-wrapper;
+  pdu_size = datagram - wrapper;
   marshalU16(wrapper, (pdu_size) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add our PDU (sets its length there)*/
@@ -3441,6 +3413,7 @@ sdt_tx_disconnect(component_t *local_component, component_t *foreign_component, 
   rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
   rlpm_release_txbuf(tx_buffer);
 
+  LOG_FEND();
   return OK;
 }
 
@@ -3523,7 +3496,7 @@ sdt_tx_disconnecting(component_t *local_component, component_t *foreign_componen
   marshalU16(client_block, (10+8) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add length to wrapper pdu */
-  pdu_size = datagram-wrapper;
+  pdu_size = datagram - wrapper;
   marshalU16(wrapper, (pdu_size) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add our PDU (sets its length there)*/
@@ -3536,6 +3509,7 @@ sdt_tx_disconnecting(component_t *local_component, component_t *foreign_componen
   rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
   rlpm_release_txbuf(tx_buffer);
 
+  LOG_FEND();
   return OK;
 }
 
@@ -3598,6 +3572,7 @@ sdt_tx_mak_all(component_t *local_component)
   rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
   rlpm_release_txbuf(tx_buffer);
 
+  LOG_FEND();
   return OK;
 }
 
@@ -3670,6 +3645,7 @@ sdt_tx_mak_one(component_t *local_component, component_t *foreign_component)
   rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
   rlpm_release_txbuf(tx_buffer);
 
+  LOG_FEND();
   return OK;
 }
 
@@ -3767,7 +3743,7 @@ sdt_tx_reliable_data(component_t *local_component, component_t *foreign_componen
   marshalU16(client_block, (uint16_t)(10+data_len) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add length to wrapper pdu */
-  pdu_size = datagram-wrapper;
+  pdu_size = datagram - wrapper;
   marshalU16(wrapper, (pdu_size) | VECTOR_FLAG | HEADER_FLAG | DATA_FLAG);
 
   /* add our PDU (sets its length there)*/
@@ -3777,18 +3753,16 @@ sdt_tx_reliable_data(component_t *local_component, component_t *foreign_componen
   sdt_save_buffer(tx_buffer, pdup, pdu_size, local_component);
 
   /* and send it on */
-  /* HACK FOR TESTING */
-  acnlog(LOG_INFO | LOG_SDT, "sdt_tx_reliable_data : %" PRId32 " %" PRId32 , *(uint32_t*)(pdup + 0x09), *(uint32_t*)(pdup + 0x09) % 5   );
-
-  if (!(*(uint32_t*)(pdup + 0x09) % 5)) {
-    acnlog(LOG_INFO | LOG_SDT, "sdt_tx_reliable_data : %" PRId32 , *(uint32_t*)(pdup + 0x09));
-    rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
-  } else {
-    acnlog(LOG_INFO | LOG_SDT, "sdt_tx_reliable_data : %" PRId32 " skipped", *(uint32_t*)(pdup + 0x09));
+  {
+#if acntestlog(LOG_INFO | LOG_SDT)
+  uint32_t relseq = unmarshalU32(pdup + 0x09);
+#endif
+  acnlog(LOG_INFO | LOG_SDT, "sdt_tx_reliable_data : %" PRIu32 ", %" PRIu16, relseq, pdu_size);
   }
+  rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
   rlpm_release_txbuf(tx_buffer);
+  LOG_FEND();
 }
-
 
 /*****************************************************************************/
 /*
@@ -3873,7 +3847,7 @@ sdt_rx_ack(component_t *local_component, component_t *foreign_component, const u
     #endif
   }
 
-
+  LOG_FEND();
   return;
 }
 
@@ -3938,7 +3912,7 @@ sdt_rx_leave(component_t *local_component, component_t *foreign_component, const
   } else {
     acnlog(LOG_WARNING | LOG_WARNING, "sdt_rx_leave: no foreign member");
   }
-
+  LOG_FEND();
 }
 
 /*****************************************************************************/
@@ -4010,6 +3984,7 @@ sdt_rx_connect(component_t *local_component, component_t *foreign_component, con
       acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_connect: unsupported protocol");
       /* TODO: send refuse */
   }
+  LOG_FEND();
 }
 
 /*****************************************************************************/
@@ -4070,7 +4045,7 @@ sdt_rx_connect_accept(component_t *local_component, component_t *foreign_compone
   } else {
     acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_connect_accept: No foreign member");
   }
-
+  LOG_FEND();
 }
 
 /*****************************************************************************/
@@ -4127,6 +4102,7 @@ sdt_rx_connect_refuse(component_t *local_component, component_t *foreign_compone
   } else {
     acnlog(LOG_WARNING | LOG_WARNING, "sdt_rx_connect_refuse: No foreign member");
   }
+  LOG_FEND();
 }
 
 
@@ -4183,6 +4159,7 @@ sdt_rx_disconnect(component_t *local_component, component_t *foreign_component, 
   } else {
     acnlog(LOG_WARNING | LOG_WARNING, "sdt_rx_disconnect: No local member");
   }
+  LOG_FEND();
 }
 
 /*****************************************************************************/
@@ -4242,6 +4219,7 @@ sdt_rx_disconnecting(component_t *local_component, component_t *foreign_componen
   } else {
     acnlog(LOG_WARNING | LOG_WARNING, "sdt_rx_disconnecting: No foreign member");
   }
+  LOG_FEND();
 }
 
 /*****************************************************************************/
@@ -4301,6 +4279,7 @@ sdt_save_buffer(rlp_txbuf_t *tx_buffer, uint8_t *pdup, uint32_t size, component_
   resend->next = resends;
   resends = resend;
 
+  LOG_FEND();
   return OK;
 }
 
