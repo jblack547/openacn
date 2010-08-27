@@ -98,6 +98,7 @@ nsk_new_netsock(void)
       /* point to the next entry in the array */
     if (++socket >= sockets_tbl + MAX_NSK_SOCKETS) {
       ACN_PORT_UNPROTECT(protect);
+      errno = ENOMEM;
       return NULL;
     }
   }
@@ -142,8 +143,7 @@ nsk_netsocks_init(void)
     acnlog(LOG_INFO | LOG_NSK,"nsk_netsocks_init: already initialized");
     return;
   }
-  initialized_state = 1;
-  acnlog(LOG_DEBUG|LOG_NSK,"nsk_netsocks_init");
+  acnlog(LOG_DEBUG|LOG_NSK, "nsk_netsocks_init");
 
   for (socket = sockets_tbl; socket < sockets_tbl + MAX_NSK_SOCKETS; ++socket) {
     NSK_PORT(socket) = netx_PORT_NONE;
@@ -153,6 +153,7 @@ nsk_netsocks_init(void)
     socket->nativesock = netx_SOCK_NONE;
     socket->data_callback = NULL;
   }
+  initialized_state = 1;
 }
 
 /***********************************************************************************************/
