@@ -95,12 +95,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define acnopenlog(ident, option, facility) openlog(ident, option, facility)
 #define acncloselog() closelog()
+#define acntestlog(priority) (1)
+/* TODO: pn: what is SysLog()? note capitals - whyn not the commented out function? */
 #define acnlog(priority, ...) if (priority >= 0) SysLog(__VA_ARGS__)
 /* #define acnlog(priority, ...) if (priority >= 0) syslog(priority, __VA_ARGS__) */
-/* #define acnlog(priority, ...) if (priority >= 0) iprintf(__VA_ARGS__) */
-/* void  openlog (const char *ident, int option, int facility) */
-/* void  syslog (int priority, const char *format, ...) */
-/* void  closelog (void) */
 
 #elif CONFIG_ACNLOG == ACNLOG_STDOUT || CONFIG_ACNLOG == ACNLOG_STDERR
 
@@ -109,13 +107,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define acnopenlog(ident, option, facility)
 #define acncloselog()
 
+#define acntestlog(priority) ((priority) >= 0 && ((priority) & 7) <= CONFIG_LOGLEVEL)
+#define acnlogfile() ((CONFIG_ACNLOG == ACNLOG_STDERR) ? stderr : stdout)
 #define acnlog(priority, ...) \
-	((void)(((priority) >= 0 && ((priority) & 7) <= CONFIG_LOGLEVEL) ? \
-	(fprintf(((CONFIG_ACNLOG == ACNLOG_STDERR) ? stderr : stdout), __VA_ARGS__), putc('\n', ((CONFIG_ACNLOG == ACNLOG_STDERR) ? stderr : stdout))) \
+	((void)(acntestlog(priority) ? \
+	(fprintf(acnlogfile(), __VA_ARGS__), putc('\n', acnlogfile())) \
 	: 0))
 
 #else /* CONFIG_ACNLOG == ACNLOG_NONE */
 
+#define acntestlog(priority) (0)
 #define acnopenlog(ident, option, facility)
 #define acncloselog()
 #define acnlog(priority, ...)
