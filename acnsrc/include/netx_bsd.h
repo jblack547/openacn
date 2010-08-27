@@ -143,6 +143,7 @@ struct netxsocket_s {
 /* #endif */
 
 /* operation when looking at localaddr_t */
+#define netx_INIT_LOCALADDR(addrp, addr, port) (*addrp = (port))
 #define LCLAD_PORT(x) x
 #define LCLAD_INADDR(x) netx_INADDR_ANY
 
@@ -160,12 +161,12 @@ struct netxsocket_s {
 #define NSK_PORT(x) netx_PORT(&(x)->localaddr)
 #define NSK_INADDR(x) netx_INADDR(&(x)->localaddr)
 
-typedef netx_addr_t *localaddr_t;
+typedef netx_addr_t localaddr_t;
 
-#define LCLAD_PORT(x) netx_PORT(x)
-#define LCLAD_INADDR(x) netx_INADDR(x)
-
-#define netx_LCLADDR(x) (x)
+#define netx_INIT_LOCALADDR(addrp, addr, port) netx_INIT_ADDR(addrp, addr, port)
+#define LCLAD_PORT(laddr) netx_PORT(&(laddr))
+#define LCLAD_INADDR(laddr) netx_INADDR(&(laddr))
+#define netx_LCLADDR(addr) (addr)
 
 #endif /* !CONFIG_LOCALIP_ANY */
 
