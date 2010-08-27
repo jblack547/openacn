@@ -58,7 +58,7 @@ extern "C" {
 #include "epi20.h"
 
 /* MAX_MTU is max size of Ethernet packet - see epi20 for discussion */
-typedef char UDPPacket[MAX_MTU];
+typedef uint8_t UDPPacket[MAX_MTU];
 #endif  /* CONFIG_EPI20 */
 
 typedef void netx_callback_t (
@@ -137,10 +137,10 @@ struct netxsocket_s {
 #define NSK_PORT(x) ((x)->localaddr)
 #define NSK_INADDR(x) netx_INADDR_ANY
 
-#ifndef HAVE_localaddr_t
+/* #ifndef HAVE_localaddr_t */
   typedef port_t          localaddr_t;
-  #define HAVE_localaddr_t
-#endif
+/*   #define HAVE_localaddr_t */
+/* #endif */
 
 /* operation when looking at localaddr_t */
 #define LCLAD_PORT(x) x
@@ -172,7 +172,7 @@ typedef netx_addr_t *localaddr_t;
 /************************************************************************/
 /* function prototypes for netxface.c */
 /* TODO: since these functions are or should be common to all platforms, should they be moved to the netface.h file? */
-void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest);
+void netx_handler(uint8_t *data, int length, netx_addr_t *source, netx_addr_t *dest);
 
 extern void  netx_init(void);
 extern int   netx_startup(void);

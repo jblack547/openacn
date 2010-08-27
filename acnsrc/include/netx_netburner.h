@@ -56,7 +56,7 @@ extern "C" {
 #if CONFIG_EPI20
 
 /* MAX_MTU is max size of Ethernet packet - see epi20 for discussion */
-typedef char UDPPacket[MAX_MTU];
+typedef uint8_t UDPPacket[MAX_MTU];
 #endif  /* CONFIG_EPI20 */
 
 typedef void netx_callback_t (
@@ -158,18 +158,18 @@ struct netxsocket_s {
 #define NSK_PORT(x)   netx_PORT(&(x)->localaddr)
 #define NSK_INADDR(x) netx_INADDR(&(x)->localaddr)
 
-typedef netx_addr_t    *localaddr_t;
+typedef netx_addr_t localaddr_t;
 
-#define LCLAD_PORT(x)   netx_PORT(x)
-#define LCLAD_INADDR(x) netx_INADDR(x)
-
-/* #define netx_LCLADDR(x) (x) */
+#define netx_INIT_LOCALADDR(addrp, addr, port) netx_INIT_ADDR(addrp, addr, port)
+#define LCLAD_PORT(laddr) netx_PORT(&(laddr))
+#define LCLAD_INADDR(laddr) netx_INADDR(&(laddr))
+#define netx_LCLADDR(addr) (addr)
 
 #endif /* !CONFIG_LOCALIP_ANY */
 
 /************************************************************************/
 /* function prototypes for netxface.c */
-void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest);
+void netx_handler(uint8_t *data, int length, netx_addr_t *source, netx_addr_t *dest);
 
 extern void  netx_init(void);
 extern int   netx_startup(void);
