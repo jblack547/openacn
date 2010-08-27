@@ -45,7 +45,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>   /* for sleep */
 
 #include <ctype.h>    /* toupper...*/
+#include <pthread.h>
 
+#define DEBUG_LOCKING 1
+//#undef DEBUG_LOCKING
 /*
 BSD has it's own version of these
 
@@ -59,20 +62,24 @@ BSD has it's own version of these
 /* TODO: need to define this! */
 /* extern OS_CRIT DASemaphore; */ /* semaphore to protect directory agent list */
 typedef int acn_protect_t;
-#define ACN_PORT_PROTECT()        acn_port_protect()
-#define ACN_PORT_UNPROTECT(x)     acn_port_unprotect(x)
+
+/* prevent other threads */
+#ifdef DEBUG_LOCKING
+extern acn_protect_t acn_port_protect(void);
+#define ACN_PORT_PROTECT() acn_port_protect();
+#else
+#define ACN_PORT_PROTECT() pthread_mutex_lock(&mutex)
+#endif
+/* allow other threads */
+#define ACN_PORT_UNPROTECT(x) pthread_mutex_unlock(&mutex)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* prevent other threads */
-acn_protect_t  acn_port_protect(void);
-/* allow other threads */
-void           acn_port_unprotect(acn_protect_t param);
-/* nothing */
-#define acn_port_protect_startup()
-#define acn_port_protect_shutdown()
+extern pthread_mutex_t mutex;
+extern void acn_port_protect_startup(void);
+extern void acn_port_protect_shutdown(void);
 
 #ifdef __cplusplus
 }

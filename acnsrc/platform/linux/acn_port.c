@@ -32,8 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 	$Id$
 
+#tabs=2s
 */
-
 /*--------------------------------------------------------------------*/
 #include "opt.h"
 #include "acnstdtypes.h"
@@ -41,46 +41,52 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acn_port.h"
 
 #include <pthread.h>
+#ifdef DEBUG_LOCKING
+#include "acnlog.h"
+#include <errno.h>
+#include <string.h>
+#include <unistd.h>
+#endif
+
 
 pthread_mutex_t mutex;           /* Mutex */
-pthread_mutexattr_t mutexattr;   /* Mutex attribute variable */
-int refcnt = 0;
+#ifdef DEBUG_LOCKING
+pthread_t owner;
+#endif
 
-
-acn_protect_t 
-acn_port_protect(void)
+void acn_port_protect_startup(void)
 {
-  if (!refcnt == 0) {
-    /* Set the mutex as a recursive mutex */
-    pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
-    /* create the mutex with the attributes set */
-    pthread_mutex_init(&mutex, &mutexattr);
-    /* After initializing the mutex, the thread attribute can be destroyed */
-    pthread_mutexattr_destroy(&mutexattr);
+  pthread_mutexattr_t mutexattr;   /* Mutex attribute variable */
+
+  pthread_mutexattr_init(&mutexattr);
+  pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(&mutex, &mutexattr);
+  /* After initializing the mutex, the thread attribute can be destroyed */
+  pthread_mutexattr_destroy(&mutexattr);
+}
+
+void acn_port_protect_shutdown(void)
+{
+  pthread_mutex_destroy(&mutex);
+}
+
+#ifdef DEBUG_LOCKING
+acn_protect_t acn_port_protect(void)
+{
+  int i = 0;
+  int rslt;
+
+  while ((rslt = pthread_mutex_trylock(&mutex)) != 0) {
+    if (rslt == EBUSY) {
+      if ((++i % 100) == 0) {
+        acnlog(LOG_DEBUG | LOG_MISC, "Thread %d %sblocked by %d", pthread_self(), (i > 100 ? "still " : ""), owner);
+      }
+    } else {
+        acnlog(LOG_WARNING | LOG_MISC, "Mutex error %s", strerror(rslt));
+    }
+    usleep(100000);
   }
-  /* Acquire the mutex to access the shared resource */
-  pthread_mutex_lock (&mutex);
-  refcnt++;
+  owner = pthread_self();
   return 0;
 }
-
-void
-acn_port_unprotect(acn_protect_t param)
-{
-  UNUSED_ARG(param);
-  if (refcnt > 1) {
-    /* Unlock mutex */
-    pthread_mutex_unlock (&mutex);
-    refcnt--;
-  } else {
-    if (refcnt == 1) { 
-      /* Unlock mutex */
-      pthread_mutex_unlock (&mutex);
-      /* Destroy / close the mutex */
-      pthread_mutex_destroy (&mutex);
-      refcnt--;
-    }
-  } /* do nothing if 0 */
-}
-
-
+#endif
