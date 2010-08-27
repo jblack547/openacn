@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   $Id$
 
+#tabs=2s
 */
 /*--------------------------------------------------------------------*/
 /* static const char *rcsid __attribute__ ((unused)) = */
@@ -198,17 +199,16 @@ rlp_init(void)
   static bool initialized_state = 0;
 
   if (initialized_state) {
-    acnlog(LOG_INFO | LOG_SDT,"rlp_init: already initialized");
-    return FAIL;
+    acnlog(LOG_INFO | LOG_RLP,"rlp_init: already initialized");
+    return OK;
   }
-  initialized_state = 1;
   LOG_FSTART();
 
   /* initialize sub modules */
-  nsk_netsocks_init();
   netx_init();
   rlpm_init();
 
+  initialized_state = 1;
   LOG_FEND();
   return OK;
 }
@@ -363,7 +363,9 @@ rlp_add_pdu(
     }
 #else /* not CONFIG_RLP_OPTIMIZE_PACK */
 #if CONFIG_RLP_SINGLE_CLIENT
-    /* since we only have SDT PDUs, we don't have to repeat vector (protocol id) */
+    /*
+    since we only have one client, we don't have to repeat vector (protocol id)
+    */
     pdup += 2;  /* allow for length field */
     flags = DATA_FLAG;
 #else
@@ -379,6 +381,9 @@ rlp_add_pdu(
   */
 #if CONFIG_RLP_OPTIMIZE_PACK
   if ((flags & DATA_FLAG)) {
+    if (pdup + size > buf->netbuf + buf->datasize) {
+      acnlog(LOG_ERR | LOG_RLP,"rlp_add_pdu: data overflow");
+    }
     /* is data in the right place already? */
     if (pdudata != pdup) {
       /* move data into position */
@@ -393,6 +398,9 @@ rlp_add_pdu(
   }
   pduend = pdup;
 #else
+  if (pdup + size > (uint8_t *)buf->netbuf + buf->datasize) {
+    acnlog(LOG_ERR | LOG_RLP,"rlp_add_pdu: data overflow");
+  }
   /* is data in the right place already? */
   if (pdudata != pdup) {
     /* move data into position */
@@ -452,7 +460,7 @@ rlp_send_block(
 
   assert(netsock);
 
-  rslt = netx_send_to(netsock, destaddr, buf->netbuf, buf->blockend - buf->blockstart);
+  rslt = netx_send_to(netsock, destaddr, buf->blockstart, buf->blockend - buf->blockstart);
   LOG_FEND();
   return rslt;
 
