@@ -1,36 +1,35 @@
-/**************************************************************************/
+/************************************************************************/
 /*
+  Copyright (c) 2007-2010, Engineering Arts (UK)
 
-Copyright (c) 2007, Engineering Arts (UK)
+  All rights reserved.
 
-All rights reserved.
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are
+  met:
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
+   * Redistributions of source code must retain the above copyright
+     notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above copyright
+     notice, this list of conditions and the following disclaimer in the
+     documentation and/or other materials provided with the distribution.
+   * Neither the name of Engineering Arts nor the names of its
+     contributors may be used to endorse or promote products derived from
+     this software without specific prior written permission.
 
- * Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
- * Neither the name of Engineering Arts nor the names of its
-   contributors may be used to endorse or promote products derived from
-   this software without specific prior written permission.
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+  TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+  PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+  OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
-IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
-TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
-OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-  $Id$
+    $Id$
 
 #tabs=2s
 */
@@ -40,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __opt_h__ 1
 #include "user_opt.h"
 
-/**************************************************************************/
+/************************************************************************/
 /*
   IMPORTANT
   YOU SHOULD NOT NEED TO EDIT THIS HEADER
@@ -56,11 +55,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   what  they do. Note that options may not be implemented, may  only
   work for certain builds or may only work in specific combinations.
 */
-/**************************************************************************/
+/************************************************************************/
 
-/**************************************************************************/
+/************************************************************************/
 /*
   ACN Protocols
+
   Define which protocols and EPIs to build or conform to
   
   NSK layer is not an ACN protocol but has a switch here as it is the
@@ -68,6 +68,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   Default all on except:
     E1.31 - not complete yet
+    EPI13 - superseded by EPI29
 */
 /************************************************************************/
 
@@ -106,7 +107,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define  CONFIG_EPI12   1
 #endif
 #ifndef CONFIG_EPI13
-#define  CONFIG_EPI13   1
+#define  CONFIG_EPI13   0
 #endif
 #ifndef CONFIG_EPI15
 #define  CONFIG_EPI15   1
@@ -126,8 +127,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CONFIG_EPI20
 #define  CONFIG_EPI20   1
 #endif
+#ifndef CONFIG_EPI29
+#define  CONFIG_EPI29   1
+#endif
 
-/**************************************************************************/
+/************************************************************************/
 /*
   C Compiler
 
@@ -233,23 +237,36 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /**************************************************************************/
 /*
-Standard type names (e.g. uint16_t etc.)
+  Standard type names (e.g. uint16_t etc.)
 
-These are standard names in ISO C99 defined in inttypes.h. For archaic
-ISO C89 compilers (Windows et al) these can be automatically derived in
-typefromlimits.h from C89 standard header limits.h.
+  These are standard names in ISO C99 defined in inttypes.h. If your
+  compiler is C99 compliant or nearly so, it should pick this up
+  automatically.
 
-Leaving USER_DEFINE_INTTYPES false is likely to be far more portable.
-You only need to define this if for some reason your build wants to
-define them itself. If this is set, the build just looks for your own
-user_types.h header. See acnstdtypes.h for more info.
+  For archaic ISO C89 compilers (Windows et al) it will attempt to
+  generate these types using typefromlimits.h (openacn specific) and
+  C89 standard header limits.h.
+
+  If your compiler is not C99 compliant but nevertheless has a good
+  inttypes.h header available, then define HAVE_INT_TYPES_H to 1
+
+  Finally if you are providing your own definitions for these types.
+  Define USER_DEFINE_INTTYPES to 1 and provide your own definitions in
+  user_types.h. (Examples are provided).
+
+  Leaving the compiler to sort it out from default values is likely to
+  be far more portable, but defining your own may be cleaner and
+  easier for deeply embedded builds.
+
+  See acnstdtypes.h for more info.
 */
 /************************************************************************/
+
 #ifndef USER_DEFINE_INTTYPES
 #define USER_DEFINE_INTTYPES 0
 #endif
 
-/**************************************************************************/
+/************************************************************************/
 /*
   Networking
 */
@@ -273,6 +290,7 @@ user_types.h header. See acnstdtypes.h for more info.
 /*
   Network stack and API to use - pick just one
 */
+
 /* BSD sockets */
 #ifndef CONFIG_STACK_BSD
 #define  CONFIG_STACK_BSD       0
@@ -301,10 +319,13 @@ user_types.h header. See acnstdtypes.h for more info.
 /*
   Filter by incoming address
 
-  If the stack has the option of return the (multicast) destination address then RLP
-  will make sure that callback to STD are filtered by the desired multicast address.
-  Otherwise, the filtering in only done by socket callbacks to the same socket will get
-  all socket messages reguardless of the mulitcast address registered.
+  If the stack has the ability to return the (multicast) destination
+  address then RLP will make sure that callbacks to STD are filtered by
+  the desired multicast address. Otherwise, the filtering is only done
+  by port and callbacks to the same socket will get all socket messages
+  regardless of the mulitcast address registered. These messages will
+  ultimately be rejected by higher layers of code, but only after wading
+  through the contents of the packet.
 */
 
 #if (CONFIG_STACK_WIN32 || CONFIG_STACK_BSD || CONFIG_STACK_NETBURNER)
@@ -314,23 +335,23 @@ user_types.h header. See acnstdtypes.h for more info.
 #endif
 
 /*
-  Allow code to specify network interface
+  Allow code to specify interfaces
 
-  In hosts with multiple interfaces (including the loopback interface) it
-  is normal to accept incoming packets for any interface (local address)
-  and to leave it to the stack to select the interface for outgoing
-  packets (in BSD this is done by binding sockets to INADDR_ANY).
+  In hosts with multiple interfaces (including the loopback interface)
+  it is normal to accept packets received on any interface and to leave
+  it to the stack to select the interface for outgoing packets - in BSD
+  this is done by binding sockets to INADDR_ANY, other stacks have
+  similar mechanisms, or may even be incapable of any other behavior.
 
-  If CONFIG_LOCALIP_ANY is set, RLP and SDT rely
-  entirely on the stack to handle IP addresses and interfaces and the API
-  does not allow local addresses to be specified (except for multicast) and
-  only stores port information. This saves using resources tracking
-  addresses which are always unspecified.
+  If CONFIG_LOCALIP_ANY is set, RLP and SDT rely entirely on the stack
+  to handle IP addresses and interfaces, the API does not allow local
+  interfaces to be specified and only stores port information. This
+  saves using resources tracking redundant interface information.
 
   If CONFIG_LOCALIP_ANY is false then the API allows higher layers to
-  specify individual interfaces at the expense of slightly more code and
-  memory. This setting still allows the value NETI_INADDR_ANY to be used
-  as required.
+  specify individual interfaces (by their address) at the expense of
+  slightly more code and memory. This setting still allows the value
+  NETI_INADDR_ANY to be used as required.
 */
 
 #ifndef CONFIG_LOCALIP_ANY
@@ -421,6 +442,10 @@ user_types.h header. See acnstdtypes.h for more info.
 #endif
 
 #define LOG_NONE (-1)
+
+#ifndef LOG_COMPM
+  #define LOG_COMPM LOG_NONE
+#endif
 #ifndef LOG_RLP
   #define LOG_RLP LOG_NONE
 #endif
@@ -460,6 +485,9 @@ user_types.h header. See acnstdtypes.h for more info.
 #ifndef LOG_ASSERT
   #define LOG_ASSERT LOG_NONE
 #endif
+#ifndef LOG_E131
+  #define LOG_E131 LOG_NONE
+#endif
 
 /**************************************************************************/
 /*
@@ -479,8 +507,8 @@ user_types.h header. See acnstdtypes.h for more info.
 /*
   Component name strings
 
-  Fixed Component Type Name (FCTN) and User Assigned Component Name (UACN)
-  Defined in EPI19, these are transmitted in UTF-8 encoding
+  Fixed Component Type Name (FCTN) and User Assigned Component Name
+  (UACN) Defined in EPI19, these are transmitted in UTF-8 encoding
 
   The standard does not specify a size for FCTN so we arbirarily assign
   storage.
@@ -517,6 +545,22 @@ user_types.h header. See acnstdtypes.h for more info.
 
 /************************************************************************/
 /*
+  Component tracking
+*/
+/************************************************************************/
+
+/* Default CONFIG_COMPONENTMEM to follow CONFIG_MEM */
+
+#ifndef CONFIG_COMPONENTMEM
+#define CONFIG_COMPONENTMEM CONFIG_MEM
+#endif
+
+#ifndef CONFIG_MAX_COMPONENTS
+#define CONFIG_MAX_COMPONENTS    4
+#endif
+
+/************************************************************************/
+/*
   Network socket layer
 
   this is a layer to splice RLP to your stack and OS. it is highly
@@ -528,24 +572,23 @@ user_types.h header. See acnstdtypes.h for more info.
 #define MAX_NSK_SOCKETS 50
 #endif
 
-/**************************************************************************/
+/************************************************************************/
 /*
   Root Layer Protocol
 */
-/**************************************************************************/
-/*
-  Client protocols
+/************************************************************************/
+#if CONFIG_RLP
 
+/*
   The default is to build a generic RLP for multiple client protocols.
   However, efficiency gains can be made if RLP is built for only one
-  client protocol (probably SDT or E1.31 - defaults to SDT), in this case set
+  client protocol (probably SDT or E1.31), in this case set
   CONFIG_RLP_SINGLE_CLIENT to 1 and define the the protocol ID of that
   client (in user_opt.h) as CONFIG_RLP_CLIENTPROTO
   
   e.g. For E1.31 only support
-
-  #define CONFIG_RLP_SINGLE_CLIENT 1
-  #define CONFIG_RLP_CLIENTPROTO E131_PROTOCOL_ID
+    #define CONFIG_RLP_SINGLE_CLIENT 1
+    #define CONFIG_RLP_CLIENTPROTO E131_PROTOCOL_ID
 */
 #ifndef CONFIG_RLP_SINGLE_CLIENT
 #define CONFIG_RLP_SINGLE_CLIENT 0
@@ -578,18 +621,22 @@ user_types.h header. See acnstdtypes.h for more info.
 #endif
 
 /*
-  If we want RLP to optimize packing for size (instead of handling speed)
-  define this true
+  If we want RLP to optimize PDU packing for size of packets (instead of
+  handling speed) define CONFIG_RLP_OPTIMIZE_PACK true.
 */
 #ifndef CONFIG_RLP_OPTIMIZE_PACK
 #define CONFIG_RLP_OPTIMIZE_PACK 0
 #endif
+
+#endif  /* CONFIG_RLP */
 
 /**************************************************************************/
 /*
   SDT
 */
 /************************************************************************/
+#if CONFIG_SDT
+
 /*
   Client protocols
 
@@ -600,9 +647,8 @@ user_types.h header. See acnstdtypes.h for more info.
   client (in user_opt.h) as CONFIG_SDT_CLIENTPROTO
   
   e.g.
-
-  #define CONFIG_SDT_SINGLE_CLIENT 1
-  #define CONFIG_SDT_CLIENTPROTO DMP_PROTOCOL_ID
+    #define CONFIG_SDT_SINGLE_CLIENT 1
+    #define CONFIG_SDT_CLIENTPROTO DMP_PROTOCOL_ID
 */
 #ifndef CONFIG_SDT_SINGLE_CLIENT
 #define CONFIG_SDT_SINGLE_CLIENT 0
@@ -622,10 +668,6 @@ user_types.h header. See acnstdtypes.h for more info.
 
   Figures here are bare minimum. You will probably want to override them.
 */
-#ifndef SDT_MAX_COMPONENTS
-#define SDT_MAX_COMPONENTS          4
-#endif
-
 #ifndef SDT_MAX_CHANNELS
 #define SDT_MAX_CHANNELS            4
 #endif
@@ -651,23 +693,38 @@ user_types.h header. See acnstdtypes.h for more info.
 #define SDT_RESEND_TIMEOUT_ms      5000
 #endif
 
-/**************************************************************************/
+#endif  /* CONFIG_SDT */
+
+/************************************************************************/
 /*
   DMP
 */
 /************************************************************************/
+#if CONFIG_DMP
+
 #ifndef DMP_MAX_SUBSCRIPTIONS
 #define DMP_MAX_SUBSCRIPTIONS       100
 #endif
 
-/**************************************************************************/
+/*
+  DMP_HAS_VIRTUAL turns on support for virtual addressing. This is
+  compliant with E1.17-2006 but virtual addressing is little used and
+  the 2010 revision obsoletes it so you can probably set this false for
+  significant code saving.
+*/
+#ifndef DMP_HAS_VIRTUAL
+#define DMP_HAS_VIRTUAL       0
+#endif
+
+#endif  /* CONFIG_DMP */
+/************************************************************************/
 /*
   Sanity checks
 
   The following are sanity checks on preceding options and some
   derivative configuration values. They are not user options
 */
-/**************************************************************************/
+/************************************************************************/
 /*
   check on transport selection
 */
