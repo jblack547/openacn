@@ -156,6 +156,7 @@ vpath %.c ${SUBDIRPATHS} ${ACNROOT}
 ##########################################################################
 # For each subdir, we define a separate set of object files e.g. sdt_OBJS
 # and also add them to the all_OBJS list
+# Assume all .c sources in the dir are to be inl
 #
 define OBJSFORDIR
 ${DIR}_SRC:=$${notdir $${wildcard ${addsuffix /*.c, ${ACNROOT}/${DIR}}}}
@@ -195,6 +196,17 @@ ${foreach DIR, ${SUBDIRS}, ${eval ${SUBDIRRULE}}}
 
 ${LIBRARY}: ${all_OBJS}
 	ar rcs $@ $^
+
+##########################################################################
+# acntest application
+#
+
+ifeq "${ACNTEST}" ""
+ACNTEST=acntest
+endif
+
+${ACNTEST} : ${ACNTEST}.c ${LIBRARY}
+	${CC} ${CFLAGS} ${CPPFLAGS} ${TARGET_ARCH} -o $@ $^ -lpthread
 
 ##########################################################################
 # Housekeeping
