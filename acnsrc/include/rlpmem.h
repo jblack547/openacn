@@ -49,9 +49,6 @@ extern "C" {
 
 typedef int usage_t;
 
-#define RLP_FAIL 0
-#define RLP_OK   1
-
 typedef  struct rlp_listener_s rlp_listener_t;
 typedef  struct rlp_rxgroup_s  rlp_rxgroup_t;
 typedef  struct rlp_txbuf_s    rlp_txbuf_t;

@@ -480,11 +480,11 @@ rlpm_netsock_has_rxgroups(netxsocket_t *netsock)
   rxgroup = rxgroups;
   while (rxgroup) {
     if (rxgroup->socket == netsock) {
-      return RLP_OK;
+      return true;
     }
     rxgroup = rxgroup->next;
   }
-  return RLP_FAIL;
+  return false;
 }
 
 /***********************************************************************************************/
@@ -495,9 +495,9 @@ int
 rlpm_rxgroup_has_listeners(rlp_rxgroup_t *rxgroup)
 {
   if (rxgroup->listeners) {
-    return RLP_OK;
+    return true;
   }
-  return RLP_FAIL;
+  return false;
 }
 
 /***********************************************************************************************/
