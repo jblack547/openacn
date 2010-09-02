@@ -116,8 +116,7 @@ enum
 };
 
 /* local variables */
-static sdt_resend_t   *resends = NULL;              /* list of buffers to resend */
-static component_t    *components = NULL;           /* list of components */
+       sdt_resend_t   *resends = NULL;              /* list of buffers to resend */
        netxsocket_t   *sdt_adhoc_socket = NULL;     /* socket for adhock */
 struct rlp_listener_s *sdt_adhoc_listener = NULL;   /* listener for RLP */
        netxsocket_t   *sdt_multicast_socket = NULL; /* socket for ACN multcast */
@@ -206,12 +205,13 @@ sdt_init(void)
     acnlog(LOG_INFO | LOG_SDT,"sdt_init: already initialized");
     return FAIL;
   }
-  initialized_state = 1;
   LOG_FSTART();
 
+  comp_start();
   rlp_init();
   sdtm_init();
 
+  initialized_state = 1;
   LOG_FEND();
   return OK;
 }
@@ -385,8 +385,7 @@ sdt_shutdown(void)
 
   /* if we have a local component with members in the channel, tell them  to get out of town */
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_shutdown: leaving sessions");
-  component = components;
-  while(component) {
+  for (component = allcomps; component != NULL; component = component->next) {
     if (component->tx_channel) {
       member = component->tx_channel->member_list;
       if (component->is_local) {
@@ -419,15 +418,15 @@ sdt_shutdown(void)
         }
       }
     }
-    component = component->next;
   }
 
   /*  get first component and rip thru all of them (cleaning up resources along the way) */
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_shutdown: forgetting components");
-  component = components;
-  while(component) {
-    /* returns the next component after delete */
-    component = sdt_del_component(component);
+  for (component = allcomps; component != NULL;) {
+    component_t *nxtcomp = component->next;
+
+    sdt_del_component(component);
+    component = nxtcomp;
   }
 
   /* adhoc clean up */
@@ -471,41 +470,75 @@ sdt_shutdown(void)
   Add a new component and initialize it;
   returns new component or NULL
  */
+#define ERROR_nomem       1
+#define CONFLICT_notnew   2
+#define CONFLICT_creator  4
+#define CONFLICT_local    8
+#define CONFLICT_dcid     16
+#define CONFLICT_access   32
+
 component_t *
-sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t access)
+sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, 
+                  access_t access, created_by_t creator)
 {
   component_t *component;
   acn_protect_t  protect;
 #if acntestlog(LOG_DEBUG | LOG_SDT)
   char  cid_text[CID_STR_SIZE];
 #endif
+  int rslt = 0;
 
+  assert(!cidIsNull(cid));
   acnlog(LOG_DEBUG | LOG_SDT, "sdt_add_component: %s", cidToText(cid, cid_text));
 
   protect = ACN_PORT_PROTECT();
   /* See if we have this already, otherwise get a new one */
-  if ((component = sdt_find_comp_by_cid(cid)) != NULL) {
-    ACN_PORT_UNPROTECT(protect);
-    acnlog(LOG_WARNING | LOG_SDT,"sdt_add_component: component already exists");
-  } else if ((component = sdtm_new_component()) == NULL) {
-    ACN_PORT_UNPROTECT(protect);
-    acnlog(LOG_ERR | LOG_SDT,"sdt_add_component: new component allocation failed");
+  if ((component = comp_get_by_cid(cid)) == NULL)
+    rslt = ERROR_nomem;
+  else if (component->created_by) {  /* Already there */
+    rslt = CONFLICT_notnew;
+    if (component->created_by != creator) rslt |= CONFLICT_creator;
+    if (component->is_local != is_local) {
+      rslt |= CONFLICT_local;
+      comp_release(component);
+      component = NULL;
+    }
+    if (dcid) {
+      if (cidIsNull(component->dcid)) cidCopy(component->dcid, dcid);
+      else if (!cidIsEqual(dcid, component->dcid)) rslt |= CONFLICT_dcid;
+    }
+    if (access != accUNKNOWN) {
+      if (component->access == accUNKNOWN) component->access = access;
+      else if (component->access != access) rslt |= CONFLICT_access;
+    }
   } else {
     /* initialise it */
-    if (cid) cidCopy(component->cid, cid);
     if (dcid) cidCopy(component->dcid, dcid);
     component->access = access;
-    component->is_local = is_local;
-    if (component->is_local) {
+    component->created_by = creator;
+    if (component->is_local)
       mcast_alloc_init(0, 0, component);
-    }
-
-    /* add it to our list */
-    component->next = components;
-    components = component;
-    ACN_PORT_UNPROTECT(protect);
   }
-
+  ACN_PORT_UNPROTECT(protect);
+  if (rslt) {
+    if (rslt == ERROR_nomem)
+      acnlog(LOG_ERR | LOG_SDT,"sdt_add_component: new component allocation failed");
+    else {
+      acnlog(LOG_INFO | LOG_SDT,"sdt_add_component: component already exists");
+      if (rslt & CONFLICT_creator) {
+        acnlog(LOG_INFO | LOG_SDT,"sdt_add_component: previous creator differed");
+      }
+      if (rslt & CONFLICT_local) {
+        acnlog(LOG_ERR | LOG_SDT,"sdt_add_component: local/remote changed!");
+      }
+      if (rslt & CONFLICT_dcid) {
+        acnlog(LOG_ERR | LOG_SDT,"sdt_add_component: DCID changed!");
+      }
+      if (rslt & CONFLICT_access) {
+        acnlog(LOG_WARNING | LOG_SDT,"sdt_add_component: access type changed!");
+      }
+    }
+  }
   return component;
 }
 
@@ -514,7 +547,7 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t acc
   Delete a component and it's dependencies
   returns next component or NULL
  */
-component_t *
+void
 sdt_del_component(component_t *component)
 {
   component_t   *cur;
@@ -530,8 +563,7 @@ sdt_del_component(component_t *component)
 
   protect = ACN_PORT_PROTECT();
   /* remove this component from other components member list */
-  cur = components;
-  while (cur) {
+  for (cur = allcomps; cur != NULL; cur = cur->next) {
     if (cur->tx_channel) {
        member = sdt_find_member_by_component(cur->tx_channel, component);
        if (member) {
@@ -539,7 +571,6 @@ sdt_del_component(component_t *component)
         sdt_del_member(cur->tx_channel, member);
        }
     }
-    cur = cur->next;
   }
 
   /* remove our channel (and member list) */
@@ -547,24 +578,10 @@ sdt_del_component(component_t *component)
     sdt_del_channel(component);
   }
 
-  /* unlink the component */
-  /* if it is at top, then we just move leader */
-  if (component == components) {
-    cur = components = component->next;
-  } else {
-    for (cur = components; cur != NULL; cur = cur->next)
-      if (cur->next == component) {
-        cur->next = component->next;
-        cur = cur->next;
-        break;
-      }
-  }
-
   /* now free it */
-  sdtm_free_component(component);
+  comp_release(component);
 
   ACN_PORT_UNPROTECT(protect);
-  return cur;
 }
 
 /*****************************************************************************/
@@ -574,7 +591,7 @@ sdt_del_component(component_t *component)
 component_t *
 sdt_first_component(void)
 {
-  return components;
+  return allcomps;
 }
 
 /*****************************************************************************/
@@ -614,7 +631,7 @@ sdt_add_channel(component_t *leader, uint16_t channel_number)
     leader->tx_channel = channel; /* put address of this chan structure into the component struct */
     return channel;
   }
-  acnlog(LOG_ERR | LOG_SDT,"sdt_add_channel: failed to get new channel");
+  acnlog(LOG_ERR | LOG_SDT, "sdt_add_channel: failed to get new channel");
   return NULL; /* none left */
 }
 
@@ -830,7 +847,7 @@ sdt_find_comp_by_cid(const cid_t cid)
 {
   component_t *component;
 
-  for (component = components; component != NULL; component = component->next)
+  for (component = allcomps; component != NULL; component = component->next)
     if (cidIsEqual(component->cid, cid))
       return (component);
 
@@ -979,6 +996,7 @@ void
 sdt_tick(void *arg)
 {
   component_t   *component;
+  component_t   *compnext;
   sdt_channel_t *channel;
   sdt_member_t  *member;
   acn_protect_t  protect;
@@ -992,8 +1010,7 @@ sdt_tick(void *arg)
     return;
 
   protect = ACN_PORT_PROTECT();
-  component = components;
-  while(component) {
+  for (compnext = NULL, component = allcomps; component != NULL; component = compnext) {
     channel = component->tx_channel;
 
     if (channel) {
@@ -1092,12 +1109,9 @@ sdt_tick(void *arg)
       } /* if channel has members */
     } /* of if(channel) */
 
+    compnext = component->next;
     /* delete self-created components that have no channel (and no members) */
-    if (!channel && component->created_by == cbJOIN) {
-      component = sdt_del_component(component);
-    } else {
-      component = component->next;
-    }
+    if (!channel && component->created_by == cbJOIN) sdt_del_component(component);
   } /* end while component */
 
   /* send any resends and flush any expired ones */
@@ -2069,14 +2083,13 @@ sdt_rx_join(const cid_t foreign_cid, const netx_addr_t *source_addr, const uint8
   /*  Are we already tracking the src component, if not add it */
   foreign_component = sdt_find_comp_by_cid(foreign_cid);
   if (!foreign_component) {
-    foreign_component = sdt_add_component(foreign_cid, NULL, false, accUNKNOWN);
+    foreign_component = sdt_add_component(foreign_cid, NULL, false, accUNKNOWN, cbJOIN);
     if (!foreign_component) { /* allocation failure */
       acnlog(LOG_ERR | LOG_SDT, "sdt_rx_join: failed to add foreign component");
       sdt_tx_join_refuse(foreign_cid, local_component, source_addr, foreign_channel_number, local_mid, foreign_reliable_seq, SDT_REASON_RESOURCES);
       remove_allocations();
       return;
     }
-    foreign_component->created_by = cbJOIN;
     allocations |= ALLOCATED_FOREIGN_COMP;
   }
 
@@ -2920,11 +2933,12 @@ sdt_rx_wrapper(const cid_t foreign_cid, const netx_addr_t *source_addr, const ui
           #if CONFIG_DMP
           case DMP_PROTOCOL_ID:
             acnlog(LOG_WARNING | LOG_SDT, "sdt_rx_wrapper: DMP_PROTOCOL_ID");
+/*
             if (local_member->component->callback)
                (*local_member->component->callback)(SDT_EVENT_DATA, local_member->component, foreign_component, is_reliable, datap, data_size, ref);
-
+*/
             /* WRF - below is old stub to be deleted when above is tested */
-            /* dmp_client_rx_handler(local_member->component, foreign_component, is_reliable, datap, data_size, ref); */
+            dmp_client_rx_handler(local_member->component, foreign_component, is_reliable, datap, data_size, ref);
             break;
           #endif
           default:
@@ -4288,12 +4302,12 @@ sdt_save_buffer(rlp_txbuf_t *tx_buffer, uint8_t *pdup, uint32_t size, component_
 /*
  * Debug print stat on components
  *
- * TODO: Should this be in "components.c"
+ * TODO: This should be in "components.c"
  */
 void sdt_stats(void)
 {
-  component_t    *component;
-  uint32_t          x = 1;
+  component_t *component;
+  uint32_t i;
 #if acntestlog(LOG_INFO | LOG_STAT)
   char  cid_text[CID_STR_SIZE];
 #endif
@@ -4302,10 +4316,9 @@ void sdt_stats(void)
   sdt_channel_t *channel;
   sdt_member_t *member;
 
-  component = components;
-  while(component) {
+  for (component = allcomps, i = 0; component != NULL; component = component->next) {
     acnlog(LOG_INFO | LOG_STAT, "------------------------");
-    acnlog(LOG_INFO | LOG_STAT, "Component: %" PRIu32, x);
+    acnlog(LOG_INFO | LOG_STAT, "Component: %" PRIu32, ++i);
     acnlog(LOG_INFO | LOG_STAT, "CID: %s", cidToText(component->cid, cid_text));
     acnlog(LOG_INFO | LOG_STAT, "DCID: %s", cidToText(component->cid, cid_text));
     acnlog(LOG_INFO | LOG_STAT, "fctn: %s", component->fctn);
@@ -4369,8 +4382,6 @@ void sdt_stats(void)
     if (component->callback) {
       acnlog(LOG_INFO | LOG_STAT, "callback: %" PRIxPTR, (uintptr_t)component->callback);
     }
-    component = component->next;
-    x++;
   }
 }
 

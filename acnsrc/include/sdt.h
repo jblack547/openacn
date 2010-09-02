@@ -204,7 +204,7 @@ uint8_t *sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *l
 uint8_t *sdt_format_client_block(uint8_t *client_block, uint16_t foreignlMember, uint32_t protocol, uint16_t association);
 
 /* add with initialization */
-component_t   *sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t access);
+component_t   *sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local, access_t access, created_by_t creator);
 
 sdt_channel_t *sdt_add_channel(component_t *leader, uint16_t channel_number);
 sdt_member_t  *sdt_add_member(sdt_channel_t *channel, component_t *component);
@@ -213,7 +213,7 @@ sdt_member_t *sdt_find_member_by_mid(sdt_channel_t *channel, uint16_t mid);
 sdt_member_t *sdt_find_member_by_component(sdt_channel_t *channel, component_t *component);
 
 /* delete with cleanup */
-component_t   *sdt_del_component(component_t *component);
+void           sdt_del_component(component_t *component);
 sdt_channel_t *sdt_del_channel(component_t *leader);
 sdt_member_t  *sdt_del_member(sdt_channel_t *channel, sdt_member_t *member);
 

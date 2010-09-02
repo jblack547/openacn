@@ -43,6 +43,10 @@ Information structures and handling relating to components
 #include "opt.h"
 #include "acnstdtypes.h"
 
+#ifndef CONFIG_COMPONENTMEM
+#error CONFIG_COMPONENTMEM undefined
+#endif
+
 #include "cid.h"
 #include "netxface.h"
 
@@ -102,39 +106,60 @@ typedef enum
   cbNONE,
   cbAPP,      /* created by application  */
   cbJOIN,     /* created by join request */
-  cbDISC      /* created by discover     */
+  cbDISC,     /* created by discover     */
+  cbE131      /* created by streaming ACN */
 } created_by_t;
 
 
 
 typedef struct component_s
 {
-  cid_t cid;  /* component ID */
-  cid_t dcid; /* Device Class Identifier */
+  struct component_s *next;  /* pointer to next component in linked list */
+  uint16_t      usecnt;
+  cid_t         cid;  /* component ID */
+  bool          is_local;
+  created_by_t  created_by;
+#if CONFIG_EPI19
   char  fctn[ACN_FCTN_SIZE];  
+#endif
+#if CONFIG_EPI19 || CONFIG_E131
   char  uacn[ACN_UACN_SIZE];
+#endif
+#if CONFIG_EPI10
+  uint16_t dyn_mcast;
+#endif
+#if CONFIG_SDT
   access_t   access;  /* if I am device or controller */
-  bool       is_local;
-  #if CONFIG_EPI10
-    uint16_t dyn_mcast;
-  #endif
-  #if CONFIG_SDT
-    netx_addr_t    adhoc_addr;
-    int            adhoc_expires_at;
-    created_by_t   created_by;
-    struct component_s   *next;  /* pointer to next component in linked list */
-    struct sdt_channel_s *tx_channel;
-    component_callback_t *callback; 
-    bool           dirty;       /* used for discovery to tell if a component is no longer valid */
-  #endif
-  #if CONFIG_DMP
-    struct dmp_subscription_s   *subscriptions;
-  #endif
+  netx_addr_t    adhoc_addr;
+  int            adhoc_expires_at;
+  struct sdt_channel_s *tx_channel;
+  component_callback_t *callback; 
+  bool           dirty;       /* used for discovery to tell if a component is no longer valid */
+#endif
+#if CONFIG_DMP
+  cid_t dcid; /* discoverer CID? */
+  struct dmp_subscription_s   *subscriptions;
+#endif
   
 } component_t;
 
 #if CONFIG_SINGLE_COMPONENT
 extern component_t the_component;
 #endif
+
+extern struct component_s *allcomps;
+
+#if (CONFIG_COMPONENTMEM == MEM_STATIC)
+extern int comp_start(void);
+#else
+#define comp_start() (1)
+#endif
+
+extern struct component_s *compm_new(void);
+extern struct component_s *comp_listfind_by_cid(const cid_t cid, struct component_s *list);
+extern struct component_s *comp_find_by_cid(const cid_t cid);
+extern struct component_s *comp_get_by_cid(const cid_t cid);
+extern void comp_release(struct component_s *comp);
+#define comp_shutdown()
 
 #endif

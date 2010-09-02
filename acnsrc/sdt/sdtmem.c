@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   $Id$
 
+#tabs=2s
 */
 /*--------------------------------------------------------------------*/
 /*
@@ -53,7 +54,6 @@ handling.
 #if CONFIG_SDTMEM == MEM_STATIC
 static sdt_channel_t    channels_m[SDT_MAX_CHANNELS];
 static sdt_member_t     members_m[SDT_MAX_MEMBERS];
-static component_t      components_m[SDT_MAX_COMPONENTS];
 static sdt_resend_t     resends_m[SDT_MAX_RESENDS];  /* list of buffers */
 #endif
 
@@ -64,7 +64,6 @@ sdtm_init(void)
 {
   sdt_channel_t   *channel;
   sdt_member_t    *member;
-  component_t     *component;
   sdt_resend_t    *resend;
   static bool initialized_state = 0;
 
@@ -76,7 +75,6 @@ sdtm_init(void)
 
   for (channel = channels_m; channel < channels_m + SDT_MAX_CHANNELS; ++channel) channel->number = 0;
   for (member = members_m; member < members_m + SDT_MAX_MEMBERS; ++member) member->component = NULL;
-  for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; ++component) cidNull(component->cid);
   for (resend = resends_m; resend < resends_m + SDT_MAX_RESENDS; ++resend) resend->expires_ms = 0;
 
 }
@@ -151,41 +149,6 @@ sdtm_free_member(sdt_member_t *member)
 {
   acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_member");
   member->component = NULL; /* mark it empty */
-}
-
-/*****************************************************************************/
-/*
-  Create a new component
-*/
-component_t *
-sdtm_new_component(void)
-{
-  component_t *component;
-
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_component");
-
-  /* find and empty one */
-  for (component = components_m; component < components_m + SDT_MAX_COMPONENTS; component++) {
-    if (cidIsNull(component->cid)) {
-      /* clear values */
-      memset(component, 0, sizeof(component_t));
-      return component;
-    }
-  }
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_new_component: none left");
-
-  return NULL; /* none left */
-}
-
-/*****************************************************************************/
-/*
-  Free an unused component
-*/
-void
-sdtm_free_component(component_t *component)
-{
-  acnlog(LOG_DEBUG | LOG_SDTM,"sdtm_free_component");
-  cidNull(component->cid); /* mark it empty */
 }
 
 /*****************************************************************************/

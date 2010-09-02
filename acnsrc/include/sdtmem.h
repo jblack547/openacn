@@ -54,9 +54,6 @@ extern void           sdtm_free_channel(sdt_channel_t *channel);
 extern sdt_member_t  *sdtm_new_member(void);
 extern void           sdtm_free_member(sdt_member_t *member);
 
-extern component_t   *sdtm_new_component(void);
-extern void           sdtm_free_component(component_t *component);
-
 extern sdt_resend_t  *sdtm_new_resend(void);
 extern void           sdtm_free_resend(sdt_resend_t *resend);
 extern void           sdtm_free_resends(void);
@@ -70,12 +67,10 @@ extern void           sdtm_free_resends(void);
 
 #define sdtm_new_channel()      sdtm_allocblank(sdt_channel_t)
 #define sdtm_new_member()       sdtm_allocblank(sdt_member_t)
-#define sdtm_new_component()    sdtm_allocblank(component_t)
 #define sdtm_new_resend()       sdtm_allocblank(sdt_resend_t)
 
 #define sdtm_free_channel(x) free(x)
 #define sdtm_free_member(x) free(x)
-#define sdtm_free_component(x) free(x)
 #define sdtm_free_resend(x) free(x)
 
 extern void sdtm_free_resends(void);

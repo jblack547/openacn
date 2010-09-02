@@ -328,11 +328,10 @@ static void attrrqst_callback(int error, char *attr_list, int count)
       comp->dirty = false;
     } else {
       /* create a new component struct at the end of the list */
-      comp = sdt_add_component(cid, dcid, false, accUNKNOWN);
+      comp = sdt_add_component(cid, dcid, false, accUNKNOWN, cbDISC);
       if (!comp) {
         return;
       }
-      comp->created_by = cbDISC;
       netx_PORT(&comp->adhoc_addr) = (port);
       netx_INADDR(&comp->adhoc_addr) = (ip);
       strcpy(comp->fctn, fctn_str);
