@@ -48,6 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acnlog.h"
 
 #include "acn_arch.h"
+#include "acn_protocols.h"
 
 #include "rlp.h"
 #include "acn_rlp.h"
