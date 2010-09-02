@@ -201,7 +201,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   ret =  bind(netsock->nativesock, (SOCKADDR *)&addr, sizeof(addr));
 
   if (ret == SOCKET_ERROR) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : bind fail, port:%d", ntohs(LCLAD_PORT(*localaddr)));
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open: bind port %d: %s", ntohs(LCLAD_PORT(*localaddr)), strerror(errno));
     close(netsock->nativesock);
     netsock->nativesock = 0;
     return FAIL; /* FAIL */
@@ -213,13 +213,13 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   /* we will need information on destination address used */
   ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
   if (ret == SOCKET_ERROR) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : setsockopt:IP_PKTINFO fail");
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open: setsockopt IP_PKTINFO: %s", strerror(errno));
     close(netsock->nativesock);
     netsock->nativesock = 0;
     return FAIL; /* FAIL */
   }
 
-  acnlog(LOG_DEBUG | LOG_NETX, "netx_udp_open : port:%d", ntohs(NSK_PORT(netsock)));
+  acnlog(LOG_DEBUG | LOG_NETX, "netx_udp_open: port %d", ntohs(NSK_PORT(netsock)));
 
   LOG_FEND();
   /* Note: A separate thread will call netx_poll() to look for received messages */
