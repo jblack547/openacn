@@ -80,7 +80,7 @@ char *cidToText(const cid_t cidp, char *cidText);
 #define cidIsNull(cid) cidIsNull(cid)
 #define cidCopy(dst, src) (memcpy(dst, src, sizeof(cid_t)))
 
-static inline int cidIsNull(cid_t cid)
+static inline int cidIsNull(const cid_t cid)
 {
    int i = CIDSIZE;
 
