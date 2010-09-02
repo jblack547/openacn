@@ -296,11 +296,12 @@ void
 rlpm_free_rxgroup(netxsocket_t *netsock, rlp_rxgroup_t *rxgroup)
 {
   rlp_rxgroup_t  *this_rxgroup;
-  rlp_listener_t *listener;
-  rlp_listener_t *next_listener;
   UNUSED_ARG(netsock);
 
 #if 0
+  rlp_listener_t *listener;
+  rlp_listener_t *next_listener;
+
   /* if, for some reason, we have listeners, free them */
   /* since we are nuking all of them in the chain, this is faster than calling rlpm_free_listener() */
   listener = rxgroup->listeners;
