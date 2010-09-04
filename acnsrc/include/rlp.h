@@ -87,9 +87,15 @@ struct rlp_txbuf_hdr {
 };
 */
 
+#if 0
 #define rlp_getuse(buf) (((struct rlp_txbuf_s *)(buf))->usage)
 #define rlp_incuse(buf) (++rlp_getuse(buf))
-#define rlp_decuse(buf) if (rlp_getuse(buf)) --rlp_getuse(buf)
+#define rlp_decuse(buf) (rlp_getuse(buf) ? --rlp_getuse(buf) : 0)
+#else
+#define rlp_getuse(buf) ((buf)->usage)
+#define rlp_incuse(buf) (++(buf)->usage)
+#define rlp_decuse(buf) ((buf)->usage ? --(buf)->usage : 0)
+#endif
 
 #ifdef __cplusplus
 }
