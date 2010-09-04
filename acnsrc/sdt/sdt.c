@@ -396,6 +396,7 @@ sdt_shutdown(void)
             if (member->component->callback)
               (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component, false, NULL, 0, NULL);
             #if CONFIG_DMP
+            /* FIXME: This should not be DMP dependent */
             sdt_tx_disconnect(component, member->component, DMP_PROTOCOL_ID);
             #endif
           }
@@ -410,6 +411,7 @@ sdt_shutdown(void)
             if (member->component->callback)
               (*member->component->callback)(SDT_EVENT_DISCONNECT, component, member->component, false, NULL, 0, NULL);
             #if CONFIG_DMP
+            /* FIXME: This should not be DMP dependent */
             sdt_tx_disconnecting(component, member->component, DMP_PROTOCOL_ID, SDT_REASON_NONSPEC);
             #endif
           }
@@ -489,7 +491,9 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local,
   int rslt = 0;
 
   assert(!cidIsNull(cid));
+#if acntestlog(LOG_DEBUG | LOG_SDT)
   acnlog(LOG_DEBUG | LOG_SDT, "sdt_add_component: %s", cidToText(cid, cid_text));
+#endif
 
   protect = ACN_PORT_PROTECT();
   /* See if we have this already, otherwise get a new one */
@@ -559,7 +563,9 @@ sdt_del_component(component_t *component)
 
   assert(component);
 
+#if acntestlog(LOG_DEBUG | LOG_SDT)
   acnlog(LOG_DEBUG | LOG_SDT,"sdt_del_component: %s", cidToText(component->cid, cid_text));
+#endif
 
   protect = ACN_PORT_PROTECT();
   /* remove this component from other components member list */
@@ -3767,12 +3773,12 @@ sdt_tx_reliable_data(component_t *local_component, component_t *foreign_componen
   sdt_save_buffer(tx_buffer, pdup, pdu_size, local_component);
 
   /* and send it on */
-  {
 #if acntestlog(LOG_INFO | LOG_SDT)
+  {
   uint32_t relseq = unmarshalU32(pdup + 0x09);
-#endif
   acnlog(LOG_INFO | LOG_SDT, "sdt_tx_reliable_data : %" PRIu32 ", %" PRIu16, relseq, pdu_size);
   }
+#endif
   rlp_send_block(tx_buffer, local_channel->sock, &local_channel->destination_addr);
   rlpm_release_txbuf(tx_buffer);
   LOG_FEND();
@@ -4319,8 +4325,10 @@ void sdt_stats(void)
   for (component = allcomps, i = 0; component != NULL; component = component->next) {
     acnlog(LOG_INFO | LOG_STAT, "------------------------");
     acnlog(LOG_INFO | LOG_STAT, "Component: %" PRIu32, ++i);
+#if acntestlog(LOG_INFO | LOG_STAT)
     acnlog(LOG_INFO | LOG_STAT, "CID: %s", cidToText(component->cid, cid_text));
     acnlog(LOG_INFO | LOG_STAT, "DCID: %s", cidToText(component->cid, cid_text));
+#endif
     acnlog(LOG_INFO | LOG_STAT, "fctn: %s", component->fctn);
     acnlog(LOG_INFO | LOG_STAT, "uacn: %s", component->uacn);
     switch (component->access) {
