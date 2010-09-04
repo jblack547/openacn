@@ -110,9 +110,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define acntestlog(priority) ((priority) >= 0 && ((priority) & 7) <= CONFIG_LOGLEVEL)
 #define acnlogfile() ((CONFIG_ACNLOG == ACNLOG_STDERR) ? stderr : stdout)
 #define acnlog(priority, ...) \
-	((void)(acntestlog(priority) ? \
-	(fprintf(acnlogfile(), __VA_ARGS__), putc('\n', acnlogfile())) \
-	: 0))
+	if (acntestlog(priority)) fprintf(acnlogfile(), __VA_ARGS__), putc('\n', acnlogfile())
 
 #else /* CONFIG_ACNLOG == ACNLOG_NONE */
 
