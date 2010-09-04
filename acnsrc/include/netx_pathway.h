@@ -44,19 +44,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acnip.h"
 #include "wattcp.h"
 
-#if CONFIG_EPI20
-#include "epi20.h"
-
-/* MAX_MTU is max size of Ethernet packet - see epi20 for discussion */
-typedef uint8_t UDPPacket[MAX_MTU];
-#endif  /* CONFIG_EPI20 */
-
-typedef void netx_callback_t (
-  /* component_event_t state, */
-  void *param1,  /* does not seem to be used but might hold the addr of the callback routine */
-  void *param2
-);
-
 /************************************************************************/
 /*
   We use each stack's native structure for holding transport layer (UDP) addresses.

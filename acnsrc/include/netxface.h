@@ -44,7 +44,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include "opt.h"
 #include "acnstdtypes.h"
-
 #if CONFIG_EPI20
 #include "epi20.h"
 #endif
@@ -53,6 +52,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern "C" {
 #endif
 
+#if CONFIG_EPI20
+/* MAX_MTU is max size of Ethernet packet - see epi20 for discussion */
+typedef uint8_t UDPPacket[MAX_MTU];
+#endif
+
+/*
+Netxface is not supposed to be a layer - simply some glue, however if it
+is shared by both SLP and RLP it needs to store callback pointers.
+Otherwise it can be hard coded.
+*/
+#if (CONFIG_SLP + CONFIG_RLP) > 1
+#define NETX_SOCK_HAS_CALLBACK 1
+typedef void netx_callback_t (
+  /* component_event_t state, */
+  void *param1,  /* does not seem to be used but might hold the addr of the callback routine */
+  void *param2
+);
+#else
+#define NETX_SOCK_HAS_CALLBACK 0
+#endif
 
 #if (CONFIG_STACK_BSD || CONFIG_STACK_CYGWIN)
 #include "netx_bsd.h"
