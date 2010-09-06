@@ -94,11 +94,6 @@ _MSC_VER is still defined when VisualC is not in ISO mode
 #define FAIL -1
 #endif
 
-#ifndef HAVE_ip4addr_t
-  typedef uint32_t ip4addr_t; /* ip address as a uint32_t */
-  #define HAVE_ip4addr_t
-#endif
-
 #define PACKED __attribute__((__packed__))
 
 #define UNUSED_ARG(x) (void)(x)
