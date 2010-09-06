@@ -178,7 +178,7 @@ void process_keys(void)
   /* make our cid unique to us */
   cid[15] = (uint8_t)(myip & 0xff);
   /* create our local component */
-  local_component = sdt_add_component(cid, dcid, true, accBOTH);
+  local_component = sdt_add_component(cid, dcid, true, accBOTH, cbAPP);
 
   /* fill in some required data */
   if (local_component) {
