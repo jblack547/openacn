@@ -32,8 +32,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   $Id$
 
+#tabs=2s
 */
 /*--------------------------------------------------------------------*/
+/*
+See platform/linux/netxface.c for important notes on interfaces, ports
+and multicast addressing
+*/
 #include "opt.h"
 #if CONFIG_NSK
 #if CONFIG_STACK_NETBURNER
@@ -55,13 +60,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ntoa.h"
 
 /************************************************************************/
-#define INPACKETSIZE DEFAULT_MTU
 #define LOG_FSTART() acnlog(LOG_DEBUG | LOG_NETX, "%s :...", __func__)
 
 /************************************************************************/
 /* local memory */
 OS_FIFO netx_fifo;    /* FIFO to store all incoming UPD packets */
 int native_sock = 1;  /* we dont really have socket but we need some marker... */
+
+/************************************************************************/
+/*
+NETX_SOCK_HAS_CALLBACK is only needed if multiple clients are sharing
+the netsock layer. Otherwise we can call the client direct.
+*/
+
+#if NETX_SOCK_HAS_CALLBACK
+#define NETX_HANDLER (*nsk->data_callback)
+#elif CONFIG_RLP
+extern void rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, ip4addr_t group, netx_addr_t *source)
+#define NETX_HANDLER rlp_process_packet
+#elif CONFIG_SLP
+extern void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, ip4addr_t group, netx_addr_t *source);
+#define NETX_HANDLER slp_recv
+#endif /* Strange config - nothing is listening! */
 
 /************************************************************************/
 /*
@@ -308,7 +328,7 @@ netx_poll(void)
 
 /************************************************************************/
 /*
-  netihandler()
+  netx_handler()
     Socket call back
     This is the routine that gets called when a new UDP message is available.
 */
@@ -316,6 +336,7 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
 {
   netxsocket_t *socket;
   localaddr_t   host;
+  groupaddr_t   groupaddr;
 
   acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: ...");
 
@@ -330,12 +351,20 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
   /* see if we have anyone registered for this socket */
   socket = nsk_find_netsock(&host);
   if (socket) {
-    if (socket->data_callback) {
-      (*socket->data_callback)(socket, (uint8_t *)data, length, dest, source, NULL);
-      return;
-    }
+    groupaddr = netx_INADDR(dest);
+    if (!is_multicast(groupaddr)) groupaddr = netx_GROUP_UNICAST;
+
+#if NETX_SOCK_HAS_CALLBACK
+    if (socket->data_callback)
+      NETX_HANDLER(socket, (uint8_t *)data, length, groupaddr, source);
+    else
+      acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: socket but no callback, port: %d", ntohs(LCLAD_PORT(host)));
+#else
+      NETX_HANDLER(socket, (uint8_t *)data, length, groupaddr, source);
+#endif
+  } else {
+    acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: no socket for port: %d", ntohs(LCLAD_PORT(host)));
   }
-  acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: no callback, port: %d", ntohs(LCLAD_PORT(host)));
 }
 
 

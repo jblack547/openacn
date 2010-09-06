@@ -32,8 +32,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   $Id$
 
+#tabs=2s
 */
 /*--------------------------------------------------------------------*/
+/*
+See platform/linux/netxface.c for important notes on interfaces, ports
+and multicast addressing
+*/
 #include "opt.h"
 #if CONFIG_NSK
 #if CONFIG_STACK_LWIP
@@ -44,6 +49,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "acnlog.h"
 
 #define INPACKETSIZE DEFAULT_MTU
+
+/************************************************************************/
+/*
+NETX_SOCK_HAS_CALLBACK is only needed if multiple clients are sharing
+the netsock layer. Otherwise we can call the client direct.
+*/
+
+#if NETX_SOCK_HAS_CALLBACK
+#define NETX_HANDLER (*nsk->data_callback)
+#elif CONFIG_RLP
+extern void rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, ip4addr_t group, netx_addr_t *source)
+#define NETX_HANDLER rlp_process_packet
+#elif CONFIG_SLP
+extern void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, ip4addr_t group, netx_addr_t *source);
+#define NETX_HANDLER slp_recv
+#endif /* Strange config - nothing is listening! */
 
 /************************************************************************/
 /* local prototypes */
@@ -239,15 +260,16 @@ netx_send_to(
     Socket call back
 */
 /*
-  This function is call for connections.  Our stack ensures us that if we get here, it is for us even
-  if multicast.  So to get here it either is Unicast or multicats with a matching port as
-  in this implementations we dont use ANY_PORT for local port
+  This function is call for connections.  Our stack ensures us that if
+  we get here, it is for us, even if multicast.  So to get here it
+  either is Unicast or multicast with a matching port as in this
+  implementation we dont use ANY_PORT for local port.
 */
 static void
 netxhandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr, u16_t port)
 {
   netx_addr_t remhost;
-  ip4addr_t dest_inaddr;
+  groupaddr_t group;
 
   /* arg is contains netsock */
 
@@ -256,12 +278,16 @@ netxhandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr
   NETI_INADDR(&remhost) = addr->addr;
   NETI_PORT(&remhost) = port;
 
-  /* We don't have destination address in our callback */
-  /* Turns out that the destinaion address is just after the location */
-  /* of the source address */
-  dest_inaddr = ((struct ip_addr*)((char*)addr + sizeof(struct ip_addr)))->addr;
+/*
+  We don't have destination address in our callback, but examination of
+  LWIP code shows that struct ip_addr *addr is simply a pointer into the
+  packet header where it is immediately followed by the destination
+  address.
+*/
+/*   group = ((struct ip_addr*)((char*)addr + sizeof(struct ip_addr)))->addr; */
+  group = (addr + 1)->addr;
 
-  rlp_process_packet(arg, p->payload, p->tot_len, dest_inaddr, &remhost);
+  NETX_HANDLER(arg, p->payload, p->tot_len, group, &remhost);
   pbuf_free(p);
 }
 

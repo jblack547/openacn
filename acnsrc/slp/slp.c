@@ -30,48 +30,55 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
   $Id$
+#tabs=2s
 */
 /************************************************************************/
 /*
   Description:
-  This module creates a SLP inteface. While much of it is generic, there are parts that have been hard coded
-  to work in a ACN environment
+  This module creates a SLP inteface. While much of it is generic, there
+  are parts that have been hard coded to work in a ACN environment
 
   Author:
   Bill Florac - Electroinc Theatre Controls, Inc
 
   Current implementation:
-  Both Service Agent (SA) and User Agent (UA) are supported. Directory Agent (DA)
-  is not supported. SA and UA modes can be used at the same time.
+  Both Service Agent (SA) and User Agent (UA) are supported. Directory
+  Agent (DA) is not supported. SA and UA modes can be used at the same
+  time.
 
   Limitations:
-  SA mode does not support operation without a DA available (at this time). Parts of 
-  the code needed for this are in place but they have not been completed nor tested.
+  SA mode does not support operation without a DA available (at this
+  time). Parts of  the code needed for this are in place but they have
+  not been completed nor tested.
   
   Notes
-  Do NOT use string functions on SLPString structures, they do NOT contain a terminating NULL!
-  use getSLP_STR on it first to malloc and copy to a new string.
+  Do NOT use string functions on SLPString structures, they do NOT
+  contain a terminating NULL! use getSLP_STR on it first to malloc and
+  copy to a new string.
 
   SLP requires a slp_tick() to be called at 100 ms intervals.
 
-  The treading model uses ACN_PORT_PROTECT() and ACN_PORT_UNPROTECT(). This simple model
-  prevent two thread from using the same memory space.  Basically, the slp_tick() blocks
-  for it's entire loop. Likewies, slp_recv() does the same. All functions that can be 
-  called externally also block until they are complete. The exception to this is da_close()
-  which is only called by slp_close. It allows other thread to run while it times out
-  and closes.
+  The treading model uses ACN_PORT_PROTECT() and ACN_PORT_UNPROTECT().
+  This simple model prevent two thread from using the same memory
+  space.  Basically, the slp_tick() blocks for it's entire loop.
+  Likewies, slp_recv() does the same. All functions that can be  called
+  externally also block until they are complete. The exception to this
+  is da_close() which is only called by slp_close. It allows other
+  thread to run while it times out and closes.
 
   TODO: (see list here)
   - If IP changes, we will need to re-register everthing
   - What to do with authentication. Ignore, discard packet? SLP_AUTH
   - Get rid of malloc and make statics?
-  - Older versions of DA's using OpenSLP would send out Unsolicited DAadverts with xid != 0. This
-    has been fixed so we can remove our special handling.
+  - Older versions of DA's using OpenSLP would send out Unsolicited
+    DAadverts with xid != 0. This has been fixed so we can remove our
+    special handling.
   - Perhaps msg_ should be done with MALLOC
 
   Versions:
   0.0.1   Initial release to test integration
-  0.0.2   11/2/2008 WRF Rewrite to be platform independent and integrate with OpenACN code
+  0.0.2   11/2/2008 WRF Rewrite to be platform independent and integrate
+          with OpenACN code
 */
 
 /* Library includes*/
@@ -122,8 +129,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define PBUF_TYPE PBUF_POOL
 
 
-/* Our message buffer uses the same three parameters for different messages types */
-/* so these make the code a bit more readable */
+/*
+Our message buffer uses the same three parameters for different messages
+types so these make the code a bit more readable
+*/
 #define MSG_SRV_TYPE(Msg)  (Msg->param1)
 #define MSG_SRV_URL(Msg)   (Msg->param2)
 #define MSG_ATTR_LIST(Msg) (Msg->param3)
@@ -2766,9 +2775,8 @@ SLPError slp_send_saadvert(ip4addr_t ip, uint16_t reply_xid)
  * returns: none
  */
 /******************************************************************************/
-/* static void slp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr, uint16_t port) */
-/* void slp_recv(char *slp_data, int length, uint32_t ip_addr, int port) */
-void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref)
+void
+slp_recv(netxsocket_t *socket, const uint8_t *data, int length, groupaddr_t group, netx_addr_t *source)
 {
   /* slp_data* points to the data in the received UDP message */
   /* length is length of UDP data */
@@ -2781,8 +2789,7 @@ void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t
   LOG_FSTART();
 
   UNUSED_ARG(socket);
-  UNUSED_ARG(dest);
-  UNUSED_ARG(ref);
+  UNUSED_ARG(group);
 
   ip_addr = netx_INADDR(source);
 

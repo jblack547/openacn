@@ -68,7 +68,7 @@ void      rlp_close_netsocket(netxsocket_t *netsock);
 struct    rlp_listener_s * rlp_add_listener(netxsocket_t *netsock, groupaddr_t groupaddr, protocolID_t protocol, rlpHandler_t *callback, void *ref);
 void      rlp_del_listener(netxsocket_t *netsock, struct rlp_listener_s *listener);
 /* void      rlp_process_packet(netxsocket_t *netsock, const uint8_t *data, int dataLen, ip4addr_t destaddr, const netx_addr_t *remhost, void *ref); */
-void      rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref);
+void      rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, groupaddr_t group, netx_addr_t *source);
 
 
 /*

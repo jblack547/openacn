@@ -362,7 +362,7 @@ void    slp_stats(void);
 
 /* call back for UDP SLP receive */
 /* void slp_recv(char *slp_data, int length, uint32_t ip_addr, int port); */
-void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref);
+void slp_recv(netxsocket_t *socket, const uint8_t *data, int length, groupaddr_t group, netx_addr_t *source);
 
 #ifdef __cplusplus
 }

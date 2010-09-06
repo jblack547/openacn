@@ -30,11 +30,11 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-  $Id$
+    $Id$
 
 */
 /*
-#tabs=4
+#tabs=3s
 */
 /*--------------------------------------------------------------------*/
 
@@ -56,29 +56,26 @@ extern "C" {
 
 /************************************************************************/
 /*
-  We use each stack's native structure for holding transport layer (UDP) addresses.
-  This information is typedef'd to netx_addr_t.
-  To unify the API we hide each stacks implementation of netx_addr_t behind macros
-  which must be defined for each stack type.
+   We use each stack's native structure for holding transport layer (UDP)
+   addresses. This information is typedef'd to netx_addr_t. To unify the
+   API we hide each stack's implementation of netx_addr_t behind macros
+   which must be defined for each stack type.
 
-  #define netx_PORT(netaddr_s_ptr)
-  #define netx_INADDR(netaddr_s_ptr)
-  #define netx_INIT_ADDR(addrp, inaddr, port)
-  #define netx_INIT_ADDR_STATIC(inaddr, port)
+   #define netx_PORT(netaddr_s_ptr)
+   #define netx_INADDR(netaddr_s_ptr)
+   #define netx_INIT_ADDR(addrp, inaddr, port)
+   #define netx_INIT_ADDR_STATIC(inaddr, port)
 
-  netx_PORT and netx_INADDR access the port and host address parts
-  respectively. These should be lvalues so they can be assigned as well
-  as read.
+   netx_PORT and netx_INADDR access the port and host address parts
+   respectively. These should be lvalues so they can be assigned as well
+   as read.
 
-  netx_INIT_ADDR sets both address and port and initializes all fields
-  netx_INIT_ADDR_STATIC expands to a static structure initializer
+   netx_INIT_ADDR sets both address and port and initializes all fields
+   netx_INIT_ADDR_STATIC expands to a static structure initializer
 
-  Addresses are in "NETWORK order" (Big-Endian)
-
+   Addresses are in "NETWORK order" (Big-Endian)
 */
-
 /************************************************************************/
-
 
 #if CONFIG_NET_IPV4
 #define netx_FAMILY AF_INET
@@ -92,91 +89,63 @@ typedef struct sockaddr_in netx_addr_t;
 #define netx_INADDR(addrp) (addrp)->sin_addr.s_addr
 #define netx_INIT_ADDR_STATIC(inaddr, port) {netx_FAMILY, (port), {inaddr}}
 #define netx_INIT_ADDR(addrp, addr, port) ( \
-    (addrp)->sin_family = netx_FAMILY, \
-    netx_INADDR(addrp) = (addr), \
-    netx_PORT(addrp) = (port) \
-  )
+      (addrp)->sin_family = netx_FAMILY, \
+      netx_INADDR(addrp) = (addr), \
+      netx_PORT(addrp) = (port) \
+   )
 
 /************************************************************************/
+/*
+There are fairly major differences if CONFIG_LOCALIP_ANY is true (which
+is the common case).
+In this case we don't need to track local interface addresses at all, we
+just leave it up to the stack. All we need to do is pass local port
+numbers which are easy to handle. However, because of the differences in
+passing conventions between ports which are integers (uint16_t) and
+structures which are passed by reference, things are not so transparent
+as would be nice. We define both localaddr_t (the storage type) and
+localaddr_arg_t (the argument type) then use macros LCLAD_ARG(lcladdr)
+and LCLAD_UNARG(lcladdrarg)
+*/
 
-typedef struct netxsocket_s netxsocket_t;
-
-/* FIXME is netx_process_packet_t used */
-typedef void netx_process_packet_t (
-    netxsocket_t        *socket,
-    const uint8_t       *data,
-    int                  length,
-    netx_addr_t         *dest,
-    netx_addr_t         *source,
-    void                *ref
-);
-
-/************************************************************************/
 #if CONFIG_LOCALIP_ANY
-struct netxsocket_s {
-  netx_nativeSocket_t    nativesock;      /* pointer to native socket structure */
-  port_t                 localaddr;       /* local address */
-  netx_process_packet_t *data_callback;   /* pointer to call back when data is available */
-};
-#define NETX_SOCK_HAS_CALLBACK 1
 
-/* operations when looking at netxsock_t */
-#define NSK_PORT(x) ((x)->localaddr)
-#define NSK_INADDR(x) netx_INADDR_ANY
+typedef port_t localaddr_t;
+typedef localaddr_t localaddr_arg_t;
 
-/* #ifndef HAVE_localaddr_t */
-  typedef port_t          localaddr_t;
-/*   #define HAVE_localaddr_t */
-/* #endif */
+/* operations on netxsock_t pointer */
+#define NSK_PORT(nskptr) ((nskptr)->localaddr)
+#define NSK_INADDR(nskptr) netx_INADDR_ANY
 
-/* operation when looking at localaddr_t */
+/* operations on localaddr_t */
 #define netx_INIT_LOCALADDR(addrp, addr, port) (*addrp = (port))
-#define LCLAD_PORT(x) x
-#define LCLAD_INADDR(x) netx_INADDR_ANY
-
-#define netx_LCLADDR(x) netx_PORT(x)
+#define LCLAD_PORT(lclad) (lclad)
+#define LCLAD_INADDR(lclad) netx_INADDR_ANY
+#define LCLAD_ARG(lclad) (lclad)
+#define LCLAD_UNARG(lclad) (lclad)
 
 #else /* !CONFIG_LOCALIP_ANY */
 
-struct netxsocket_s {
-  netx_nativeSocket_t   *nativesock;     /* pointer to native socket structure */
-  netx_addr_t            localaddr;      /* local address */
-  netx_process_packet_t *data_callback;  /* pointer to call back when data is available */
-};
-#define NETX_SOCK_HAS_CALLBACK 1
-
-#define NSK_PORT(x) netx_PORT(&(x)->localaddr)
-#define NSK_INADDR(x) netx_INADDR(&(x)->localaddr)
-
 typedef netx_addr_t localaddr_t;
+typedef localaddr_t *localaddr_arg_t;
 
+/* operations on netxsock_t */
+#define NSK_PORT(nskptr) netx_PORT(&(nskptr)->localaddr)
+#define NSK_INADDR(nskptr) netx_INADDR(&(nskptr)->localaddr)
+
+/* operations on localaddr_t */
 #define netx_INIT_LOCALADDR(addrp, addr, port) netx_INIT_ADDR(addrp, addr, port)
 #define LCLAD_PORT(laddr) netx_PORT(&(laddr))
 #define LCLAD_INADDR(laddr) netx_INADDR(&(laddr))
-#define netx_LCLADDR(addr) (addr)
+#define LCLAD_ARG(lclad) (&(lclad))
+#define LCLAD_UNARG(lclad) (*(lclad))
 
 #endif /* !CONFIG_LOCALIP_ANY */
 
 /************************************************************************/
-/* function prototypes for netxface.c */
-/* TODO: since these functions are or should be common to all platforms, should they be moved to the netface.h file? */
-void netx_handler(uint8_t *data, int length, netx_addr_t *source, netx_addr_t *dest);
-
-extern void  netx_init(void);
-extern int   netx_startup(void);
-extern int   netx_shutdown(void);
-extern int   netx_poll(void);
-extern int   netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr);
-extern void  netx_udp_close(netxsocket_t *netsock);
-extern int   netx_send_to(netxsocket_t *netsock, const netx_addr_t *destaddr, void  *pkt, size_t datalen);
-extern int   netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operation);
-extern void *netx_new_txbuf(int size);
-extern void  netx_release_txbuf(void * pkt);
-extern void  netx_free_txbuf(void *pkt);
-extern char *netx_txbuf_data(void *pkt);
-
-/* operation argument for netx_change_group */
-/* #define netx_udp_close(netsock) close((netsock)->nativesock) */
+/*
+operation argument for netx_change_group
+*/
 
 #define netx_JOINGROUP IP_ADD_MEMBERSHIP
 #define netx_LEAVEGROUP IP_DROP_MEMBERSHIP
@@ -212,7 +181,7 @@ ip4addr_t netx_getmyipmask(netx_addr_t *destaddr);
 #define netx_GROUP_UNICAST netx_INADDR_ANY
 #endif
 
-#ifndef netx_INIT_ADDR 
+#ifndef netx_INIT_ADDR
 #define netx_INIT_ADDR(addrp, addr, port) (netx_INADDR(addrp) = (addr), netx_PORT(addrp) = (port))
 #endif
 

@@ -325,13 +325,21 @@
   by port and callbacks to the same socket will get all socket messages
   regardless of the mulitcast address registered. These messages will
   ultimately be rejected by higher layers of code, but only after wading
-  through the contents of the packet.
+  through the contents of the packet multiple times! If you can possibly
+  work out how to extract the multicast destination address from an
+  incoming packet you should do so. See platform/linux.netxface.c for
+  discussion of issues with multicast addresses.
 */
 
-#if (CONFIG_STACK_WIN32 || CONFIG_STACK_BSD || CONFIG_STACK_NETBURNER)
-#define STACK_RETURNS_DEST_ADDR 1
-#else
+#ifndef STACK_RETURNS_DEST_ADDR
+#if (CONFIG_STACK_CYGWIN || CONFIG_STACK_PATHWAY)
+/*
+These are broken stacks!
+*/
 #define STACK_RETURNS_DEST_ADDR 0
+#else
+#define STACK_RETURNS_DEST_ADDR 1
+#endif
 #endif
 
 /*
@@ -717,6 +725,7 @@
 #endif
 
 #endif  /* CONFIG_DMP */
+
 /************************************************************************/
 /*
   Sanity checks

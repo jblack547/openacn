@@ -1,5 +1,5 @@
+/************************************************************************/
 /*
-
 Copyright (c) 2007, Pathway Connectivity Inc.
 
 All rights reserved.
@@ -33,11 +33,108 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #tabs=2s
 */
-/*--------------------------------------------------------------------*/
-/* static const char *rcsid __attribute__ ((unused)) = */
-/*   "$Id$"; */
+/************************************************************************/
+/*
+Implementation of ACN route layer protocol
 
-/* acnlog facility DEBUG_RLP is used for ACN:RLP */
+API overview
+--
+This RLP implementation is designed for IPv4 - it may operate with IPv6
+with little modification. This code understands IP but the stack details
+are abstracted into netxface.c. This abstraction uses netsocket_s
+structures representing each socket or similar UDP connection between
+RLP and the stack. Each netsocket corresponds to a different local
+unicast-address/port combination given by a netaddr_s.
+
+RLP manages netsocket structures and the client calls rlp_open_netsock
+to get one and rlp_close_netsock() to free it again.
+
+To transmit PDUs the client only needs a netsocket which is passed to
+rlp_send_block() once the PDU block has been assembled. The socket used
+determines the source address in the outgoing packet whilst the
+destination address (unicast or multicast) is supplied in the call to
+rlp_send_block().
+
+To receive packets, the client must call rlp_add_listener() to register
+a callback function for a particular netsocket. A listener associates a
+destination address for incoming packets (either a multicast group or
+the unicast address associated with the netsocket), with a protocol
+(e.g. SDT) and a callback function. When a packet is received matching
+the netsocket, the destination address, and the protocol, the associated
+callback function is invoked. For broken stacks which cannot supply the
+group address information, each listener callback will probably receive
+traffic for every multicast address registered.
+
+For issues relating to multicast, interfaces and sockets see comments in
+platform/linux/netxface.c
+
+Incoming packets
+--
+When adding a listener the client protocol provides a callback function
+and reference pointer. On receipt of a PDU matching that listener
+parameters, RLP calls the callback function passing the reference
+pointer as a parameter. This  pointer can be used for any purpose by the
+higher layer - it is treated as opaque data by RLP. The callback is
+also passed pointers to a structure (network layer dependent)
+representing the transport address of the sender, and to the CID of the
+remote component.
+
+In order to manage the relationship between channels at the client
+protocol side the network interface layer, RLP maintains three
+structures:
+
+  struct netsocket_s represents an interface to the netiface layer -
+  there is one struct netsocket_s for each incoming (local) port and
+  unicast address (but see multiple interface note above).
+
+  struct rlp_rxgroup_s represents a multicast group (and port). Any
+  struct netsocket_s may have multiple rxgroups. Because of stack
+  vagaries with multicast handling, RLP examines and filters the
+  multicast destination address of every incoming packet early on and
+  finds the associated rlp_rxgroup_s If none is found, the packet is
+  dropped. There is one rlp_rxgroup_s lookup per packet.
+
+  struct rlp_listener_s represents a single callback to the client
+  component. For each rxgroup there may be multiple filters. rxgroups
+  are filtered for protocol (e.g. SDT) on a PDU by PDU basis. It is
+  permitted to open multiple filters for the same parameters - the
+  same PDU contents are passed to each in turn.
+
+All parameters passed to the client protocol are passed by reference
+(e.g. a pointer to the sender CID is passed, not the CID itself).  They
+must be treated as constant data and not modified by the client.
+However, they do not persist across calls so the client must copy any
+items which it requires to keep.
+
+
+FIXME (pn 2010)
+For stacks with STACK_RETURNS_DEST_ADDR false, this API is very
+inefficient because for a given port every multicast listener receives
+every multicast packet.  In this case the API needs to be changed so
+that multiple group addresses can be added to a single listener. This
+still leaves it to the higher layer to sort out the mess but at allows
+it to do so more efficiently. This must be done without compromising the
+efficiency of this implementation when STACK_RETURNS_DEST_ADDR is false.
+*/
+
+/************************************************************************/
+/*
+
+Management of structures in memory
+--
+To allow flexibility in implementation, the netsocket_s, rlp_rxgroup_s
+and rlp_listener_s structures used are manipulated using the API of the
+rlpmem module - they should not be accessed directly. This allows
+dynamic or static allocation strategies, and organization by linked
+lists, by arrays, or more complex structures such as trees. In minimal
+implementations many of these calls may be overridden by macros for
+efficiency.
+
+The implementation of these calls is in rlpmem.c where alternative
+static and dynamic implementations are provided.
+
+*/
+/************************************************************************/
 
 #include <string.h>
 
@@ -96,99 +193,6 @@ in subsequent PDUs any field except flags/length may be inherited
 
 #define RLP_FIRSTPDU_MINLENGTH (2 + 4 + sizeof(cid_t))
 #define RLP_PDU_MINLENGTH 2
-
-/*
-
-API description
-
-This RLP implementation is designed for IPv4 - it may operate with IPv6
-with little modification. This code understands IP but the stack details
-are abstracted into netiface.c. This abstraction uses netsocket_s
-structures representing each socket or similar UDP connection between
-RLP and the stack. Each netsocket corresponds to a different local
-unicast-address/port combination given by a netaddr_s.
-
-Note - currently the only local unicast address supported is
-NETI_GROUP_UNICAST - meaning any local address as decided by the network
-stack. This may change.
-
-RLP manages netsocket structures and the client calls rlp_open_netsock
-to get one and rlp_close_netsock() to free it again.
-
-To transmit PDUs the client only needs a netsocket which is passed to
-rlp_send_block() once the PDU block has been assembled.
-
-To receive packets, the client must call rlp_add_listener() to register
-a callback function for a particular netsocket. A listener associates a
-destination address for incoming packets (either a multicast group or
-the unicast address associated with the netsocket), with a protocol
-(e.g. SDT) and a callback function. When a packet is received matching
-the netsocket, the destination address, and the protocol, the associated
-callback function is invoked.
-
-rlp_add_listener() subscribes to the supplied group address if
-necessary.
-
-
-
-Incoming packets
---
-When adding a listener the client protocol provides a callback function
-and reference pointer. On receipt of a PDU matching that listener
-parameters, RLP calls the callback function passing the reference
-pointer as a parameter. This  pointer can be used for any purpose by the
-higher layer - it is treated as opaque  data by RLP. The callback is
-also passed pointers to a structure (network layer dependent)
-representing the transport address of the sender, and to the CID of the
-remote component.
-
-In order to manage the relationship between channels at the client
-protocol side the network interface layer, RLP maintains three
-structures:
-
-  struct netsocket_s represents an interface to the netiface layer -
-  there is one struct netsocket_s for each incoming (local) port and
-  unicast address (but see multiple interface note above).
-
-  struct rlp_rxgroup_s represents a multicast group (and port). Any
-  struct netsocket_s may have multiple rxgroups. Because of stack
-  vagaries with multicast handling, RLP examines and filters the
-  multicast destination address of every incoming packet early on and
-  finds the associated rlp_rxgroup_s If none is found, the packet is
-  dropped. There is one rlp_rxgroup_s lookup per packet.
-
-  struct rlp_listener_s represents a single callback to the client
-  component. For each rxgroup there may be multiple filters. rxgroups
-  are filtered for protocol (e.g. SDT) on a PDU by PDU basis. It is
-  permitted to open multiple filters for the same parameters - the
-  same PDU contents are passed to each in turn.
-
-All parameters passed to the client protocol are passed by reference
-(e.g. a pointer to the sender CID is passed, not the CID itself).  They
-must be treated as constant data and not modified by the client.
-However, they do not persist across calls so the client must copy any
-items which it requires to keep.
-
-*/
-
-/************************************************************************/
-/*
-
-Management of structures in memory
---
-To allow flexibility in implementation, the netsocket_s, rlp_rxgroup_s
-and rlp_listener_s structures used are manipulated using the API of the
-rlpmem module - they should not be accessed directly. This allows
-dynamic or static allocation strategies, and organization by linked
-lists, by arrays, or more complex structures such as trees. In minimal
-implementations many of these calls may be overridden by macros for
-efficiency.
-
-The implementation of these calls is in rlpmem.c where alternative
-static and dynamic implementations are provided.
-
-*/
-/************************************************************************/
 
 /************************************************************************/
 /*
@@ -665,13 +669,12 @@ rlp_del_listener(netxsocket_t *netsock, struct rlp_listener_s *listener)
 
 /************************************************************************/
 /*
-Process a packet - called by network interface layer on receipt of a packet
-NOTE: Depending on your stack, it is not always easy to find the group
-address of an incoming packet. In this case, you will have to put up
-with a little inefficiency in SDT
+Process a packet - called by network interface layer on receipt of a
+packet See notes above and in platform/linux/netxface.c for use of group
+and stacks with STACK_RETURNS_DEST_ADDR false.
 */
 void
-rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_addr_t *dest, netx_addr_t *source, void *ref)
+rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, groupaddr_t group, netx_addr_t *source)
 {
   struct rlp_rxgroup_s *rxgroup;
   struct rlp_listener_s *listener;
@@ -680,10 +683,8 @@ rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_a
   const uint8_t *pdup, *datap = NULL;
   int datasize = 0;
 
-  /* TODO: ref is intended to be pointer to stack buffer so we can do zero copy.... need to implement this */
-  UNUSED_ARG(ref);
 #if !STACK_RETURNS_DEST_ADDR
-  UNUSED_ARG(dest);
+  UNUSED_ARG(group);
 #endif
 
   LOG_FSTART();
@@ -701,14 +702,17 @@ rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_a
   }
   pdup += RLP_PREAMBLE_LENGTH;
 
-  /* if STACK_RETURNS_DEST_ADDR is defined, we can find the matching group by it's destination address */
-  /* otherwise, we can only match the socket which we do by going through them all */
+/*
+  if STACK_RETURNS_DEST_ADDR is defined, we can find the matching group
+  by it's group address otherwise, we can only match the socket which we
+  do by going through them all
+*/
 #if STACK_RETURNS_DEST_ADDR
   /* Find if we have a handler */
-  rxgroup = rlpm_find_rxgroup(socket, netx_INADDR(dest));
+  rxgroup = rlpm_find_rxgroup(socket, group);
   if (rxgroup == NULL) {
-    acnlog(LOG_DEBUG|LOG_RLP,"rlp_process_packet: No handler for this dest address: %s", ntoa(netx_INADDR(dest)));
-    return;  /* No handler for this dest address */
+    acnlog(LOG_DEBUG | LOG_RLP,"rlp_process_packet: No handler for this group address: %s", ntoa(group));
+    return;  /* No handler for this group address */
   }
 #endif
 
@@ -763,9 +767,11 @@ rlp_process_packet(netxsocket_t *socket, const uint8_t *data, int length, netx_a
         )
         {
           if (listener->callback) {
-            /* TODO: hack.. well sort of, clipping out lister->ref and sending back ref from call back */
-            /* on lwip, this is pointer to pbuf so we can do reference counting on it */
-            /* (*listener->callback)(datap, datasize, ref, source, src_cidp); */
+            /*
+            TODO: hack.. well sort of, clipping out lister->ref and
+            sending back ref from call back on lwip, this is pointer to
+            pbuf so we can do reference counting on it
+            */
             (*listener->callback)(datap, datasize, listener->ref, source, src_cidp);
           }
         }
