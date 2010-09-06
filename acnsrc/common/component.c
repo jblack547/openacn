@@ -87,7 +87,7 @@ struct component_s *compm_new(void)
    freecomps = comp->next;                      //unlink from free list
    memset(comp, 0, sizeof(struct component_s));
 #elif (CONFIG_COMPONENTMEM == MEM_MALLOC)
-   if ((comp = calloc(1, sizeof(struct component_s))) == NULL) return comp;
+   if ((comp = (struct component_s *)calloc(1, sizeof(struct component_s))) == NULL) return comp;
 #endif
    comp->usecnt = 1;
    comp->next = allcomps;                       //link to used list
