@@ -197,7 +197,7 @@ char *netx_txbuf_data(void *pkt)
 static const int optionOn = 1;
 static const int optionOff = 0;
 
-int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
+int netx_udp_open(netxsocket_t *netsock, localaddr_arg_t *localaddr)
 {
   netx_addr_t addr;
   int         ret;
@@ -213,7 +213,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
     
   /* if this socket is already open */
   if (netsock->nativesock) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : already open: %d", ntohs(LCLAD_PORT(*localaddr)));
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : already open: %d", ntohs(LCLAD_PORT(LCLAD_UNARG(localaddr))));
     return FAIL;
   }
   
@@ -249,7 +249,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   }
   #endif
 
-  netx_INIT_ADDR(&addr, LCLAD_INADDR(*localaddr), LCLAD_PORT(*localaddr));
+  netx_INIT_ADDR(&addr, LCLAD_INADDR(LCLAD_UNARG(localaddr)), LCLAD_PORT(LCLAD_UNARG(localaddr)));
 
   /*
   FIXME
@@ -270,12 +270,12 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 
   if (ret == SOCKET_ERROR) {
     closesocket(m_socket);
-    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : bind fail-%d, port:%d", WSAGetLastError(), ntohs(LCLAD_PORT(*localaddr)));
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : bind fail-%d, port:%d", WSAGetLastError(), ntohs(LCLAD_PORT(LCLAD_UNARG(localaddr))));
     return FAIL; /* FAIL */
   }
 
   /* save the passed in address/port number into the passed in netxsocket_s struct */
-  NSK_PORT(netsock) = LCLAD_PORT(*localaddr);
+  NSK_PORT(netsock) = LCLAD_PORT(LCLAD_UNARG(localaddr));
 
   /* we will need information on destination address used */
   ret = setsockopt(m_socket, IPPROTO_IP, IP_PKTINFO, (char *)&optionOn, sizeof(optionOn));
@@ -374,7 +374,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
 #if CONFIG_LOCALIP_ANY
   mreq.imr_interface.s_addr = INADDR_ANY;
 #else
-  mreq.imr_interface.s_addr = NSK_INADDR(*netsock);
+  mreq.imr_interface.s_addr = NSK_INADDR(netsock);
 #endif
 
   
@@ -584,15 +584,10 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
   acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: ...");
 
   /* save get destination address */
-#if CONFIG_LOCALIP_ANY  
-  LCLAD_PORT(host) = netx_PORT(dest);
-#else
-  LCLAD_INADDR(host) = netx_INADDR(dest);
-  LCLAD_PORT(host) = netx_PORT(dest);
-#endif  
+  netx_INIT_LOCALADDR(&host, netx_INADDR(dest), netx_PORT(dest))
   
   /* see if we have anyone registered for this socket */
-  socket = nsk_find_netsock(&host);
+  socket = nsk_find_netsock(LCLAD_ARG(host));
   if (socket) {
     groupaddr = netx_INADDR(dest);
     if (!is_multicast(groupaddr)) groupaddr = netx_GROUP_UNICAST;

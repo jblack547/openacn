@@ -86,7 +86,7 @@ void netx_init(void)
     The call returns 0 if OK, non-zero if it fails.
 */
 int
-netx_udp_open(struct netxsocket_s *rlpsock, localaddr_t localaddr)
+netx_udp_open(struct netxsocket_s *rlpsock, localaddr_arg_t localaddr)
 {
   struct udp_pcb *netx_pcb;        /* common Protocol Control Block */
 
@@ -102,17 +102,17 @@ netx_udp_open(struct netxsocket_s *rlpsock, localaddr_t localaddr)
   rlpsock->nativesock = netx_pcb;
 
   /* BIND:sets local_ip and local_port */
-  if (!udp_bind(netx_pcb, LCLAD_INADDR(localaddr), LCLAD_PORT(localaddr)) == ERR_OK)
+  if (!udp_bind(netx_pcb, LCLAD_INADDR(LCLAD_UNARG(localaddr)), LCLAD_PORT(LCLAD_UNARG(localaddr))) == ERR_OK)
     return -1;
 
-  if (LCLAD_PORT(localaddr) == NETI_PORT_EPHEM) {
+  if (LCLAD_PORT(LCLAD_UNARG(localaddr)) == NETI_PORT_EPHEM) {
 /* if port was 0, then the stack should have given us a port, so assign it back */
     NSK_PORT(*rlpsock) = netx_pcb->local_port;
   }  else {
-    NSK_PORT(*rlpsock) = LCLAD_PORT(localaddr);
+    NSK_PORT(*rlpsock) = LCLAD_PORT(LCLAD_UNARG(localaddr));
   }
 #if !CONFIG_LOCALIP_ANY
-  NSK_INADDR(*rlpsock) = LCLAD_INADDR(localaddr);
+  NSK_INADDR(rlpsock) = LCLAD_INADDR(LCLAD_UNARG(localaddr));
 #endif
 
   /* UDP Callback */
@@ -275,8 +275,8 @@ netxhandler(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr
 
   UNUSED_ARG(pcb);
 
-  NETI_INADDR(&remhost) = addr->addr;
-  NETI_PORT(&remhost) = port;
+  NETX_INADDR(&remhost) = addr->addr;
+  NETX_PORT(&remhost) = port;
 
 /*
   We don't have destination address in our callback, but examination of

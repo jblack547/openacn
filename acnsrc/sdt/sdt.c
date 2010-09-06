@@ -327,7 +327,7 @@ sdt_startup(bool acceptAdHoc)
     /* if an SDT multicast socket has not been opened yet */
     if (!sdt_multicast_socket) {
       LCLAD_PORT(localaddr) = htons(SDT_MULTICAST_PORT);
-      sdt_multicast_socket = rlp_open_netsocket(&localaddr);
+      sdt_multicast_socket = rlp_open_netsocket(LCLAD_ARG(localaddr));
       if (!sdt_multicast_socket) {
         acnlog(LOG_ERR | LOG_SDT, "sdt_startup: unable to open multicast port");
         return FAIL;
@@ -339,7 +339,7 @@ sdt_startup(bool acceptAdHoc)
     if (!sdt_adhoc_socket) {
       /* TODO: this is just a hack until we get SLP working */
       LCLAD_PORT(localaddr) = htons(SDT_ADHOC_PORT);
-      sdt_adhoc_socket = rlp_open_netsocket(&localaddr);
+      sdt_adhoc_socket = rlp_open_netsocket(LCLAD_ARG(localaddr));
       /* sdt_adhoc_socket = rlp_open_netsocket(netx_PORT_EPHEM); */
       if (sdt_adhoc_socket) {
         sdt_adhoc_listener = rlp_add_listener(sdt_adhoc_socket, netx_GROUP_UNICAST, SDT_PROTOCOL_ID, sdt_rx_handler, NULL);

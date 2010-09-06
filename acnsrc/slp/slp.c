@@ -2972,7 +2972,7 @@ SLPError slp_open(void)
   slp_socket = nsk_new_netsock();
   if (slp_socket) {
     /* open port */
-    if (netx_udp_open(slp_socket, &localaddr) != 0) {
+    if (netx_udp_open(slp_socket, LCLAD_ARG(localaddr)) != 0) {
       acnlog(LOG_DEBUG | LOG_SLP , "slp_open: could not open socket");
       nsk_free_netsock(slp_socket);
       slp_socket = NULL;

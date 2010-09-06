@@ -128,7 +128,7 @@ extern void  netx_init(void);
 extern int   netx_startup(void);
 extern int   netx_shutdown(void);
 extern int   netx_poll(void);
-extern int   netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr);
+extern int   netx_udp_open(netxsocket_t *netsock, localaddr_arg_t localaddr);
 extern void  netx_udp_close(netxsocket_t *netsock);
 extern int   netx_send_to(netxsocket_t *netsock, const netx_addr_t *destaddr, void  *pkt, ssize_t datalen);
 extern int   netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operation);

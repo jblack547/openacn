@@ -477,7 +477,7 @@ Find a matching netsocket or create a new one if necessary
 */
 
 netxsocket_t *
-rlp_open_netsocket(localaddr_t *localaddr)
+rlp_open_netsocket(localaddr_arg_t localaddr)
 {
   netxsocket_t *netsock;
 
@@ -486,7 +486,7 @@ rlp_open_netsocket(localaddr_t *localaddr)
   assert(localaddr);
 
   /* see if a netsocket already exists for the given port */
-  if (LCLAD_PORT(*localaddr) != netx_PORT_EPHEM && (netsock = nsk_find_netsock(localaddr))) {
+  if (LCLAD_PORT(LCLAD_UNARG(localaddr)) != netx_PORT_EPHEM && (netsock = nsk_find_netsock(localaddr))) {
     LOG_FEND();
     return netsock;  /* found existing matching socket */
   }

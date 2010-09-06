@@ -45,7 +45,7 @@ extern "C" {
 
 void   nsk_netsocks_init(void);
 extern netxsocket_t *nsk_new_netsock(void);
-extern netxsocket_t *nsk_find_netsock(localaddr_t *localaddr);
+extern netxsocket_t *nsk_find_netsock(localaddr_arg_t localaddr);
 extern netxsocket_t *nsk_next_netsock(netxsocket_t *socket);
 extern netxsocket_t *nsk_first_netsock(void);
 extern void   nsk_free_netsock(netxsocket_t *socket);

@@ -63,7 +63,7 @@ netxsocket_t sockets_tbl[MAX_NSK_SOCKETS];
   find the socket (if any) with matching local address (port)
 */
 netxsocket_t *
-nsk_find_netsock(localaddr_t *localaddr)
+nsk_find_netsock(localaddr_arg_t localaddr)
 {
   netxsocket_t *socket;
 
@@ -71,9 +71,9 @@ nsk_find_netsock(localaddr_t *localaddr)
   socket = sockets_tbl;
 #if CONFIG_LOCALIP_ANY
   /* while the port num in this socket entry is not equal to the port num passed in */
-  while (NSK_PORT(socket) != LCLAD_PORT(*localaddr)) {
+  while (NSK_PORT(socket) != LCLAD_PORT(LCLAD_UNARG(localaddr))) {
 #else
-  while (NSK_PORT(socket) != LCLAD_PORT(*localaddr) || NSK_INADDR(socket) != LCLAD_INADDR(*localaddr)) {
+  while (NSK_PORT(socket) != LCLAD_PORT(LCLAD_UNARG(localaddr)) || NSK_INADDR(socket) != LCLAD_INADDR(LCLAD_UNARG(localaddr))) {
 #endif
     if (++socket >= sockets_tbl + MAX_NSK_SOCKETS) return NULL;
   }

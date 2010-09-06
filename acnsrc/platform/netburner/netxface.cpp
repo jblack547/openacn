@@ -141,7 +141,7 @@ char *netx_txbuf_data(void *pkt)
     Open a "socket" with a given local port number
     The call returns 0 if OK, non-zero if it fails.
 */
-int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
+int netx_udp_open(netxsocket_t *netsock, localaddr_arg_t localaddr)
 {
   /* open a unicast socket */
   LOG_FSTART();
@@ -156,7 +156,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   netsock->nativesock = native_sock;
 
   /* save the passed in address/port number into the passed in netxsocket_s struct */
-  NSK_PORT(netsock) = LCLAD_PORT(*localaddr);
+  NSK_PORT(netsock) = LCLAD_PORT(LCLAD_UNARG(localaddr));
 
   /* Register for rx UDP packets on this port and put them in this fifo. */
   /* The same fifo is used for each call to this routine. */
@@ -341,15 +341,10 @@ void netx_handler(char *data, int length, netx_addr_t *source, netx_addr_t *dest
   acnlog(LOG_DEBUG | LOG_NETX , "netx_handler: ...");
 
   /* save get destination address */
-#if CONFIG_LOCALIP_ANY
-  LCLAD_PORT(host) = netx_PORT(dest);
-#else
-  LCLAD_INADDR(host) = netx_INADDR(dest);
-  LCLAD_PORT(host) = netx_PORT(dest);
-#endif
+  netx_INIT_LOCALADDR(&host, netx_INADDR(dest), netx_PORT(dest))
 
   /* see if we have anyone registered for this socket */
-  socket = nsk_find_netsock(&host);
+  socket = nsk_find_netsock(LCLAD_ARG(host));
   if (socket) {
     groupaddr = netx_INADDR(dest);
     if (!is_multicast(groupaddr)) groupaddr = netx_GROUP_UNICAST;

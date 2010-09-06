@@ -29,7 +29,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-  $Id: netxface.c 332 2010-09-02 16:53:11Z philipnye $
+  $Id: netxface.c 351 2010-09-06 13:30:35Z philipnye $
 
 #tabs=2s
 */
@@ -220,7 +220,7 @@ char *netx_txbuf_data(void *pkt)
 static const int optionOn = 1;
 static const int optionOff = 0;
 
-int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
+int netx_udp_open(netxsocket_t *netsock, localaddr_arg_t localaddr)
 {
   netx_addr_t addr;
   int         ret;
@@ -231,7 +231,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
 
   /* if this socket is already open */
   if (netsock->nativesock) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : already open: %d", ntohs(LCLAD_PORT(*localaddr)));
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open : already open: %d", ntohs(LCLAD_PORT(LCLAD_UNARG(localaddr))));
     return FAIL;
   }
 
@@ -254,7 +254,7 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   }
   #endif
 
-  netx_INIT_ADDR(&addr, LCLAD_INADDR(*localaddr), LCLAD_PORT(*localaddr));
+  netx_INIT_ADDR(&addr, LCLAD_INADDR(LCLAD_UNARG(localaddr)), LCLAD_PORT(LCLAD_UNARG(localaddr)));
 
   /*
   FIXME (wrf)
@@ -282,14 +282,14 @@ int netx_udp_open(netxsocket_t *netsock, localaddr_t *localaddr)
   ret =  bind(netsock->nativesock, (SOCKADDR *)&addr, sizeof(addr));
 
   if (ret == SOCKET_ERROR) {
-    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open: bind port %d: %s", ntohs(LCLAD_PORT(*localaddr)), strerror(errno));
+    acnlog(LOG_WARNING | LOG_NETX, "netx_udp_open: bind port %d: %s", ntohs(LCLAD_PORT(LCLAD_UNARG(localaddr))), strerror(errno));
     close(netsock->nativesock);
     netsock->nativesock = 0;
     return FAIL; /* FAIL */
   }
 
   /* save the passed in address/port number into the passed in netxsocket_s struct */
-  NSK_PORT(netsock) = LCLAD_PORT(*localaddr);
+  NSK_PORT(netsock) = LCLAD_PORT(LCLAD_UNARG(localaddr));
 
   /* we will need information on destination address used */
   ret = setsockopt(netsock->nativesock, IPPROTO_IP, IP_PKTINFO, (void *)&optionOn, sizeof(optionOn));
@@ -389,7 +389,7 @@ int netx_change_group(netxsocket_t *netsock, ip4addr_t local_group, int operatio
 #if CONFIG_LOCALIP_ANY
   mreq.imr_interface.s_addr = INADDR_ANY;
 #else
-  mreq.imr_interface.s_addr = NSK_INADDR(*netsock);
+  mreq.imr_interface.s_addr = NSK_INADDR(netsock);
 #endif
 
 
@@ -415,7 +415,7 @@ int netx_send_to(
   netxsocket_t      *netsock,    /* contains a flag if port is open and the local port number */
   const netx_addr_t *destaddr,   /* contains dest port and ip numbers */
   void              *pkt,        /* pointer data packet if type UPDPacket (return from netx_new_txbuf()) */
-  size_t             datalen     /* length of data */
+  ssize_t             datalen     /* length of data */
 )
 {
   netx_addr_t  dest_addr;
@@ -474,13 +474,12 @@ netx_poll(void)
   struct timeval      timeout;  /* Timeout for select */
   int                 readsocks;
   netx_addr_t         source;
-  netx_addr_t         dest;
 #if STACK_RETURNS_DEST_ADDR
   uint8_t pktinfo[CMSG_SPACE(sizeof(struct in_pktinfo))];
   struct iovec bufvec[1];
   struct msghdr hdr;
   struct cmsghdr *cmp;
-  ip4addr_t groupaddr;
+  groupaddr_t groupaddr;
 #else
   socklen_t           addr_len
 #endif
