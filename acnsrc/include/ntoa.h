@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __NTOA_H__
 
 #include "opt.h"
-#include "acnstdtypes.h"
+#include "acnip.h"
 #include "acn_port.h"
 
 #ifdef __cplusplus
