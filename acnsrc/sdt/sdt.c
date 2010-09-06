@@ -525,9 +525,9 @@ sdt_add_component(const cid_t cid, const cid_t dcid, bool is_local,
   }
   ACN_PORT_UNPROTECT(protect);
   if (rslt) {
-    if (rslt == ERROR_nomem)
+    if (rslt == ERROR_nomem) {
       acnlog(LOG_ERR | LOG_SDT,"sdt_add_component: new component allocation failed");
-    else {
+    } else {
       acnlog(LOG_INFO | LOG_SDT,"sdt_add_component: component already exists");
       if (rslt & CONFLICT_creator) {
         acnlog(LOG_INFO | LOG_SDT,"sdt_add_component: previous creator differed");
