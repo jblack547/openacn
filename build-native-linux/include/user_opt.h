@@ -49,11 +49,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #define CONFIG_MEM MEM_STATIC
 
+#define MAX_TXBUFS   50
+#define CONFIG_MAX_COMPONENTS       10
 #define MAX_RLP_SOCKETS 2    /* need 2 for sdt */
 
-#define MAX_TXBUFS   50
-
-#define SDT_MAX_COMPONENTS          10
 #define SDT_MAX_CHANNELS            10
 #define SDT_MAX_MEMBERS             40
 
@@ -64,6 +63,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CONFIG_LOGLEVEL LOG_DEBUG
 
 /* but only these categories */
+#define LOG_COMPM  LOG_LOCAL0
 #define LOG_RLP    LOG_LOCAL0
 #define LOG_RLPM   LOG_LOCAL0
 #define LOG_SDT    LOG_LOCAL0
