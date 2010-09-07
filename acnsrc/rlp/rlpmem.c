@@ -590,7 +590,7 @@ rlpm_new_txbuf(int size, component_t *owner)
   txbuf->netbuf = netbuf;
   txbuf->datap = datap;
   txbuf->owner = owner;
-  txbuf->datasize = MAX_MTU;
+  txbuf->datasize = size;
   txbuf->usage = 1;
 
   return txbuf;
