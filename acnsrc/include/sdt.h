@@ -53,53 +53,7 @@ necessary for accessing SDT from higher layers
 extern "C" {
 #endif
 
-/* PDU vector codes [SDT spec Table 3] */
-enum
-{
-  SDT_REL_WRAPPER     = 1,
-  SDT_UNREL_WRAPPER   = 2,
-  SDT_CHANNEL_PARAMS  = 3,
-  SDT_JOIN            = 4,
-  SDT_JOIN_REFUSE     = 5,
-  SDT_JOIN_ACCEPT     = 6,
-  SDT_LEAVE           = 7,
-  SDT_LEAVING         = 8,
-  SDT_CONNECT         = 9,
-  SDT_CONNECT_ACCEPT  = 10,
-  SDT_CONNECT_REFUSE  = 11,
-  SDT_DISCONNECT      = 12,
-  SDT_DISCONNECTING   = 13,
-  SDT_ACK             = 14,
-  SDT_NAK             = 15,
-  SDT_GET_SESSIONS    = 16,
-  SDT_SESSIONS        = 17,
-};
-
-/* Reason codes [SDT spec Table 6] */
-enum
-{
-  SDT_REASON_NONSPEC          = 1,
-  SDT_REASON_PARAMETERS       = 2,
-  SDT_REASON_RESOURCES        = 3,
-  SDT_REASON_ALREADY_MEMBER   = 4,
-  SDT_REASON_BAD_ADDR         = 5,
-  SDT_REASON_NO_RECIPROCAL    = 6,
-  SDT_REASON_CHANNEL_EXPIRED  = 7,
-  SDT_REASON_LOST_SEQUENCE    = 8,
-  SDT_REASON_SATURATED        = 9,
-  SDT_REASON_ADDR_CHANGING    = 10,
-  SDT_REASON_ASKED_TO_LEAVE   = 11,
-  SDT_REASON_NO_RECIPIENT     = 12,
-  SDT_REASON_ONLY_UNICAST     = 13,
-};
-
-/* Address specification types [SDT spec Table 7] */
-enum
-{
-  SDT_ADDR_NULL = 0,
-  SDT_ADDR_IPV4 = 1,
-  SDT_ADDR_IPV6 = 2,
-};
+#define SDT_ADHOC_PORT     0x5000
 
 /* sdt state */
 typedef enum {
@@ -189,7 +143,6 @@ typedef struct sdt_resend_s
   component_t         *local_component; /* local component */
   struct sdt_resend_s *next;            /* next buffer in lifo chain */
 } sdt_resend_t;
-
 
 int      sdt_init(void);
 int      sdt_startup(bool acceptAdHoc);

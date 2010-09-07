@@ -78,20 +78,41 @@ Notes:
 #include "lwip/sys.h"
 #endif
 
-/* this will/should go away as DMP should register itself with SDT so there are no dependencies */
+/************************************************************************/
+/*
+Define some inplementation specific parameters
+*/
+
+#define RECIPROCAL_TIMEOUT_ms AD_HOC_TIMEOUT_ms * 2
+
+#define FOREIGN_MEMBER_EXPIRY_TIME_ms  5000 /* see MIN_EXPIRY_TIME_ms */
+#define FOREIGN_MEMBER_NAK_HOLDOFF_ms  2    /* see NAK_HOLDOFF_INTERVAL_ms */
+#define FOREIGN_MEMBER_NAK_MODULUS     50   /* */
+#define FOREIGN_MEMBER_NAK_MAX_TIME_ms 20   /* see NAK_MAX_TIME_ms */
+#define FOREIGN_MEMBER_MAK_TIME_ms      (FOREIGN_MEMBER_EXPIRY_TIME_ms - 1000)
+#if (FOREIGN_MEMBER_MAK_TIME_ms < 100)
+  #error "Insufficient FOREIGN_MEMBER_MAK_TIME_ms time"
+#endif     
+
+/************************************************************************/
+/*
+this will/should go away as DMP should register itself with SDT so there
+are no dependencies
+*/
 #if CONFIG_DMP
   #include "dmp.h"
 #endif
 
-/* local enums/defines */
-#if !CONFIG_RLP_SINGLE_CLIENT
+/************************************************************************/
 /*
 if your compiler does not conform to ANSI macro expansions it may
 recurse infinitely on this definition.
 */
+#if !CONFIG_RLP_SINGLE_CLIENT
 #define rlp_add_pdu(buf, pdudata, size, packetdatap) rlp_add_pdu(buf, pdudata, size, SDT_PROTOCOL_ID, packetdatap)
 #endif
 
+/************************************************************************/
 /*
 macros for deep debugging - log entry and exit to each function
 redefine these to empty macros (uncomment the ones below) to disable
@@ -103,7 +124,11 @@ redefine these to empty macros (uncomment the ones below) to disable
 #define LOG_FEND()
 */
 
-/* keeps track of things we have allocated in case we need to abort, we can deallocate them */
+/************************************************************************/
+/*
+keeps track of things we have allocated in case we need to abort, we can
+deallocate them
+*/
 enum
 {
   ALLOCATED_LOCAL_COMP       = 1,
@@ -964,11 +989,11 @@ sdt_rx_handler(const uint8_t *data, int data_len, void *ref, const netx_addr_t *
         acnlog(LOG_DEBUG | LOG_SDT,"sdtRxHandler: Dispatch to sdt_rx_nak");
         sdt_rx_nak(foreign_cid, datap, data_size);
         break;
-      case SDT_REL_WRAPPER :
+      case SDT_REL_WRAP :
         acnlog(LOG_DEBUG | LOG_SDT,"sdtRxHandler: Dispatch to sdt_rx_wrapper as reliable");
         sdt_rx_wrapper(foreign_cid, remhost, datap, true, data_size, ref);
         break;
-      case SDT_UNREL_WRAPPER :
+      case SDT_UNREL_WRAP :
         acnlog(LOG_DEBUG | LOG_SDT,"sdtRxHandler: Dispatch to sdt_rx_wrapper as unreliable");
         sdt_rx_wrapper(foreign_cid, remhost, datap, false, data_size, ref);
         break;
@@ -1259,7 +1284,7 @@ unmarshal_transport_address(const uint8_t *data, const netx_addr_t *transport_ad
 
 /*****************************************************************************/
 /*
-  Create a SDT_REL_WRAPPER or SDT_UNREL_WRAPPER
+  Create a SDT_REL_WRAP or SDT_UNREL_WRAP
     wrapper        - pointer to wrapper
     is_reliable    - boolean if wrapper is reliable
     local_channel  - channel the wrapper is for
@@ -1298,7 +1323,7 @@ sdt_format_wrapper(uint8_t *wrapper, bool is_reliable, sdt_channel_t *local_chan
   local_channel->total_seq++;
 
   /* wrawpper type */
-  wrapper = marshalU8(wrapper, (is_reliable) ? SDT_REL_WRAPPER : SDT_UNREL_WRAPPER);
+  wrapper = marshalU8(wrapper, (is_reliable) ? SDT_REL_WRAP : SDT_UNREL_WRAP);
   /* channel number */
   wrapper = marshalU16(wrapper, local_channel->number);
   wrapper = marshalU32(wrapper, local_channel->total_seq);
@@ -2679,7 +2704,7 @@ sdt_tx_resend(sdt_resend_t *resend)
 
 /*****************************************************************************/
 /*
-  Receive a REL_WRAPPER or UNREL_WRAPPER packet
+  Receive a REL_WRAP or UNREL_WRAP packet
     foreign_cid    - cid of component that sent the wrapper
     source_addr    - address wrapper came from
     is_reliable    - flag indicating if type of wrapper
