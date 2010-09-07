@@ -59,6 +59,32 @@
 
 /************************************************************************/
 /*
+ACN Version
+ACN was revised in 2010 and changes or corrections were made to: SDT,
+DMP, DDL, EPI10, EPI11, EPI18, EPI19, EPI22.
+
+ACN_VERSION is an integer which represents the ACN revision to be
+compiled.
+
+EPIs which were not included in the original ACN suite have their own
+standardization process and will need their own version numbers as
+necessary.
+
+Expect earlier versions of ACN to become deprecated over time
+
+Allowable values are:
+20060000    the original ANSI ESTA E1.17-2006 version
+20100000    the revised version ANSI ESTA E1.17-2010 (pending final approval)
+
+*/
+/************************************************************************/
+
+#ifndef ACN_VERSION
+#define ACN_VERSION 20100000
+#endif
+
+/************************************************************************/
+/*
   ACN Protocols
 
   Define which protocols and EPIs to build or conform to
