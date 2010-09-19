@@ -89,6 +89,11 @@ static __inline uint8_t *marshalU64(uint8_t *data, uint64_t u64)
 	return data + 8;
 }
 
+static __inline uint8_t *marshalBytes(uint8_t *data, const uint8_t *src, int size)
+{
+	return (uint8_t *)memcpy(data, src, size) + size;
+}
+
 static __inline uint8_t *marshalCID(uint8_t *data, const uint8_t *cid)
 {
 	return (uint8_t *)memcpy(data, cid, sizeof(cid_t)) + sizeof(cid_t);
@@ -125,6 +130,11 @@ static __inline uint8_t *unmarshalCID(const uint8_t *data, uint8_t *cid)
 	return (uint8_t *)memcpy(cid, data, sizeof(cid_t));
 }
 
+static __inline uint8_t *unmarshalBytes(const uint8_t *data, uint8_t *dest, int size)
+{
+	return (uint8_t *)memcpy(dest, data, size);
+}
+
 static __inline uint16_t unpackVar(const uint8_t *data, uint8_t *dest)
 {
 	uint16_t len = unmarshalU16(data) - 2;
@@ -159,6 +169,9 @@ static __inline uint16_t unpackVar(const uint8_t *data, uint8_t *dest)
 					| ((uint8_t *)(datap))[1] << 16 \
 					| ((uint8_t *)(datap))[2] << 8 \
 					| ((uint8_t *)(datap))[3])
+
+#define marshalBytes(data, src, size) ((uint8_t*)memcpy((uint8_t *)(data), (uint8_t *)(src), (size)) + (size))
+#define unmarshalBytes(data, dest, size) ((uint8_t*)memcpy((uint8_t *)(dest), (uint8_t *)(data), (size)))
 
 #define marshalCID(data, cid) ((uint8_t*)memcpy((uint8_t *)(data), (uint8_t *)(cid), sizeof(cid_t)) + sizeof(cid_t))
 #define unmarshalCID(data, cid) ((uint8_t*)memcpy((uint8_t *)(cid), (uint8_t *)(data), sizeof(cid_t)))
