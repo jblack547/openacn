@@ -34,8 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 /*--------------------------------------------------------------------*/
-#ifndef __types_h__
-#define __types_h__ 1
+#ifndef __acnstdtypes_h__
+#define __acnstdtypes_h__ 1
 
 /*
   Type definitions for fixed size types in 8, 16, 32 bits and booleans.
@@ -84,7 +84,7 @@ _MSC_VER is still defined when VisualC is not in ISO mode
 #endif
 #define __bool_true_false_are_defined	1
 
-#endif  /* defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L */
+#endif  /* defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L || defined(HAVE_INT_TYPES_H) */
 
 #ifndef OK
 #define OK 0
@@ -105,4 +105,4 @@ _MSC_VER is still defined when VisualC is not in ISO mode
 #define ZEROARRAY 1
 #endif
 
-#endif /* __types_h__ */
+#endif /* __acnstdtypes_h__ */
